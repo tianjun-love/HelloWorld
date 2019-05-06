@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+# Project files
+*.sdf
+*.user
+.vs/*
+*.ilk
+*.pdb
+*/Debug/*
