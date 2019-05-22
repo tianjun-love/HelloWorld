@@ -5,7 +5,7 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-	cout << "Hello world !" << endl;
+	cout << CPublic::DateTimeString(3) << " >>" << "Hello world !" << endl;
 
 	//暂停
 	system("pause");

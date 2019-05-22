@@ -15,6 +15,8 @@ public:
 	CPublic();
 	~CPublic();
 
+	static std::string DateTimeString(short nType = 0); //获取当前时间字符串
+
 private:
 
 };
