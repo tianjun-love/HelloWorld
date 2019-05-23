@@ -1,0 +1,282 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Public">
+      <UniqueIdentifier>{72832256-68f3-4728-baa0-52972d49068f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MySQL">
+      <UniqueIdentifier>{3033a5b3-67fc-41d7-9d8e-a77100e149b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="OCI">
+      <UniqueIdentifier>{6f3d06bf-596b-4684-a828-ca75c5d7a7c0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MySQL\mysql">
+      <UniqueIdentifier>{47911917-31cd-4c7a-8396-ae007e6202dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="PostgreSQL">
+      <UniqueIdentifier>{dcb2f8e4-394a-497d-9092-aa1a108390f8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\DBBaseInterface.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\MemLeakCheck.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\MySQLInterface.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\OCIInterface.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\PostgreSQLInterface.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DBBindBase.hpp">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DBBindDateTime.hpp">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DBBindLob.hpp">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DBBindNumber.hpp">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DBBindRefCursor.hpp">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DBBindString.hpp">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DBColumnAttribute.hpp">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DBColumnValue.hpp">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DBPublic.hpp">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DBResultSet.hpp">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DBRowValue.hpp">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\binary_log_types.h">
+      <Filter>MySQL</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\errmsg.h">
+      <Filter>MySQL</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\my_command.h">
+      <Filter>MySQL</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\my_list.h">
+      <Filter>MySQL</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\mysql.h">
+      <Filter>MySQL</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\mysql_com.h">
+      <Filter>MySQL</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\mysql_time.h">
+      <Filter>MySQL</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\mysql_version.h">
+      <Filter>MySQL</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\mysqld_error.h">
+      <Filter>MySQL</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\mysqlx_ername.h">
+      <Filter>MySQL</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\mysqlx_error.h">
+      <Filter>MySQL</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\mysqlx_version.h">
+      <Filter>MySQL</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\mysql\client_plugin.h">
+      <Filter>MySQL\mysql</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\mysql\plugin_auth_common.h">
+      <Filter>MySQL\mysql</Filter>
+    </ClInclude>
+    <ClInclude Include="MySQL\mysql\udf_registration_types.h">
+      <Filter>MySQL\mysql</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\nzerror.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\nzt.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\occi.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\occiAQ.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\occiCommon.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\occiControl.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\occiData.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\occiObjects.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\oci.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\oci1.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\oci8dp.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\ociap.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\ociapr.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\ocidef.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\ocidem.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\ocidfn.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\ociextp.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\ocikpr.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\ocixml.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\ocixmldb.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\ocixstream.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\odci.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\oratypes.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\ori.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\orid.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\orl.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\oro.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\ort.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="OCI\xa.h">
+      <Filter>OCI</Filter>
+    </ClInclude>
+    <ClInclude Include="PostgreSQL\ecpg_config.h">
+      <Filter>PostgreSQL</Filter>
+    </ClInclude>
+    <ClInclude Include="PostgreSQL\libpq-fe.h">
+      <Filter>PostgreSQL</Filter>
+    </ClInclude>
+    <ClInclude Include="PostgreSQL\pg_config_ext.h">
+      <Filter>PostgreSQL</Filter>
+    </ClInclude>
+    <ClInclude Include="PostgreSQL\pg_type_d.h">
+      <Filter>PostgreSQL</Filter>
+    </ClInclude>
+    <ClInclude Include="PostgreSQL\pgtypes.h">
+      <Filter>PostgreSQL</Filter>
+    </ClInclude>
+    <ClInclude Include="PostgreSQL\pgtypes_date.h">
+      <Filter>PostgreSQL</Filter>
+    </ClInclude>
+    <ClInclude Include="PostgreSQL\pgtypes_error.h">
+      <Filter>PostgreSQL</Filter>
+    </ClInclude>
+    <ClInclude Include="PostgreSQL\pgtypes_interval.h">
+      <Filter>PostgreSQL</Filter>
+    </ClInclude>
+    <ClInclude Include="PostgreSQL\pgtypes_numeric.h">
+      <Filter>PostgreSQL</Filter>
+    </ClInclude>
+    <ClInclude Include="PostgreSQL\pgtypes_timestamp.h">
+      <Filter>PostgreSQL</Filter>
+    </ClInclude>
+    <ClInclude Include="PostgreSQL\postgres_ext.h">
+      <Filter>PostgreSQL</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\DBBaseInterface.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DBBindDateTime.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DBBindLob.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DBBindNumber.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DBBindRefCursorcpp.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DBBindString.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DBResultSet.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\MySQLInterface.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OCIInterface.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\PostgreSQLInterface.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="CMakeLists.txt" />
+  </ItemGroup>
+</Project>
