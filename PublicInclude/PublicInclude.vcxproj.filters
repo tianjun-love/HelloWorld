@@ -1,0 +1,481 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="头文件\windows">
+      <UniqueIdentifier>{b0a19315-39d7-4e2b-86c6-a558aa9e7c16}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\linux">
+      <UniqueIdentifier>{107cbabd-b5c3-4863-afdd-6d5e4c9de7c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\linux\openssl">
+      <UniqueIdentifier>{9dce16a6-609a-47e0-acd2-8cf22f498fb7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\windows\openssl">
+      <UniqueIdentifier>{8368f494-3c14-4f66-8050-05626ef5ba32}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="linux\openssl\aes.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\asn1.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\asn1_mac.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\asn1t.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\bio.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\blowfish.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\bn.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\buffer.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\camellia.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\cast.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\cmac.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\cms.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\comp.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\conf.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\conf_api.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\crypto.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\des.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\des_old.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\dh.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\dsa.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\dso.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\dtls1.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\e_os2.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ebcdic.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ec.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ecdh.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ecdsa.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\engine.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\err.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\evp.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\hmac.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\idea.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\krb5_asn.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\kssl.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\lhash.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\md4.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\md5.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\mdc2.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\modes.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\obj_mac.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\objects.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ocsp.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\opensslconf.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\opensslv.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ossl_typ.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\pem.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\pem2.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\pkcs7.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\pkcs12.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\pqueue.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\rand.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\rc2.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\rc4.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ripemd.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\rsa.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\safestack.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\seed.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\sha.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\srp.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\srtp.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ssl.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ssl2.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ssl3.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ssl23.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\stack.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\symhacks.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\tls1.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ts.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\txt_db.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ui.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\ui_compat.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\whrlpool.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\x509.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\x509_vfy.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="linux\openssl\x509v3.h">
+      <Filter>头文件\linux\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\aes.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\asn1.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\asn1_mac.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\asn1t.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\bio.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\blowfish.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\bn.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\buffer.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\camellia.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\cast.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\cmac.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\cms.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\comp.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\conf.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\conf_api.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\crypto.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\des.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\des_old.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\dh.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\dsa.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\dso.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\dtls1.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\e_os2.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ebcdic.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ec.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ecdh.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ecdsa.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\engine.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\err.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\evp.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\hmac.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\idea.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\krb5_asn.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\kssl.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\lhash.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\md4.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\md5.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\mdc2.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\modes.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\obj_mac.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\objects.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ocsp.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\opensslconf.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\opensslv.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ossl_typ.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\pem.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\pem2.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\pkcs7.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\pkcs12.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\pqueue.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\rand.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\rc2.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\rc4.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ripemd.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\rsa.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\safestack.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\seed.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\sha.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\srp.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\srtp.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ssl.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ssl2.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ssl3.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ssl23.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\stack.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\symhacks.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\tls1.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ts.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\txt_db.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ui.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\ui_compat.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\whrlpool.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\x509.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\x509_vfy.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\openssl\x509v3.h">
+      <Filter>头文件\windows\openssl</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
