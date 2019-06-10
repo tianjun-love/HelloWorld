@@ -4,6 +4,10 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcxproj", "{3E921BA2-20DA-42DE-8C1B-413409A93FCE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F7966D11-E409-44DC-A27B-179A84FE037A} = {F7966D11-E409-44DC-A27B-179A84FE037A}
+		{665D27DD-F6B1-496C-9261-45DC2452088A} = {665D27DD-F6B1-496C-9261-45DC2452088A}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DateTime", "DateTime\DateTime.vcxproj", "{8EBA05A1-323F-479E-A45E-D7BA399733D6}"
 EndProject

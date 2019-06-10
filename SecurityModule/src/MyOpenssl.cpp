@@ -1,4 +1,6 @@
 ﻿#include <openssl/aes.h>
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
 #include <cerrno>
@@ -14,12 +16,14 @@
 #include <unistd.h>
 #endif
 
-bool COpenssl::m_bLoadErrorStrings = false;
+bool COpenssl::m_bLoadPublicObject = false;
 
-COpenssl::COpenssl(bool bBase64LineFeed) : m_bLineFeed(bBase64LineFeed), m_bSetKey(false)
+COpenssl::COpenssl(bool bBase64LineFeed) : m_bLineFeed(bBase64LineFeed), m_eKeyType(E_KEY_NONE)
 {
 	memset(m_Key, 0, sizeof(m_Key));
 	memset(m_IV, 0, sizeof(m_IV));
+
+	LoadPublicObject();
 }
 
 COpenssl::~COpenssl()
@@ -40,7 +44,7 @@ COpenssl::~COpenssl()
 bool COpenssl::SetKeyAndIV(EKeyType eKeyType, const char *key, int keylen, const char *iv, int ivlen, std::string &szError)
 {
 	bool bResult = false;
-	m_bSetKey = false;
+	m_eKeyType = E_KEY_NONE;
 
 	if (nullptr == key || 8 > keylen)
 	{
@@ -69,7 +73,7 @@ bool COpenssl::SetKeyAndIV(EKeyType eKeyType, const char *key, int keylen, const
 		{
 			memcpy(m_Key, key, 8);
 			bResult = true;
-			m_bSetKey = true;
+			m_eKeyType = E_KEY_64;
 		}
 		else
 			szError = "Key len must be 8 Bytes !";
@@ -81,7 +85,7 @@ bool COpenssl::SetKeyAndIV(EKeyType eKeyType, const char *key, int keylen, const
 		{
 			memcpy(m_Key, key, 16);
 			bResult = true;
-			m_bSetKey = true;
+			m_eKeyType = E_KEY_128;
 		}
 		else
 			szError = "Key len must be 16 Bytes !";
@@ -93,7 +97,7 @@ bool COpenssl::SetKeyAndIV(EKeyType eKeyType, const char *key, int keylen, const
 		{
 			memcpy(m_Key, key, 24);
 			bResult = true;
-			m_bSetKey = true;
+			m_eKeyType = E_KEY_192;
 		}
 		else
 			szError = "Key len must be 24 Bytes !";
@@ -105,7 +109,7 @@ bool COpenssl::SetKeyAndIV(EKeyType eKeyType, const char *key, int keylen, const
 		{
 			memcpy(m_Key, key, 32);
 			bResult = true;
-			m_bSetKey = true;
+			m_eKeyType = E_KEY_256;
 		}
 		else
 			szError = "Key len must be 32 Bytes !";
@@ -131,12 +135,6 @@ bool COpenssl::SetKeyAndIV(EKeyType eKeyType, const char *key, int keylen, const
 ********************************************************************************/
 int COpenssl::Encrypt(ECipherType eCipher, EKeyType eKeyType, const std::string &szPlainText, std::string &szEncrypted, std::string &szError)
 {
-	if (szPlainText.empty())
-	{
-		szError = "Encrypted data is null !";
-		return -2;
-	}
-
 	int iEncryptedLen = 0, iRet = 0;
 	unsigned char* pEncryptedData = nullptr;
 
@@ -154,54 +152,6 @@ int COpenssl::Encrypt(ECipherType eCipher, EKeyType eKeyType, const std::string 
 		pEncryptedData = nullptr;
 	}
 	
-	return iRet;
-}
-
-/********************************************************************************
-功能：	aes加密
-参数：	eCipher 算法类型
-*		eType 密钥类型
-*		pPlainText 要加密的字符串
-*		iPlainLen 要加密的字符串长度
-*		pOut 加密后密文，外部释放
-*		iOutLen 加密后密文长度
-*		szError 错误信息
-返回：	-2:参数错误，-1:加密处理失败，>0:返回加密后的字节数
-修改：
-********************************************************************************/
-int COpenssl::Encrypt(ECipherType eCipher, EKeyType eKeyType, const char *pPlainText, int iPlainLen, unsigned char *&pOut, int &iOutLen,
-	std::string &szError)
-{
-	if (nullptr == pPlainText || 0 >= iPlainLen)
-	{
-		szError = "Encrypted data is null !";
-		return -2;
-	}
-
-	int iRet = 0;
-	const void *pCipher = GetCipher(eCipher, eKeyType, true, szError);
-
-	if (nullptr != pCipher)
-	{
-		if (E_CIPHER_AES == eCipher)
-		{
-			iRet = EncryptHandle(pCipher, (const unsigned char*)pPlainText, iPlainLen, pOut, iOutLen, szError);
-
-			//特殊处理
-			delete (AES_KEY*)pCipher;
-		}
-		else
-		{
-			iRet = EncryptHandle(eCipher, pCipher, m_Key, m_IV, (const unsigned char*)pPlainText, iPlainLen,
-				pOut, iOutLen, szError);
-		}
-
-		if (0 <= iRet)
-			iRet = iOutLen;
-	}
-	else
-		iRet = -1;
-
 	return iRet;
 }
 
@@ -254,7 +204,55 @@ int COpenssl::Decrypt(ECipherType eCipher, EKeyType eKeyType, const std::string 
 		iRet = -1;
 		szError = "Decode encrypted from base64 failed !";
 	}
-	
+
+	return iRet;
+}
+
+/********************************************************************************
+功能：	aes加密
+参数：	eCipher 算法类型
+*		eType 密钥类型
+*		pPlainText 要加密的字符串
+*		iPlainLen 要加密的字符串长度
+*		pOut 加密后密文，外部释放
+*		iOutLen 加密后密文长度
+*		szError 错误信息
+返回：	-2:参数错误，-1:加密处理失败，>0:返回加密后的字节数
+修改：
+********************************************************************************/
+int COpenssl::Encrypt(ECipherType eCipher, EKeyType eKeyType, const char *pPlainText, int iPlainLen, unsigned char *&pOut, int &iOutLen,
+	std::string &szError)
+{
+	if (nullptr == pPlainText || 0 >= iPlainLen)
+	{
+		szError = "Plaintext data is empty !";
+		return -2;
+	}
+
+	int iRet = 0;
+	const void *pCipher = GetCipher(eCipher, eKeyType, true, szError);
+
+	if (nullptr != pCipher)
+	{
+		if (E_CIPHER_AES == eCipher)
+		{
+			iRet = EncryptHandle(pCipher, (const unsigned char*)pPlainText, iPlainLen, pOut, iOutLen, szError);
+
+			//特殊处理
+			delete (AES_KEY*)pCipher;
+		}
+		else
+		{
+			iRet = EncryptHandle(eCipher, pCipher, m_Key, m_IV, (const unsigned char*)pPlainText, iPlainLen,
+				pOut, iOutLen, szError);
+		}
+
+		if (0 <= iRet)
+			iRet = iOutLen;
+	}
+	else
+		iRet = -1;
+
 	return iRet;
 }
 
@@ -307,6 +305,965 @@ int COpenssl::Decrypt(ECipherType eCipher, EKeyType eKeyType, const char *pEncry
 }
 
 /********************************************************************************
+功能：	生成rsa公私钥文件
+参数：	szPubKeyPath 公钥文件路径
+*		szPriKeyPath 私钥文件路径
+*		szPassword 私钥文件加密密码
+*		iKeyBits 密钥长度，1024/2048/3072/7680/15360
+*		szError 错误信息
+返回：	成功返回true
+修改：
+********************************************************************************/
+bool COpenssl::RSAGenerateKeyPair(const std::string &szPubKeyPath, const std::string &szPriKeyPath, const std::string &szPassword, int iKeyBits,
+	std::string &szError)
+{
+	if (szPubKeyPath.empty())
+	{
+		szError = "Public key file path can't be null !";
+		return false;
+	}
+
+	if (szPriKeyPath.empty())
+	{
+		szError = "Private key file path can't be null !";
+		return false;
+	}
+
+	if (szPassword.empty() || 4 > szPassword.length())
+	{
+		szError = "Private key file encrypt key can't be null and length must greater than or equal 4 !";
+		return false;
+	}
+
+	if (1024 != iKeyBits && 2048 != iKeyBits && 3072 != iKeyBits && 7680 != iKeyBits && 15360 != iKeyBits)
+	{
+		szError = "Public key bits length must be 1024/2048/3072/7680/15360 !";
+		return false;
+	}
+
+	bool bResult = true;
+	RSA *r = NULL;
+	BIGNUM *e = NULL;
+
+	r = RSA_new();
+	if (NULL == r)
+	{
+		szError = "RSA_new error:" + GetOpensslErrorMsg();
+		bResult = false;
+	}
+
+	if (bResult)
+	{
+		e = BN_new();
+		if (NULL == e)
+		{
+			szError = "BN_new error:" + GetOpensslErrorMsg();
+			bResult = false;
+		}
+		else
+			BN_set_word(e, RSA_F4);
+	}
+
+	if (bResult)
+	{
+		//生成密钥对
+		if (1 == RSA_generate_key_ex(r, iKeyBits, e, NULL))
+		{
+			//公钥写文件
+			BIO *bioPtr = BIO_new(BIO_s_file());
+
+			if (0 < BIO_write_filename(bioPtr, (void*)szPubKeyPath.c_str()))
+			{
+				if (1 != PEM_write_bio_RSAPublicKey(bioPtr, r))
+				{
+					bResult = false;
+				}
+			}
+			else
+				bResult = false;
+
+			BIO_free_all(bioPtr);
+
+			if (bResult)
+			{
+				//私钥写文件
+				bioPtr = BIO_new_file(szPriKeyPath.c_str(), "w+");
+
+				if (1 != PEM_write_bio_RSAPrivateKey(bioPtr, r, EVP_des_ede3_cbc(), (unsigned char *)szPassword.c_str(), szPassword.length(),
+					NULL, NULL))
+				{
+					bResult = false;
+				}
+
+				BIO_free_all(bioPtr);
+			}
+		}
+		else
+			bResult = false;
+	}
+
+	//获取错误信息
+	if (!bResult)
+		szError = GetOpensslErrorMsg();
+
+	//清理
+	if (NULL != e)
+		BN_free(e);
+
+	if (NULL != r)
+		RSA_free(r);
+
+	return bResult;
+}
+
+/********************************************************************************
+功能：	公钥加密
+参数：	szPubKeyFile 公钥文件名称
+*		szIn 输入数据
+*		szOut 输出数据
+*		szError 错误信息
+*		bEncrypt true:加密，输出数据为base64编码，false:解密
+返回：	成功返回true
+修改：
+********************************************************************************/
+bool COpenssl::RSAPublicKey(const std::string &szPubKeyFile, const std::string &szIn, std::string &szOut, std::string &szError, bool bEncrypt)
+{
+	bool bResult = true;
+	unsigned char* pOut = nullptr;
+	size_t uiOutLen = 0;
+
+	szOut.clear();
+
+	if (bEncrypt)
+	{
+		if (RSAPublicKey(szPubKeyFile, szIn.c_str(), szIn.length(), pOut, uiOutLen, szError, bEncrypt))
+			szOut = CBase64Convert::Encode64((const char*)pOut, uiOutLen);
+		else
+			bResult = false;
+	}
+	else
+	{
+		if (!szIn.empty())
+		{
+			size_t uiInLen = 0;
+			char *pIn = CBase64Convert::Decode64(szIn, uiInLen);
+
+			if (nullptr != pIn)
+			{
+				if (RSAPublicKey(szPubKeyFile, pIn, uiInLen, pOut, uiOutLen, szError, bEncrypt))
+					szOut = (const char*)pOut;
+				else
+					bResult = false;
+
+				delete[] pIn;
+				pIn = nullptr;
+			}
+			else
+			{
+				szError = "Encrypted data(base64 string) convert to char* failed !";
+				bResult = false;
+			}
+		}
+		else
+		{
+			szError = "Encrypted data(base64 string) can't be null !";
+			bResult = false;
+		}
+	}
+
+	if (nullptr != pOut)
+	{
+		delete[] pOut;
+		pOut = nullptr;
+	}
+
+	return bResult;
+}
+
+/********************************************************************************
+功能：	私钥解密
+参数：	szPriKeyFile 私钥文件名称
+*		szPassword 私钥文件加密密码
+*		szIn 输入数据
+*		szOut 输出数据
+*		szError 错误信息
+*		bEncrypt true:加密，输出数据为base64编码，false:解密，注意私钥加密只能私钥解
+返回：	成功返回true
+修改：
+********************************************************************************/
+bool COpenssl::RSAPrivateKey(const std::string &szPriKeyFile, const std::string &szPassword, const std::string &szIn, std::string &szOut,
+	std::string &szError, bool bEncrypt)
+{
+	bool bResult = true;
+	unsigned char* pOut = nullptr;
+	size_t uiOutLen = 0;
+
+	szOut.clear();
+
+	if (bEncrypt)
+	{
+		if (RSAPrivateKey(szPriKeyFile, szPassword.c_str(), szIn.c_str(), szIn.length(), pOut, uiOutLen, szError, bEncrypt))
+			szOut = CBase64Convert::Encode64((const char*)pOut, uiOutLen);
+		else
+			bResult = false;
+	}
+	else
+	{
+		if (!szIn.empty())
+		{
+			size_t uiInLen = 0;
+			char *pIn = CBase64Convert::Decode64(szIn, uiInLen);
+
+			if (nullptr != pIn)
+			{
+				if (RSAPrivateKey(szPriKeyFile, szPassword.c_str(), pIn, uiInLen, pOut, uiOutLen, szError, bEncrypt))
+					szOut = (const char*)pOut;
+				else
+					bResult = false;
+
+				delete[] pIn;
+				pIn = nullptr;
+			}
+			else
+			{
+				szError = "Encrypted data(base64 string) convert to char* failed !";
+				bResult = false;
+			}
+		}
+		else
+		{
+			szError = "Encrypted data(base64 string) can't be null !";
+			bResult = false;
+		}
+	}
+
+	if (nullptr != pOut)
+	{
+		delete[] pOut;
+		pOut = nullptr;
+	}
+
+	return bResult;
+}
+
+/********************************************************************************
+功能：	公钥加密
+参数：	szPubKeyFile 公钥文件名称
+*		pIn 输入
+*		uiInLen 输入长度
+*		pOut 输出
+*		uiOutLen 输出长度
+*		szError 错误信息
+*		bEncrypt true:加密，false:解密，注意私钥加密只能私钥解
+返回：	成功返回true
+修改：
+********************************************************************************/
+bool COpenssl::RSAPublicKey(const std::string &szPubKeyFile, const char *pIn, size_t uiInLen, unsigned char *&pOut, size_t &uiOutLen,
+	std::string &szError, bool bEncrypt)
+{
+	bool bResult = true;
+
+	if (szPubKeyFile.empty())
+	{
+		szError = "Public key file name is null !";
+		return false;
+	}
+	else
+	{
+		if (!CheckFileExist(szPubKeyFile.c_str()))
+		{
+			szError = "Public key file is not exist !";
+			return false;
+		}
+	}
+
+	if (nullptr == pIn || 0 == uiInLen)
+	{
+		szError = "In treatment data is null !";
+		return false;
+	}
+
+	if (nullptr != pOut)
+	{
+		delete[] pOut;
+		pOut = nullptr;
+	}
+
+	uiOutLen = 0;
+
+	//读取公钥文件
+	std::ifstream PubFile(szPubKeyFile.c_str(), std::ios::in | std::ios::binary);
+
+	if (PubFile.is_open() && PubFile.good())
+	{
+		std::string szPubKey((std::istreambuf_iterator<char>(PubFile)), std::istreambuf_iterator<char>());
+		PubFile.close();
+
+		//打开公钥文件
+		BIO *keybio = BIO_new_mem_buf(szPubKey.c_str(), szPubKey.length());
+
+		if (nullptr != keybio)
+		{
+			//读取公钥文件
+			RSA *rsa = NULL;
+			const std::string pkcs1_header = "-----BEGIN RSA PUBLIC KEY-----";
+			const std::string pkcs8_header = "-----BEGIN PUNLIC KEY-----";
+
+			if (0 == strncmp(pkcs1_header.c_str(), szPubKey.c_str(), pkcs1_header.length()))
+				rsa = PEM_read_bio_RSAPublicKey(keybio, NULL, NULL, NULL);
+			else if (0 == strncmp(pkcs8_header.c_str(), szPubKey.c_str(), pkcs8_header.length()))
+				rsa = PEM_read_bio_RSA_PUBKEY(keybio, NULL, NULL, NULL);
+			else
+			{
+				bResult = false;
+				szError = "Unknow public key file format !";
+			}
+
+			if (bResult && NULL != rsa)
+			{
+				//生成密钥对
+				EVP_PKEY *keypair = EVP_PKEY_new();
+				EVP_PKEY_set1_RSA(keypair, rsa);
+				uiOutLen = uiInLen + 15360;
+				pOut = new unsigned char[uiOutLen + 1]{ 0 };
+
+				if (nullptr != pOut)
+				{
+					EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(keypair, NULL);
+
+					if (NULL != ctx)
+					{
+						if (bEncrypt) //加密
+						{
+							if (1 == EVP_PKEY_encrypt_init(ctx))
+							{
+								EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING);
+
+								if (1 != EVP_PKEY_encrypt(ctx, pOut, &uiOutLen, (const unsigned char*)pIn, uiInLen))
+								{
+									bResult = false;
+									szError = "EVP_PKEY_encrypt error:" + GetOpensslErrorMsg();
+								}
+							}
+							else
+							{
+								bResult = false;
+								szError = "EVP_PKEY_encrypt_init error:" + GetOpensslErrorMsg();
+							}
+						}
+						else //解密
+						{
+							if (1 == EVP_PKEY_decrypt_init(ctx))
+							{
+								EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING);
+
+								if (1 != EVP_PKEY_decrypt(ctx, pOut, &uiOutLen, (const unsigned char*)pIn, uiInLen))
+								{
+									bResult = false;
+									szError = "EVP_PKEY_decrypt error:" + GetOpensslErrorMsg();
+								}
+							}
+							else
+							{
+								bResult = false;
+								szError = "EVP_PKEY_decrypt_init error:" + GetOpensslErrorMsg();
+							}
+						}
+
+						EVP_PKEY_CTX_free(ctx);
+					}
+					else
+					{
+						bResult = false;
+						szError = "EVP_PKEY_CTX_new error:" + GetOpensslErrorMsg();
+					}
+
+					if (!bResult)
+					{
+						delete[] pOut;
+						pOut = nullptr;
+						uiOutLen = 0;
+					}
+				}
+				else
+				{
+					bResult = false;
+					uiOutLen = 0;
+					szError = "New out data memory return nullptr:" + GetErrorMsg(errno);
+				}
+
+				EVP_PKEY_free(keypair);
+				RSA_free(rsa);
+			}
+			else
+			{
+				bResult = false;
+				if (szError.empty())
+					szError = "PEM read bio key error:" + GetOpensslErrorMsg();
+			}
+
+			BIO_free_all(keybio);
+		}
+		else
+		{
+			bResult = false;
+			szError = "BIO_new_mem_buf error:" + GetOpensslErrorMsg();
+		}
+	}
+	else
+	{
+		bResult = false;
+		szError = "Open public key file:" + szPubKeyFile + " error:" + GetErrorMsg(errno);
+	}
+
+	return bResult;
+}
+
+/********************************************************************************
+功能：	私钥解密
+参数：	szPriKeyFile 私钥文件名称
+*		pPassword 私钥文件加密密码
+*		pIn 输入
+*		uiInLen 输入长度
+*		pOut 输出
+*		uiOutLen 输出长度
+*		szError 错误信息
+*		bEncrypt true:加密，false:解密，注意私钥加密只能私钥解
+返回：	成功返回true
+修改：
+********************************************************************************/
+bool COpenssl::RSAPrivateKey(const std::string &szPriKeyFile, const char *pPassword, const char *pIn, size_t uiInLen, unsigned char *&pOut,
+	size_t &uiOutLen, std::string &szError, bool bEncrypt)
+{
+	bool bResult = true;
+
+	if (szPriKeyFile.empty())
+	{
+		szError = "Private key file name is null !";
+		return false;
+	}
+	else
+	{
+		if (!CheckFileExist(szPriKeyFile.c_str()))
+		{
+			szError = "Private key file is not exist !";
+			return false;
+		}
+	}
+
+	if (nullptr == pIn || 0 == uiInLen)
+	{
+		szError = "In treatment data is null !";
+		return false;
+	}
+
+	if (nullptr != pOut)
+	{
+		delete[] pOut;
+		pOut = nullptr;
+	}
+
+	uiOutLen = 0;
+
+	//读取私钥文件
+	std::ifstream PriFile(szPriKeyFile.c_str(), std::ios::in | std::ios::binary);
+
+	if (PriFile.is_open() && PriFile.good())
+	{
+		std::string szPriKey((std::istreambuf_iterator<char>(PriFile)), std::istreambuf_iterator<char>());
+		PriFile.close();
+
+		//打开私钥文件
+		BIO *keybio = BIO_new_mem_buf(szPriKey.c_str(), szPriKey.length());
+
+		if (nullptr != keybio)
+		{
+			//读取私钥文件
+			RSA *rsa = NULL;
+			const std::string pk_header_enc = "-----BEGIN RSA PRIVATE KEY-----\nProc-Type:"; //私钥文件有加密
+
+			if (0 == strncmp(pk_header_enc.c_str(), szPriKey.c_str(), pk_header_enc.length()))
+			{
+				if (nullptr == pPassword || 4 > std::strlen(pPassword))
+				{
+					bResult = false;
+					szError = "Private key file encrypt password can't be null and length must greater than or equal 4 !";
+				}
+				else
+					rsa = PEM_read_bio_RSAPrivateKey(keybio, NULL, NULL, (void*)pPassword);
+			}
+			else
+				rsa = PEM_read_bio_RSAPrivateKey(keybio, NULL, NULL, NULL);
+
+			if (bResult && NULL != rsa)
+			{
+				//生成密钥对
+				EVP_PKEY *keypair = EVP_PKEY_new();
+				EVP_PKEY_set1_RSA(keypair, rsa);
+				uiOutLen = uiInLen + 15360;
+				pOut = new unsigned char[uiOutLen + 1]{ 0 };
+
+				if (nullptr != pOut)
+				{
+					EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(keypair, NULL);
+
+					if (nullptr != ctx)
+					{
+						if (bEncrypt) //加密
+						{
+							if (1 == EVP_PKEY_encrypt_init(ctx))
+							{
+								EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING);
+
+								if (1 != EVP_PKEY_encrypt(ctx, pOut, &uiOutLen, (const unsigned char*)pIn, uiInLen))
+								{
+									bResult = false;
+									szError = "EVP_PKEY_encrypt error:" + GetOpensslErrorMsg();
+								}
+							}
+							else
+							{
+								bResult = false;
+								szError = "EVP_PKEY_encrypt_init error:" + GetOpensslErrorMsg();
+							}
+						}
+						else //解密，注意私钥加密的数据只能私钥解，不然这里会崩溃
+						{
+							if (1 == EVP_PKEY_decrypt_init(ctx))
+							{
+								EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING);
+
+								if (1 != EVP_PKEY_decrypt(ctx, pOut, &uiOutLen, (const unsigned char*)pIn, uiInLen))
+								{
+									bResult = false;
+									szError = "EVP_PKEY_decrypt error:" + GetOpensslErrorMsg();
+								}
+							}
+							else
+							{
+								bResult = false;
+								szError = "EVP_PKEY_decrypt_init error:" + GetOpensslErrorMsg();
+							}
+						}
+
+						EVP_PKEY_CTX_free(ctx);
+					}
+					else
+					{
+						bResult = false;
+						szError = "EVP_PKEY_CTX_new error:" + GetOpensslErrorMsg();
+					}
+
+					if (!bResult)
+					{
+						delete[] pOut;
+						pOut = nullptr;
+						uiOutLen = 0;
+					}
+				}
+				else
+				{
+					bResult = false;
+					uiOutLen = 0;
+					szError = "New out data memory return nullptr:" + GetErrorMsg(errno);
+				}
+
+				EVP_PKEY_free(keypair);
+				RSA_free(rsa);
+			}
+			else
+			{
+				bResult = false;
+				if (szError.empty())
+					szError = "PEM read bio key error:" + GetOpensslErrorMsg();
+			}
+
+			BIO_free_all(keybio);
+		}
+		else
+		{
+			bResult = false;
+			szError = "BIO_new_mem_buf error:" + GetOpensslErrorMsg();
+		}
+	}
+	else
+	{
+		bResult = false;
+		szError = "Open public key file:" + szPriKeyFile + " error:" + GetErrorMsg(errno);
+	}
+
+	return bResult;
+}
+
+/********************************************************************************
+功能：	签名
+参数：	szPriKeyFile 私钥文件名称
+*		pPassword 私钥文件加密密码
+*		eHashType 摘要算法类型
+*		szFileName 要签名的文件
+*		pOut 输出
+*		uiOutLen 输出长度
+*		szError 错误信息
+返回：	成功返回true
+修改：
+********************************************************************************/
+bool COpenssl::RSASignFile(const std::string &szPriKeyFile, const char *pPassword, EHashType eHashType, const std::string &szFileName, unsigned char *&pOut,
+	unsigned int &uiOutLen, std::string &szError)
+{
+	bool bResult = true;
+
+	if (szPriKeyFile.empty())
+	{
+		szError = "Private key file name is null !";
+		return false;
+	}
+	else
+	{
+		if (!CheckFileExist(szPriKeyFile.c_str()))
+		{
+			szError = "Private key file is not exist !";
+			return false;
+		}
+	}
+
+	if (nullptr == pPassword || 4 > std::strlen(pPassword))
+	{
+		szError = "Private key file encrypt password can't be null and length must greater than or equal 4 !";
+		return false;
+	}
+
+	if (szFileName.empty())
+	{
+		szError = "Sign file name is null !";
+		return false;
+	}
+	else
+	{
+		if (!CheckFileExist(szFileName.c_str()))
+		{
+			szError = "Sign file is not exist !";
+			return false;
+		}
+	}
+
+	if (nullptr != pOut)
+	{
+		delete[] pOut;
+		pOut = nullptr;
+	}
+
+	uiOutLen = 0;
+
+	EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+	if (nullptr == ctx)
+	{
+		szError = "EVP_MD_CTX_create error:" + GetOpensslErrorMsg();
+		return false;
+	}
+	else
+		EVP_MD_CTX_init(ctx);
+
+	if (1 != EVP_SignInit_ex(ctx, (const EVP_MD*)GetHashAlgorithm(eHashType), nullptr))
+	{
+		bResult = false;
+		szError = "EVP_SignInit_ex error:" + GetOpensslErrorMsg();
+	}
+	else
+	{
+		std::ifstream file;
+
+		file.open(szFileName.c_str(), std::ios::binary | std::ios::in);
+		if (file.is_open() && file.good())
+		{
+			const std::streamsize iBufLen = 1024;
+			char buf[iBufLen + 1] = { '\0' };
+			std::streamsize readLen = 0;
+
+			while (!file.eof())
+			{
+				file.read(buf, iBufLen);
+				readLen = file.gcount(); //实际读取长度
+
+				if (readLen >= 0)
+				{
+					if (1 != EVP_SignUpdate(ctx, buf, (size_t)readLen, pError))
+					{
+						bResult = false;
+						szError = "EVP_SignUpdate error:" + GetOpensslErrorMsg();
+						break;
+					}
+				}
+			}
+
+			file.close();
+		}
+		else
+		{
+			bResult = false;
+			szError = "Open file fail:" + GetErrorMsg(errno);
+		}
+	}
+
+	if (bResult)
+	{
+		//读取私钥文件
+		std::ifstream PriFile(szPriKeyFile.c_str(), std::ios::in | std::ios::binary);
+
+		if (PriFile.is_open() && PriFile.good())
+		{
+			std::string szPriKey((std::istreambuf_iterator<char>(PriFile)), std::istreambuf_iterator<char>());
+			PriFile.close();
+
+			//打开私钥文件
+			BIO *keybio = BIO_new_mem_buf(szPriKey.c_str(), szPriKey.length());
+
+			if (nullptr != keybio)
+			{
+				//读取私钥文件
+				RSA *rsa = NULL;
+				const std::string pk_header_enc = "-----BEGIN RSA PRIVATE KEY-----\nProc-Type:"; //私钥文件有加密
+
+				if (0 == strncmp(pk_header_enc.c_str(), szPriKey.c_str(), pk_header_enc.length()))
+				{
+					if (nullptr == pPassword || 4 > std::strlen(pPassword))
+					{
+						bResult = false;
+						szError = "Private key file encrypt password can't be null and length must greater than or equal 4 !";
+					}
+					else
+						rsa = PEM_read_bio_RSAPrivateKey(keybio, NULL, NULL, (void*)pPassword);
+				}
+				else
+					rsa = PEM_read_bio_RSAPrivateKey(keybio, NULL, NULL, NULL);
+
+				if (bResult && NULL != rsa)
+				{
+					//生成密钥对
+					EVP_PKEY *keypair = EVP_PKEY_new();
+					EVP_PKEY_set1_RSA(keypair, rsa);
+
+					pOut = new unsigned char[2048]{ 0 };
+					if (nullptr != pOut)
+					{
+						if (1 != EVP_SignFinal(ctx, pOut, &uiOutLen, keypair))
+						{
+							bResult = false;
+							delete[] pOut;
+							pOut = nullptr;
+							szError = "EVP_SignFinal error:" + GetOpensslErrorMsg();
+						}
+					}
+					else
+					{
+						bResult = false;
+						szError = "New sign data memory return nullptr:" + GetErrorMsg(errno);
+					}
+
+					EVP_PKEY_free(keypair);
+					RSA_free(rsa);
+				}
+				else
+				{
+					bResult = false;
+					if (szError.empty())
+						szError = "PEM read bio key error:" + GetOpensslErrorMsg();
+				}
+
+				BIO_free_all(keybio);
+			}
+			else
+			{
+				bResult = false;
+				szError = "BIO_new_mem_buf error:" + GetOpensslErrorMsg();
+			}
+		}
+		else
+		{
+			bResult = false;
+			szError = "Open public key file:" + szPriKeyFile + " error:" + GetErrorMsg(errno);
+		}
+	}
+
+	EVP_MD_CTX_cleanup(ctx);
+	EVP_MD_CTX_destroy(ctx);
+
+	return bResult;
+}
+
+/********************************************************************************
+功能：	验证签名
+参数：	szPubKeyFile 公钥文件名称
+*		eHashType 摘要算法类型
+*		szFileName 要签名的文件
+*		pSign 签名数据
+*		uiSignLen 签名长度
+*		szError 错误信息
+返回：	成功返回true
+修改：
+********************************************************************************/
+bool COpenssl::RSAVerifySign(const std::string &szPubKeyFile, EHashType eHashType, const std::string &szFileName, const unsigned char *pSign,
+	unsigned int uiSignLen, std::string &szError)
+{
+	bool bResult = true;
+
+	if (szPubKeyFile.empty())
+	{
+		szError = "Public key file name is null !";
+		return false;
+	}
+	else
+	{
+		if (!CheckFileExist(szPubKeyFile.c_str()))
+		{
+			szError = "Public key file is not exist !";
+			return false;
+		}
+	}
+
+	if (szFileName.empty())
+	{
+		szError = "Sign file name is null !";
+		return false;
+	}
+	else
+	{
+		if (!CheckFileExist(szFileName.c_str()))
+		{
+			szError = "Sign file is not exist !";
+			return false;
+		}
+	}
+
+	if (nullptr == pSign || 0 == uiSignLen)
+	{
+		szError = "Sign data is null !";
+		return false;
+	}
+
+	EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+	if (nullptr == ctx)
+	{
+		szError = "EVP_MD_CTX_create error:" + GetOpensslErrorMsg();
+		return false;
+	}
+	else
+		EVP_MD_CTX_init(ctx);
+
+	if (1 != EVP_VerifyInit_ex(ctx, (const EVP_MD*)GetHashAlgorithm(eHashType), nullptr))
+	{
+		bResult = false;
+		szError = "EVP_VerifyInit_ex error:" + GetOpensslErrorMsg();
+	}
+	else
+	{
+		std::ifstream file;
+
+		file.open(szFileName.c_str(), std::ios::binary | std::ios::in);
+		if (file.is_open() && file.good())
+		{
+			const std::streamsize iBufLen = 1024;
+			char buf[iBufLen + 1] = { '\0' };
+			std::streamsize readLen = 0;
+
+			while (!file.eof())
+			{
+				file.read(buf, iBufLen);
+				readLen = file.gcount(); //实际读取长度
+
+				if (readLen >= 0)
+				{
+					if (1 != EVP_VerifyUpdate(ctx, buf, (size_t)readLen, pError))
+					{
+						bResult = false;
+						szError = "EVP_VerifyUpdate error:" + GetOpensslErrorMsg();
+						break;
+					}
+				}
+			}
+
+			file.close();
+		}
+		else
+		{
+			bResult = false;
+			szError = "Open file fail:" + GetErrorMsg(errno);
+		}
+	}
+
+	if (bResult)
+	{
+		//读取公钥文件
+		std::ifstream PubFile(szPubKeyFile.c_str(), std::ios::in | std::ios::binary);
+
+		if (PubFile.is_open() && PubFile.good())
+		{
+			std::string szPubKey((std::istreambuf_iterator<char>(PubFile)), std::istreambuf_iterator<char>());
+			PubFile.close();
+
+			//打开公钥文件
+			BIO *keybio = BIO_new_mem_buf(szPubKey.c_str(), szPubKey.length());
+
+			if (nullptr != keybio)
+			{
+				//读取公钥文件
+				RSA *rsa = NULL;
+				const std::string pkcs1_header = "-----BEGIN RSA PUBLIC KEY-----";
+				const std::string pkcs8_header = "-----BEGIN PUNLIC KEY-----";
+
+				if (0 == strncmp(pkcs1_header.c_str(), szPubKey.c_str(), pkcs1_header.length()))
+					rsa = PEM_read_bio_RSAPublicKey(keybio, NULL, NULL, NULL);
+				else if (0 == strncmp(pkcs8_header.c_str(), szPubKey.c_str(), pkcs8_header.length()))
+					rsa = PEM_read_bio_RSA_PUBKEY(keybio, NULL, NULL, NULL);
+				else
+				{
+					bResult = false;
+					szError = "Unknow public key file format !";
+				}
+
+				if (bResult && NULL != rsa)
+				{
+					//生成密钥对
+					EVP_PKEY *keypair = EVP_PKEY_new();
+					EVP_PKEY_set1_RSA(keypair, rsa);
+
+					if (1 != EVP_VerifyFinal(ctx, pSign, uiSignLen, keypair))
+					{
+						bResult = false;
+						szError = "EVP_VerifyFinal error:" + GetOpensslErrorMsg();
+					}
+
+					EVP_PKEY_free(keypair);
+					RSA_free(rsa);
+				}
+				else
+				{
+					bResult = false;
+					if (szError.empty())
+						szError = "PEM read bio key error:" + GetOpensslErrorMsg();
+				}
+
+				BIO_free_all(keybio);
+			}
+			else
+			{
+				bResult = false;
+				szError = "BIO_new_mem_buf error:" + GetOpensslErrorMsg();
+			}
+		}
+		else
+		{
+			bResult = false;
+			szError = "Open private key file:" + szPubKeyFile + " error:" + GetErrorMsg(errno);
+		}
+	}
+
+	EVP_MD_CTX_cleanup(ctx);
+	EVP_MD_CTX_destroy(ctx);
+
+	return bResult;
+}
+
+/********************************************************************************
 功能：	字符串转HASH
 参数：	eHashType hash类型
 *		szData 字符串
@@ -324,9 +1281,9 @@ bool COpenssl::Hash(EHashType eHashType, const std::string &szData, std::string 
 		if (nullptr != pError)
 		{
 			if (bIsFile)
-				*pError = "Hash treatment data is empty !";
+				*pError = "Hash treatment file name is null !";
 			else
-				*pError = "Hash treatment filename is empty !";
+				*pError = "Hash treatment data is empty !";	
 		}
 
 		return false;
@@ -366,7 +1323,7 @@ bool COpenssl::Hash(EHashType eHashType, const char *pData, unsigned int uiLengt
 		if (nullptr != pError)
 		{
 			if (bIsFile)
-				*pError = "Hash treatment filename is empty !";
+				*pError = "Hash treatment file name is null !";
 			else
 				*pError = "Hash treatment data is empty !";
 		}
@@ -389,45 +1346,8 @@ bool COpenssl::Hash(EHashType eHashType, const char *pData, unsigned int uiLengt
 
 	if (nullptr != ctx)
 	{
-		const EVP_MD *pmd = nullptr;
+		const EVP_MD *pmd = (const EVP_MD*)GetHashAlgorithm(eHashType);
 		EVP_MD_CTX_init(ctx);
-
-		switch (eHashType)
-		{
-		case COpenssl::E_MD_MD4:
-			pmd = EVP_md4();
-			break;
-		case COpenssl::E_MD_MD5:
-			pmd = EVP_md5();
-			break;
-		case COpenssl::E_MD_MDC2:
-			pmd = EVP_mdc2();
-			break;
-		case COpenssl::E_MD_SHA:
-			pmd = EVP_sha();
-			break;
-		case COpenssl::E_MD_SHA1:
-			pmd = EVP_sha1();
-			break;
-		case COpenssl::E_MD_SHA224:
-			pmd = EVP_sha224();
-			break;
-		case COpenssl::E_MD_SHA256:
-			pmd = EVP_sha256();
-			break;
-		case COpenssl::E_MD_SHA384:
-			pmd = EVP_sha384();
-			break;
-		case COpenssl::E_MD_SHA512:
-			pmd = EVP_sha512();
-			break;
-		case COpenssl::E_MD_WHIRLPOOL:
-			pmd = EVP_whirlpool();
-			break;
-		default:
-			pmd = EVP_md5(); //默认MD5
-			break;
-		}
 
 		if (DigestInit(ctx, pmd, NULL, pError))
 		{
@@ -503,7 +1423,7 @@ bool COpenssl::Hash(EHashType eHashType, const char *pData, unsigned int uiLengt
 int COpenssl::EncryptHandle(const void *pKey, const unsigned char *pIn, int iInLen, unsigned char *&pOut, int &iOutLen,
 	std::string &szError)
 {
-	if (!m_bSetKey)
+	if (E_KEY_NONE == m_eKeyType)
 	{
 		szError = "Encryption key is unset !";
 		return -2;
@@ -512,12 +1432,6 @@ int COpenssl::EncryptHandle(const void *pKey, const unsigned char *pIn, int iInL
 	if (nullptr == pKey)
 	{
 		szError = "Encrypted AES_KEY is null !";
-		return -2;
-	}
-
-	if (nullptr == pIn || 0 >= iInLen)
-	{
-		szError = "Encrypted data is null !";
 		return -2;
 	}
 
@@ -586,7 +1500,7 @@ int COpenssl::EncryptHandle(const void *pKey, const unsigned char *pIn, int iInL
 int COpenssl::DecryptHandle(const void *pKey, const unsigned char *pIn, int iInLen, unsigned char *&pOut, int &iOutLen,
 	std::string &szError)
 {
-	if (!m_bSetKey)
+	if (E_KEY_NONE == m_eKeyType)
 	{
 		szError = "Decryption key is unset !";
 		return -2;
@@ -664,7 +1578,7 @@ int COpenssl::DecryptHandle(const void *pKey, const unsigned char *pIn, int iInL
 int COpenssl::EncryptHandle(ECipherType eCipherType, const void *pCipher, const unsigned char *pKey, const unsigned char *pIV, const unsigned char *pIn,
 	int iInLen, unsigned char *&pOut, int &iOutLen, std::string &szError)
 {
-	if (!m_bSetKey)
+	if (E_KEY_NONE == m_eKeyType)
 	{
 		szError = "Encryption key and iv is unset !";
 		return -2;
@@ -673,18 +1587,6 @@ int COpenssl::EncryptHandle(ECipherType eCipherType, const void *pCipher, const 
 	if (nullptr == pCipher)
 	{
 		szError = "Encrypted cipher is null !";
-		return -2;
-	}
-
-	if (nullptr == pKey || nullptr == pIV)
-	{
-		szError = "Encrypted key or IV is null !";
-		return -2;
-	}
-
-	if (nullptr == pIn || 0 >= iInLen)
-	{
-		szError = "Encrypted data is null !";
 		return -2;
 	}
 
@@ -779,7 +1681,7 @@ int COpenssl::EncryptHandle(ECipherType eCipherType, const void *pCipher, const 
 int COpenssl::DecryptHandle(ECipherType eCipherType, const void *pCipher, const unsigned char *pKey, const unsigned char *pIV, const unsigned char *pIn,
 	int iInLen, unsigned char *&pOut, int &iOutLen, std::string &szError)
 {
-	if (!m_bSetKey)
+	if (E_KEY_NONE == m_eKeyType)
 	{
 		szError = "Decryption key and iv is unset !";
 		return -2;
@@ -788,18 +1690,6 @@ int COpenssl::DecryptHandle(ECipherType eCipherType, const void *pCipher, const 
 	if (nullptr == pCipher)
 	{
 		szError = "Decrypted cipher is null !";
-		return -2;
-	}
-
-	if (nullptr == pKey || nullptr == pIV)
-	{
-		szError = "Decrypted key or IV is null !";
-		return -2;
-	}
-
-	if (nullptr == pIn || 0 >= iInLen)
-	{
-		szError = "Decrypted data is null or wrong length !";
 		return -2;
 	}
 
@@ -900,6 +1790,12 @@ int COpenssl::DecryptHandle(ECipherType eCipherType, const void *pCipher, const 
 const void* COpenssl::GetCipher(ECipherType eCipherType, EKeyType eKeyType, bool bEncrypt, std::string &szError)
 {
 	const void *pCipher = nullptr;
+
+	if (E_KEY_NONE == eKeyType)
+	{
+		szError = "Unset key and iv value !";
+		return pCipher;
+	}
 
 	switch (eCipherType)
 	{
@@ -1005,6 +1901,56 @@ const void* COpenssl::GetCipher(ECipherType eCipherType, EKeyType eKeyType, bool
 }
 
 /*********************************************************************
+功能：	获取hash算法
+参数：	eHashType 算法类型
+返回：	算法指针
+修改：
+*********************************************************************/
+const void* COpenssl::GetHashAlgorithm(EHashType eHashType)
+{
+	const EVP_MD *pmd = nullptr;
+
+	switch (eHashType)
+	{
+	case COpenssl::E_MD_MD4:
+		pmd = EVP_md4();
+		break;
+	case COpenssl::E_MD_MD5:
+		pmd = EVP_md5();
+		break;
+	case COpenssl::E_MD_MDC2:
+		pmd = EVP_mdc2();
+		break;
+	case COpenssl::E_MD_SHA:
+		pmd = EVP_sha();
+		break;
+	case COpenssl::E_MD_SHA1:
+		pmd = EVP_sha1();
+		break;
+	case COpenssl::E_MD_SHA224:
+		pmd = EVP_sha224();
+		break;
+	case COpenssl::E_MD_SHA256:
+		pmd = EVP_sha256();
+		break;
+	case COpenssl::E_MD_SHA384:
+		pmd = EVP_sha384();
+		break;
+	case COpenssl::E_MD_SHA512:
+		pmd = EVP_sha512();
+		break;
+	case COpenssl::E_MD_WHIRLPOOL:
+		pmd = EVP_whirlpool();
+		break;
+	default:
+		pmd = EVP_md5(); //默认MD5
+		break;
+	}
+
+	return pmd;
+}
+
+/*********************************************************************
 功能：	获取openssl错误信息
 参数：	无
 返回：	错误信息
@@ -1012,15 +1958,6 @@ const void* COpenssl::GetCipher(ECipherType eCipherType, EKeyType eKeyType, bool
 *********************************************************************/
 std::string COpenssl::GetOpensslErrorMsg()
 {
-	//加载错误信息
-	if (!m_bLoadErrorStrings)
-	{
-		m_bLoadErrorStrings = true;
-		ERR_load_ERR_strings();
-		ERR_load_crypto_strings();
-		//ERR_free_strings();
-	}
-
 	std::string szError;
 	const size_t uiErrorBufLen = 4096;
 	char ErrorBuf[uiErrorBufLen + 1];
@@ -1099,6 +2036,31 @@ bool COpenssl::CipherFinal(void *ctx, int dl, unsigned char *outm, int *outl, st
 	}
 
 	return true;
+}
+
+/*********************************************************************
+功能：	加载公共信息
+参数：	无
+返回：	无
+修改：
+*********************************************************************/
+void COpenssl::LoadPublicObject()
+{
+	//加载公共信息
+	if (!m_bLoadPublicObject)
+	{
+		m_bLoadPublicObject = true;
+
+		//错误信息
+		ERR_load_ERR_strings();
+		ERR_load_crypto_strings();
+		ERR_load_RSA_strings();
+		ERR_load_PEM_strings();
+		ERR_load_BIO_strings();
+
+		//rsa私钥文件有加密必须调用
+		OpenSSL_add_all_algorithms();
+	}
 }
 
 /*********************************************************************

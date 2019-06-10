@@ -61,19 +61,35 @@ public:
 	//密钥类型
 	enum EKeyType : int
 	{
-		E_KEY_64  = 64,  //des使用
-		E_KEY_128 = 128, //aes128
-		E_KEY_192 = 192, //aes192
-		E_KEY_256 = 256  //aes256
+		E_KEY_NONE = 0,   //未设置key
+		E_KEY_64   = 64,  //des使用
+		E_KEY_128  = 128, //aes128
+		E_KEY_192  = 192, //aes192
+		E_KEY_256  = 256  //aes256
 	};
 
 	bool SetKeyAndIV(EKeyType eKeyType, const char *key, int keylen, const char *iv, int ivlen, std::string &szError);
+
 	int Encrypt(ECipherType eCipher, EKeyType eKeyType, const std::string &szPlainText, std::string &szEncrypted, std::string &szError);
-	int Encrypt(ECipherType eCipher, EKeyType eKeyType, const char *pPlainText, int iPlainLen, unsigned char *&pOut, int &iOutLen, 
-		std::string &szError);
 	int Decrypt(ECipherType eCipher, EKeyType eKeyType, const std::string &szEncrypted, std::string &szPlainText, std::string &szError);
+	int Encrypt(ECipherType eCipher, EKeyType eKeyType, const char *pPlainText, int iPlainLen, unsigned char *&pOut, int &iOutLen,
+		std::string &szError);
 	int Decrypt(ECipherType eCipher, EKeyType eKeyType, const char *pEncrypted, int iEncryptedLen, unsigned char *&pOut, int &iOutLen,
 		std::string &szError);
+
+	bool RSAGenerateKeyPair(const std::string &szPubKeyPath, const std::string &szPriKeyPath, const std::string &szPassword, int iKeyBits,
+		std::string &szError);
+	bool RSAPublicKey(const std::string &szPubKeyFile, const std::string &szIn, std::string &szOut, std::string &szError, bool bEncrypt = true);
+	bool RSAPrivateKey(const std::string &szPriKeyFile, const std::string &szPassword, const std::string &szIn, std::string &szOut,
+		std::string &szError, bool bEncrypt = false);
+	bool RSAPublicKey(const std::string &szPubKeyFile, const char *pIn, size_t uiInLen, unsigned char *&pOut, size_t &uiOutLen, 
+		std::string &szError, bool bEncrypt = true);
+	bool RSAPrivateKey(const std::string &szPriKeyFile, const char *pPassword, const char *pIn, size_t uiInLen, unsigned char *&pOut,
+		size_t &uiOutLen, std::string &szError, bool bEncrypt = false);
+	bool RSASignFile(const std::string &szPriKeyFile, const char *pPassword, EHashType eHashType, const std::string &szFileName, unsigned char *&pOut,
+		unsigned int &uiOutLen, std::string &szError);
+	bool RSAVerifySign(const std::string &szPubKeyFile, EHashType eHashType, const std::string &szFileName, const unsigned char *pSign, 
+		unsigned int uiSignLen, std::string &szError);
 
 	bool Hash(EHashType eHashType, const std::string &szData, std::string &szHash, bool bIsFile = false, std::string *pError = nullptr, 
 		bool bLowercase = false);
@@ -89,6 +105,7 @@ private:
 		int iInLen, unsigned char *&pOut, int &iOutLen, std::string &szError);
 
 	const void* GetCipher(ECipherType eCipherType, EKeyType eKeyType, bool bEncrypt, std::string &szError);
+	const void* GetHashAlgorithm(EHashType eHashType);
 	std::string GetOpensslErrorMsg();
 
 	bool DigestInit(void *ctx, const void *type, void *impl, std::string *pError);
@@ -99,6 +116,7 @@ private:
 	bool CipherUpdate(void *ctx, unsigned char *out, int *outl, const unsigned char* in, int inl, std::string &szError);
 	bool CipherFinal(void *ctx, int dl, unsigned char *outm, int *outl, std::string &szError);
 
+	static void LoadPublicObject();
 	static int DealPadding(unsigned char *pData, size_t uiDataLength, bool bEncrypt, std::string &szError);
 	static std::string GetErrorMsg(unsigned int sysErrCode);
 	static char GetHexChar(const char &ch, bool isLowercase = false); //获取16进制的字符
@@ -109,11 +127,11 @@ private:
 
 private:
 	bool          m_bLineFeed;           //base64编码是否换行
-	bool          m_bSetKey;             //是否己设置key
+	EKeyType      m_eKeyType;            //密码类型
 	unsigned char m_Key[32];             //密码
 	unsigned char m_IV[16];              //IV值
 
-	static bool   m_bLoadErrorStrings;   //是否己加载错误信息
+	static bool   m_bLoadPublicObject;   //是否己加载公共信息
 
 };
 

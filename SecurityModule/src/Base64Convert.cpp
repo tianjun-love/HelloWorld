@@ -61,7 +61,7 @@ inline void CBase64Convert::trimString(std::string& str, short type)
 功能:	转换成base64
 参数: 	str 要转换的char字符串
 *		strLength char字符串长度
-*		bLineFeed 是否每76字节换行
+*		bLineFeed 是否每64字节换行
 返回:    返回base64字符串
 *********************************************************************/
 std::string CBase64Convert::Encode64(const char* str, size_t strLength, bool bLineFeed)
@@ -111,8 +111,8 @@ std::string CBase64Convert::Encode64(const char* str, size_t strLength, bool bLi
 			encoded += pad;
 		}
 
-		//每76字节换行，RFC822标准
-		if (bLineFeed && encoded.length() == (76 * (uiLineFeedLength + 1) + uiLineFeedLength))
+		//每76字节换行，RFC822标准，但openssl里面是64字节
+		if (bLineFeed && encoded.length() == (64 * (uiLineFeedLength + 1) + uiLineFeedLength))
 		{
 			encoded += '\n';
 			++uiLineFeedLength;
@@ -132,7 +132,7 @@ std::string CBase64Convert::Encode64(const char* str, size_t strLength, bool bLi
 名称:	Encode64
 功能:	转换成base64
 参数: 	szStr 要转换的字符串
-*		bLineFeed 是否每76字节换行
+*		bLineFeed 是否每64字节换行
 返回:    返回base64字符串
 *********************************************************************/
 std::string CBase64Convert::Encode64(const std::string& szStr, bool bLineFeed)
@@ -180,7 +180,7 @@ char* CBase64Convert::Decode64(const std::string& szBase64, size_t& strLength)
 
 	if (length >= 1)
 	{
-		pResult = new char[((length / 4 + 1) * 3)]{ '\0' };
+		pResult = new char[(length / 4 + 1) * 3]{ '\0' };
 
 		for (size_t i = 0; i < length; ++i)
 		{

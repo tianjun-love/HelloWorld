@@ -31,12 +31,6 @@ CLogFile::~CLogFile()
 	Close();
 }
 
-void CLogFile::Init()
-{
-	m_LogMember.m_szDate = GetDateTimeStr(false);
-	m_bLogInit = true;
-}
-
 eLOGFILE_DECOLLATOR CLogFile::GetDecollator(const string& szDecollator)
 {
 	F_COMPARE compare;
@@ -127,6 +121,12 @@ void CLogFile::Close()
 			m_LogMember.m_Ofstream.close();
 		}
 	}
+}
+
+void CLogFile::Init()
+{
+	m_LogMember.m_szDate = GetDateTimeStr(false);
+	m_bLogInit = true;
 }
 
 void CLogFile::CheckLogFile()
