@@ -18,7 +18,7 @@ XmlObject::~XmlObject()
 {
 }
 
-bool XmlObject::LoadFile(const string &FileName, string &strError, TiXmlDocument *XmlDocument)
+bool XmlObject::LoadFile(const std::string &FileName, std::string &strError, TiXmlDocument *XmlDocument)
 {
 	bool bResult;
 	bool bNew;
@@ -50,7 +50,7 @@ bool XmlObject::LoadFile(const string &FileName, string &strError, TiXmlDocument
 			}
 			else
 			{
-				string szTempError;
+				std::string szTempError;
 				bResult = XmlToObject(*XmlDocument, szTempError);
 			}
 		}
@@ -81,7 +81,7 @@ bool XmlObject::LoadFile(const string &FileName, string &strError, TiXmlDocument
 	return bResult;
 }
 
-bool XmlObject::SaveFile(const string &FileName, string &strError, TiXmlDocument *XmlDocument) const
+bool XmlObject::SaveFile(const std::string &FileName, std::string &strError, TiXmlDocument *XmlDocument) const
 {
 	bool bResult;
 	bool bNew;
@@ -109,7 +109,7 @@ bool XmlObject::SaveFile(const string &FileName, string &strError, TiXmlDocument
 		}
 		else
 		{
-			string szTempError;
+			std::string szTempError;
 			bResult = ObjectToXml(*XmlDocument, szTempError);
 		}
 
@@ -142,12 +142,12 @@ bool XmlObject::SaveFile(const string &FileName, string &strError, TiXmlDocument
 	return bResult;
 }
 
-bool XmlObject::LoadStr(const string &StrXml, string &strError, TiXmlDocument *XmlDocument)
+bool XmlObject::LoadStr(const std::string &StrXml, std::string &strError, TiXmlDocument *XmlDocument)
 {
 	return LoadStr(StrXml.c_str(), strError, XmlDocument);
 }
 
-bool XmlObject::LoadStr(const char* StrXml, string &strError, TiXmlDocument *XmlDocument)
+bool XmlObject::LoadStr(const char* StrXml, std::string &strError, TiXmlDocument *XmlDocument)
 {
 	bool bResult;
 	bool bNew;
@@ -191,7 +191,7 @@ bool XmlObject::LoadStr(const char* StrXml, string &strError, TiXmlDocument *Xml
 			}
 			else
 			{
-				string szTempError;
+				std::string szTempError;
 				bResult = XmlToObject(*XmlDocument, szTempError);
 			}
 		}
@@ -222,7 +222,7 @@ bool XmlObject::LoadStr(const char* StrXml, string &strError, TiXmlDocument *Xml
 	return bResult;
 }
 
-bool XmlObject::SaveStr(string &StrXml, string &strError, TiXmlDocument *XmlDocument) const
+bool XmlObject::SaveStr(std::string &StrXml, std::string &strError, TiXmlDocument *XmlDocument) const
 {
 	bool bResult;
 	bool bNew;
@@ -250,7 +250,7 @@ bool XmlObject::SaveStr(string &StrXml, string &strError, TiXmlDocument *XmlDocu
 		}
 		else
 		{
-			string szTempError;
+			std::string szTempError;
 			bResult = ObjectToXml(*XmlDocument, szTempError);
 		}
 
@@ -296,7 +296,7 @@ bool XmlObject::SaveStr(string &StrXml, string &strError, TiXmlDocument *XmlDocu
 	return bResult;
 }
 
-bool XmlObject::SaveStr(char* StrXml, int& DataLength, string &strError, TiXmlDocument *XmlDocument) const
+bool XmlObject::SaveStr(char* StrXml, int& DataLength, std::string &strError, TiXmlDocument *XmlDocument) const
 {
 	if (NULL != StrXml)
 	{
@@ -306,7 +306,7 @@ bool XmlObject::SaveStr(char* StrXml, int& DataLength, string &strError, TiXmlDo
 
 	DataLength = 0;
 
-	string szResult;
+	std::string szResult;
 	if (SaveStr(szResult, strError, XmlDocument))
 	{
 		DataLength = (int)szResult.length();
@@ -330,7 +330,7 @@ bool XmlObject::SaveStr(char* StrXml, int& DataLength, string &strError, TiXmlDo
 	return true;
 }
 
-bool XmlObject::ToString(string &Out, const char *pszStr)
+bool XmlObject::ToString(std::string &Out, const char *pszStr)
 {
 	bool bResult;
 
@@ -439,7 +439,7 @@ bool XmlObject::ToBool(bool& Out, const char *pszStr)
 
 	if (NULL != pszStr && strlen(pszStr) >= 1)
 	{
-		string szTemp = pszStr;
+		std::string szTemp = pszStr;
 
 		if ("true" == szTemp)
 		{
@@ -494,7 +494,7 @@ bool XmlObject::ToLongLong(long long &Out, const char*pszStr)
 	return bResult;
 }
 
-string XmlObject::GetObjectType() const
+std::string XmlObject::GetObjectType() const
 {
-	return std::move(string(""));
+	return std::move(std::string(""));
 }

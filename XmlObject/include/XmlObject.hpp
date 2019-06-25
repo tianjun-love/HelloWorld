@@ -16,9 +16,7 @@ Modify:
 #endif //TIXML_USE_STL
 
 #include "tinyxml.h"
-
 #include <string>
-using std::string;
 
 class TiXmlDocument;
 
@@ -36,7 +34,7 @@ public:
 				XmlDocument		xml parser
 	return  :   success return true else return false
 	*********************************************************************/
-	bool LoadFile(const string &FileName, string &strError = *((string*)NULL), TiXmlDocument *XmlDocument = NULL);
+	bool LoadFile(const std::string &FileName, std::string &strError = *((std::string*)NULL), TiXmlDocument *XmlDocument = NULL);
 
 	/********************************************************************
 	name    :	SaveFile
@@ -46,7 +44,7 @@ public:
 				XmlDocument		xml parser
 	return  :   success return true else return false
 	*********************************************************************/
-	bool SaveFile(const string &FileName, string &strError = *((string*)NULL), TiXmlDocument *XmlDocument = NULL) const;
+	bool SaveFile(const std::string &FileName, std::string &strError = *((std::string*)NULL), TiXmlDocument *XmlDocument = NULL) const;
 
 	/********************************************************************
 	name    :	LoadStr
@@ -56,8 +54,8 @@ public:
 				XmlDocument		xml parser
 	return  :   success return true else return false
 	*********************************************************************/
-	bool LoadStr(const string &StrXml, string &strError = *((string*)NULL), TiXmlDocument *XmlDocument = NULL);
-	bool LoadStr(const char* StrXml, string &strError = *((string*)NULL), TiXmlDocument *XmlDocument = NULL);
+	bool LoadStr(const std::string &StrXml, std::string &strError = *((std::string*)NULL), TiXmlDocument *XmlDocument = NULL);
+	bool LoadStr(const char* StrXml, std::string &strError = *((std::string*)NULL), TiXmlDocument *XmlDocument = NULL);
 
 	/********************************************************************
 	name    :	SaveStr
@@ -67,7 +65,7 @@ public:
 				XmlDocument		xml parser
 	return  :   success return true else return false
 	*********************************************************************/
-	bool SaveStr(string &StrXml, string &strError = *((string*)NULL), TiXmlDocument *XmlDocument = NULL) const;
+	bool SaveStr(std::string &StrXml, std::string &strError = *((std::string*)NULL), TiXmlDocument *XmlDocument = NULL) const;
 
 	/********************************************************************
 	name    :	SaveStr
@@ -78,7 +76,7 @@ public:
 				XmlDocument		xml parser
 	return  :   success return true else return false
 	*********************************************************************/
-	bool SaveStr(char* StrXml, int& DataLength, string &strError = *((string*)NULL), TiXmlDocument *XmlDocument = NULL) const;
+	bool SaveStr(char* StrXml, int& DataLength, std::string &strError = *((std::string*)NULL), TiXmlDocument *XmlDocument = NULL) const;
 
 	/********************************************************************
 	name    :	XmlToObject
@@ -87,7 +85,7 @@ public:
 				strError		error desc
 	return  :	success return true else return false
 	*********************************************************************/
-	virtual bool XmlToObject(const TiXmlDocument &XmlDocument, string &strError) = 0;
+	virtual bool XmlToObject(const TiXmlDocument &XmlDocument, std::string &strError) = 0;
 
 	/********************************************************************
 	name    :	ObjectToXml
@@ -96,7 +94,7 @@ public:
 			    strError		error desc
 	return  :	success return true else return false
 	*********************************************************************/
-	virtual bool ObjectToXml(TiXmlDocument &XmlDocument, string &strError) const = 0;
+	virtual bool ObjectToXml(TiXmlDocument &XmlDocument, std::string &strError) const = 0;
 
 	/********************************************************************
 	name    :   CheckData
@@ -104,7 +102,7 @@ public:
 	parm    : 	strError error info
 	return  :	all data right to return true
 	*********************************************************************/
-	virtual bool CheckData(string &strError) const = 0;
+	virtual bool CheckData(std::string &strError) const = 0;
 
     /********************************************************************
 	name    :   GetObjectType
@@ -112,9 +110,9 @@ public:
 	parm    : 	none
 	return  :	object type string sr
 	*********************************************************************/
-	virtual string GetObjectType() const;
+	virtual std::string GetObjectType() const;
 
-	bool ToString(string &Out, const char *pszStr);
+	bool ToString(std::string &Out, const char *pszStr);
 	bool ToInt(int &Out, const char *pszStr);
 	bool ToUint(unsigned int &Out, const char *pszStr);
 	bool ToShort(short &Out, const char *pszStr);

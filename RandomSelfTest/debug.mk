@@ -1,9 +1,9 @@
 CXX = g++
 CXXFLAGS = -g -D_DEBUG -Wall -O1 -std=c++11 -fPIC
-INCLUDE = -I../PublicInclude/windows
+INCLUDE = -I./
 LIBS = 
 LIB = 
-TARGET = ../lib/libSecurityModule.d.so
+TARGET = ../lib/libRandomSelfTest.d.so
 SRC_PATH = ./src
 
 SRCS := $(wildcard $(SRC_PATH)/*.cpp)

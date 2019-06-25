@@ -8,25 +8,23 @@
 #include <string>
 #include "json.h"
 
-using std::string;
-
 class JsonObject
 {
 public:
 	JsonObject();
 	virtual ~JsonObject();
 
-	bool LoadFile(const string &FileName, string &strError = *((string*)nullptr), Json::Value *pRoot = nullptr);
-	bool SaveFile(const string &FileName, string &strError = *((string*)nullptr), Json::Value *pRoot = nullptr);
-	bool LoadStr(const string &Str, string &strError = *((string*)nullptr), Json::Value *pRoot = nullptr);
-	bool SaveStr(string &Str, string &strError = *((string*)nullptr), Json::Value *pRoot = nullptr);
+	bool LoadFile(const std::string &FileName, std::string &strError = *((std::string*)nullptr), Json::Value *pRoot = nullptr);
+	bool SaveFile(const std::string &FileName, std::string &strError = *((std::string*)nullptr), Json::Value *pRoot = nullptr);
+	bool LoadStr(const std::string &Str, std::string &strError = *((std::string*)nullptr), Json::Value *pRoot = nullptr);
+	bool SaveStr(std::string &Str, std::string &strError = *((std::string*)nullptr), Json::Value *pRoot = nullptr);
 
 	//拼接成json数据格式
-	virtual string ToString() const;
+	virtual std::string ToString() const;
 
 protected:
-	virtual bool JsonToObject(const Json::Value &Root, string &strError = *((string*)nullptr)) = 0;
-	virtual bool ObjectToJson(Json::Value &Root, string &strError = *((string*)nullptr)) = 0;
+	virtual bool JsonToObject(const Json::Value &Root, std::string &strError = *((std::string*)nullptr)) = 0;
+	virtual bool ObjectToJson(Json::Value &Root, std::string &strError = *((std::string*)nullptr)) = 0;
 
 };
 

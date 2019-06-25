@@ -4,10 +4,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcxproj", "{3E921BA2-20DA-42DE-8C1B-413409A93FCE}"
-	ProjectSection(ProjectDependencies) = postProject
-		{F7966D11-E409-44DC-A27B-179A84FE037A} = {F7966D11-E409-44DC-A27B-179A84FE037A}
-		{665D27DD-F6B1-496C-9261-45DC2452088A} = {665D27DD-F6B1-496C-9261-45DC2452088A}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DateTime", "DateTime\DateTime.vcxproj", "{8EBA05A1-323F-479E-A45E-D7BA399733D6}"
 EndProject
@@ -30,6 +26,10 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PublicInclude", "PublicInclude\PublicInclude.vcxproj", "{F6EAF776-ED41-4774-B98D-EE826E74E74F}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SecurityModule", "SecurityModule\SecurityModule.vcxproj", "{F7966D11-E409-44DC-A27B-179A84FE037A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RandomSelfTest", "RandomSelfTest\RandomSelfTest.vcxproj", "{F7FA929D-CEAD-4FF9-8361-44BF7C17853F}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JNITest", "JNITest\JNITest.vcxproj", "{45A07964-6FE7-4CBF-84B6-8F4CE14EF881}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -111,6 +111,22 @@ Global
 		{F7966D11-E409-44DC-A27B-179A84FE037A}.Release|x64.Build.0 = Release|x64
 		{F7966D11-E409-44DC-A27B-179A84FE037A}.Release|x86.ActiveCfg = Release|Win32
 		{F7966D11-E409-44DC-A27B-179A84FE037A}.Release|x86.Build.0 = Release|Win32
+		{F7FA929D-CEAD-4FF9-8361-44BF7C17853F}.Debug|x64.ActiveCfg = Debug|x64
+		{F7FA929D-CEAD-4FF9-8361-44BF7C17853F}.Debug|x64.Build.0 = Debug|x64
+		{F7FA929D-CEAD-4FF9-8361-44BF7C17853F}.Debug|x86.ActiveCfg = Debug|Win32
+		{F7FA929D-CEAD-4FF9-8361-44BF7C17853F}.Debug|x86.Build.0 = Debug|Win32
+		{F7FA929D-CEAD-4FF9-8361-44BF7C17853F}.Release|x64.ActiveCfg = Release|x64
+		{F7FA929D-CEAD-4FF9-8361-44BF7C17853F}.Release|x64.Build.0 = Release|x64
+		{F7FA929D-CEAD-4FF9-8361-44BF7C17853F}.Release|x86.ActiveCfg = Release|Win32
+		{F7FA929D-CEAD-4FF9-8361-44BF7C17853F}.Release|x86.Build.0 = Release|Win32
+		{45A07964-6FE7-4CBF-84B6-8F4CE14EF881}.Debug|x64.ActiveCfg = Debug|x64
+		{45A07964-6FE7-4CBF-84B6-8F4CE14EF881}.Debug|x64.Build.0 = Debug|x64
+		{45A07964-6FE7-4CBF-84B6-8F4CE14EF881}.Debug|x86.ActiveCfg = Debug|Win32
+		{45A07964-6FE7-4CBF-84B6-8F4CE14EF881}.Debug|x86.Build.0 = Debug|Win32
+		{45A07964-6FE7-4CBF-84B6-8F4CE14EF881}.Release|x64.ActiveCfg = Release|x64
+		{45A07964-6FE7-4CBF-84B6-8F4CE14EF881}.Release|x64.Build.0 = Release|x64
+		{45A07964-6FE7-4CBF-84B6-8F4CE14EF881}.Release|x86.ActiveCfg = Release|Win32
+		{45A07964-6FE7-4CBF-84B6-8F4CE14EF881}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,26 +1,26 @@
 CXX = g++
-CXXFLAGS = -g -D_DEBUG -Wall -O1 -std=c++11 -fPIC
-INCLUDE = -I../PublicInclude/windows
+CXXFLAGS = -Wall -O3 -std=c++11 -fPIC
+INCLUDE = -I./
 LIBS = 
 LIB = 
-TARGET = ../lib/libSecurityModule.d.so
+TARGET = ../lib/libRandomSelfTest.r.so
 SRC_PATH = ./src
 
 SRCS := $(wildcard $(SRC_PATH)/*.cpp)
-OBJS := $(patsubst %.cpp, %.d.o, $(SRCS))
+OBJS := $(patsubst %.cpp, %.r.o, $(SRCS))
 
-%.d.d : %.cpp
+%.r.d : %.cpp
 	@set -e; rm -f $@; \
 	$(CXX) -MM $(CXXFLAGS) $(INCLUDE) $< > $@.$$$$; \
 	sed 's,.*\.o[ ]*:,$*.o $@ :,g'< $@.$$$$ > $@; \
 	rm -f $@.$$$$
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -c -o $*.d.o $<
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -c -o $*.r.o $<
 
 $(TARGET):$(OBJS)
 	$(CXX) -o $(TARGET) -shared $(OBJS) $(LIB) $(LIBS)
 
-include $(SRCS:.cpp=.d.d)
+include $(SRCS:.cpp=.r.d)
 
 .PHONY:clean
 clean:
-	rm -f ./src/*.d.[do] $(TARGET)
+	rm -f ./src/*.r.[do] $(TARGET)

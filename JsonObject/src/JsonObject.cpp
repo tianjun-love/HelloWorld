@@ -9,7 +9,7 @@ JsonObject::~JsonObject()
 {
 }
 
-bool JsonObject::LoadFile(const string &FileName, string &strError, Json::Value *pRoot)
+bool JsonObject::LoadFile(const std::string &FileName, std::string &strError, Json::Value *pRoot)
 {
 	bool bResult = false;
 	bool bNew = false;
@@ -43,7 +43,7 @@ bool JsonObject::LoadFile(const string &FileName, string &strError, Json::Value 
 				}
 				else
 				{
-					string szTemp;
+					std::string szTemp;
 					bResult = JsonToObject(*pRoot, szTemp);
 				}
 			}
@@ -75,7 +75,7 @@ bool JsonObject::LoadFile(const string &FileName, string &strError, Json::Value 
 	return bResult;
 }
 
-bool JsonObject::SaveFile(const string &FileName, string &strError, Json::Value *pRoot)
+bool JsonObject::SaveFile(const std::string &FileName, std::string &strError, Json::Value *pRoot)
 {
 	bool bResult = false;
 	bool bNew = false;
@@ -99,7 +99,7 @@ bool JsonObject::SaveFile(const string &FileName, string &strError, Json::Value 
 		}
 		else
 		{
-			string szTemp;
+			std::string szTemp;
 			bResult = ObjectToJson(*pRoot, szTemp);
 		}
 
@@ -134,7 +134,7 @@ bool JsonObject::SaveFile(const string &FileName, string &strError, Json::Value 
 	return bResult;
 }
 
-bool JsonObject::LoadStr(const string &Str, string &strError, Json::Value *pRoot)
+bool JsonObject::LoadStr(const std::string &Str, std::string &strError, Json::Value *pRoot)
 {
 	bool bResult = false;
 	bool bNew = false;
@@ -162,7 +162,7 @@ bool JsonObject::LoadStr(const string &Str, string &strError, Json::Value *pRoot
 			}
 			else
 			{
-				string szTemp;
+				std::string szTemp;
 				bResult = JsonToObject(*pRoot, szTemp);
 			}
 		}
@@ -184,7 +184,7 @@ bool JsonObject::LoadStr(const string &Str, string &strError, Json::Value *pRoot
 	return bResult;
 }
 
-bool JsonObject::SaveStr(string &Str, string &strError, Json::Value *pRoot)
+bool JsonObject::SaveStr(std::string &Str, std::string &strError, Json::Value *pRoot)
 {
 	bool bResult = false;
 	bool bNew = false;
@@ -208,7 +208,7 @@ bool JsonObject::SaveStr(string &Str, string &strError, Json::Value *pRoot)
 		}
 		else
 		{
-			string szTemp;
+			std::string szTemp;
 			bResult = ObjectToJson(*pRoot, szTemp);
 		}
 
@@ -234,7 +234,7 @@ bool JsonObject::SaveStr(string &Str, string &strError, Json::Value *pRoot)
 	return bResult;
 }
 
-string JsonObject::ToString() const
+std::string JsonObject::ToString() const
 {
 	return "";
 }

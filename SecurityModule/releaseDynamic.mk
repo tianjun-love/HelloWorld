@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -O3 -std=c++11 -shared -fPIC
+CXXFLAGS = -Wall -O3 -std=c++11 -fPIC
 INCLUDE = -I../PublicInclude/windows
 LIBS = 
 LIB = 
@@ -17,7 +17,7 @@ OBJS := $(patsubst %.cpp, %.r.o, $(SRCS))
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c -o $*.r.o $<
 
 $(TARGET):$(OBJS)
-	$(CXX) -o $(TARGET) $(OBJS) $(LIB) $(LIBS)
+	$(CXX) -o $(TARGET) -shared $(OBJS) $(LIB) $(LIBS)
 
 include $(SRCS:.cpp=.r.d)
 
