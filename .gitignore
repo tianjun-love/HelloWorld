@@ -37,4 +37,6 @@
 .vs/*
 *.ilk
 *.pdb
+*.exp
+*.log
 */Debug/*
