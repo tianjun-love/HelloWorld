@@ -28,4 +28,6 @@ add_subdirectory(JsonObject) #编译库
 add_subdirectory(SecurityModule) #编译库
 add_subdirectory(LibEvent) #编译库
 add_subdirectory(DataBase) #编译库
+add_subdirectory(MyCompress) #编译库
+add_subdirectory(MyCurl) #编译库
 add_subdirectory(test) #编译可执行程序

@@ -1,0 +1,26 @@
+1、openssl编译：
+	a)安装ActivePerl，地址：http://www.activestate.com/
+	b)安装nasm汇编器，将安装路径加入环境Path，地址：http://www.nasm.us/
+	c)在解压目录，执行：perl Configure VC-WIN64A
+	d)在解压目录，执行：ms\do_win64a
+	e)打开VS命令提示符工具，在解压目录执行：nmake -f ms\ntdll.mak
+	f)执行：nmake -f ms\ntdll.mak test，都通过就成功了
+	
+2、zlib编译：
+	a)解压后，进入contrib\masmx64\，执行bld_ml64.bat脚本，也可以不执行
+	b)进入contrib\vstudio\vc14\，打开工程文件，修改zlibvc工程属性，在生成事件->预先生成事件->命令行中，调整路径，使能正常执行
+	c)编译zlibstat和zlibvc
+	
+3、libssh2编译：
+	a)解压后，修改win32\config.mk文件，调整openssl及zlib的路径
+	b)在解压的libssh2根目录下，打开VS命令提示符工具执行：nmake -f NMakefile
+	--以上编译出来是32位的，还可用以下方式：
+	a)解压后，进入win32目录，打开libssh2.dsw工程文件，修改里面的配置，可以编译64位库
+	
+4、curl编译：
+	a)在解压目录下，执行：buildconf.bat
+	b)1、2和3编译后，在解压目录创建include和lib文件夹，并把相应文件拷贝进去，在下面一步会使用到
+	c)在winbuild\下，打开VS命令提示符工具执行：nmake /f Makefile.vc mode=static VC=14 MACHINE=x64 DEBUG=yes WITH_SSL=static WITH_ZLIB=static WITH_SSH2=static SSH2_PATH=..\..\libssh2-1.9.0 SSL_PATH=..\..\openssl-1.0.2u ZLIB_PATH=..\..\zlib-1.2.11
+	d)编译后的库在builds\libcurl-vc14-x64-debug-static-ipv6-sspi-winssl下
+	e)在使用库时，如果上面编译的是静态库，则定义宏：CURL_STATICLIB
+	--使用projects\Windows\VC14\下的工程也能编译，但问题较多

@@ -20,8 +20,8 @@ XmlObject::~XmlObject()
 
 bool XmlObject::LoadFile(const std::string &FileName, std::string &strError, TiXmlDocument *XmlDocument)
 {
-	bool bResult;
-	bool bNew;
+	bool bResult = true;
+	bool bNew = false;
 
 	//如果没有解析器，申请一个临时。
 	if (NULL == XmlDocument)
@@ -31,8 +31,6 @@ bool XmlObject::LoadFile(const std::string &FileName, std::string &strError, TiX
 	}
 	else
 	{
-		bNew = false;
-
 		//如果不是新的解析器，需要清除旧内容。
 		XmlDocument->Clear();
 	}
@@ -83,8 +81,9 @@ bool XmlObject::LoadFile(const std::string &FileName, std::string &strError, TiX
 
 bool XmlObject::SaveFile(const std::string &FileName, std::string &strError, TiXmlDocument *XmlDocument) const
 {
-	bool bResult;
-	bool bNew;
+	bool bResult = true;
+	bool bNew = false;
+	TiXmlDeclaration *XmlDeclaration = new TiXmlDeclaration("1.0", "UTF-8", "");
 
 	//如果没有解析器，申请一个临时。
 	if (NULL == XmlDocument)
@@ -94,14 +93,18 @@ bool XmlObject::SaveFile(const std::string &FileName, std::string &strError, TiX
 	}
 	else
 	{
-		bNew = false;
-
 		//如果不是新的解析器，需要清除旧内容。
 		XmlDocument->Clear();
 	}
 
 	if (NULL != XmlDocument)
 	{
+		if (NULL != XmlDeclaration)
+		{
+			//添加声明
+			XmlDocument->LinkEndChild(XmlDeclaration);
+		}
+
 		//解析成功，初始化对象。
 		if (NULL != &strError)
 		{
@@ -132,7 +135,6 @@ bool XmlObject::SaveFile(const std::string &FileName, std::string &strError, TiX
 		}
 	}
 
-
 	if (bNew && NULL != XmlDocument)
 	{
 		delete XmlDocument;
@@ -149,8 +151,8 @@ bool XmlObject::LoadStr(const std::string &StrXml, std::string &strError, TiXmlD
 
 bool XmlObject::LoadStr(const char* StrXml, std::string &strError, TiXmlDocument *XmlDocument)
 {
-	bool bResult;
-	bool bNew;
+	bool bResult = true;
+	bool bNew = false;
 
 	if (NULL == StrXml)
 	{
@@ -170,8 +172,6 @@ bool XmlObject::LoadStr(const char* StrXml, std::string &strError, TiXmlDocument
 	}
 	else
 	{
-		bNew = false;
-
 		//如果不是新的解析器，需要清除旧内容。
 		XmlDocument->Clear();
 	}
@@ -224,8 +224,8 @@ bool XmlObject::LoadStr(const char* StrXml, std::string &strError, TiXmlDocument
 
 bool XmlObject::SaveStr(std::string &StrXml, std::string &strError, TiXmlDocument *XmlDocument) const
 {
-	bool bResult;
-	bool bNew;
+	bool bResult = true;
+	bool bNew = false;
 
 	//如果没有解析器，申请一个临时。
 	if (NULL == XmlDocument)
@@ -235,8 +235,6 @@ bool XmlObject::SaveStr(std::string &StrXml, std::string &strError, TiXmlDocumen
 	}
 	else
 	{
-		bNew = false;
-
 		//如果不是新的解析器，需要清除旧内容。
 		XmlDocument->Clear();
 	}

@@ -1,0 +1,1 @@
+1、如果要使用FTP，则要在/etc/vsftpd/vsftpd.conf中加入reverse_lookup_enable=NO，这样会减少不必要的DNS解析，加快连接速度
