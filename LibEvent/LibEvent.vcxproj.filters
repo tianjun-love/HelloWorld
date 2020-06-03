@@ -132,6 +132,15 @@
     <ClInclude Include="include\DigitCoding.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="include\ClientHandleThread.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ClientObject.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ListenerThread.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\SocketBase.cpp">
@@ -144,6 +153,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="src\DigitCoding.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ClientHandleThread.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ListenerThread.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

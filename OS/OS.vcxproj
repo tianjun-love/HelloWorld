@@ -19,35 +19,36 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{135E660F-95EF-4354-B05E-1EA54676BE3F}</ProjectGuid>
-    <RootNamespace>LibEvent</RootNamespace>
+    <ProjectGuid>{78039C3C-A403-4363-8E79-27854D2B5C1B}</ProjectGuid>
+    <RootNamespace>OS</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -67,6 +68,16 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)lib\</OutDir>
+    <IntDir>$(Configuration)\</IntDir>
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)lib\</OutDir>
+    <IntDir>$(Configuration)\</IntDir>
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)lib\</OutDir>
     <TargetExt>.lib</TargetExt>
@@ -75,39 +86,21 @@
     <OutDir>$(SolutionDir)lib\</OutDir>
     <TargetExt>.lib</TargetExt>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)lib\</OutDir>
-    <TargetExt>.lib</TargetExt>
-    <IntDir>$(Configuration)\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)lib\</OutDir>
-    <TargetExt>.lib</TargetExt>
-    <IntDir>$(Configuration)\</IntDir>
-  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>libevent;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>libevent;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -116,11 +109,9 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>libevent;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
@@ -132,64 +123,23 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>libevent;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\ClientHandleThread.hpp" />
-    <ClInclude Include="include\ClientObject.hpp" />
-    <ClInclude Include="include\DigitCoding.hpp" />
-    <ClInclude Include="include\ListenerThread.hpp" />
-    <ClInclude Include="include\SocketBase.hpp" />
-    <ClInclude Include="include\SocketClient.hpp" />
-    <ClInclude Include="include\SocketServer.hpp" />
-    <ClInclude Include="libevent\evdns.h" />
-    <ClInclude Include="libevent\event.h" />
-    <ClInclude Include="libevent\event2\buffer.h" />
-    <ClInclude Include="libevent\event2\bufferevent.h" />
-    <ClInclude Include="libevent\event2\bufferevent_compat.h" />
-    <ClInclude Include="libevent\event2\bufferevent_ssl.h" />
-    <ClInclude Include="libevent\event2\bufferevent_struct.h" />
-    <ClInclude Include="libevent\event2\buffer_compat.h" />
-    <ClInclude Include="libevent\event2\dns.h" />
-    <ClInclude Include="libevent\event2\dns_compat.h" />
-    <ClInclude Include="libevent\event2\dns_struct.h" />
-    <ClInclude Include="libevent\event2\event-config-linux.h" />
-    <ClInclude Include="libevent\event2\event-config-win32.h" />
-    <ClInclude Include="libevent\event2\event-config.h" />
-    <ClInclude Include="libevent\event2\event.h" />
-    <ClInclude Include="libevent\event2\event_compat.h" />
-    <ClInclude Include="libevent\event2\event_struct.h" />
-    <ClInclude Include="libevent\event2\http.h" />
-    <ClInclude Include="libevent\event2\http_compat.h" />
-    <ClInclude Include="libevent\event2\http_struct.h" />
-    <ClInclude Include="libevent\event2\keyvalq_struct.h" />
-    <ClInclude Include="libevent\event2\listener.h" />
-    <ClInclude Include="libevent\event2\rpc.h" />
-    <ClInclude Include="libevent\event2\rpc_compat.h" />
-    <ClInclude Include="libevent\event2\rpc_struct.h" />
-    <ClInclude Include="libevent\event2\tag.h" />
-    <ClInclude Include="libevent\event2\tag_compat.h" />
-    <ClInclude Include="libevent\event2\thread.h" />
-    <ClInclude Include="libevent\event2\util.h" />
-    <ClInclude Include="libevent\event2\visibility.h" />
-    <ClInclude Include="libevent\evhttp.h" />
-    <ClInclude Include="libevent\evrpc.h" />
-    <ClInclude Include="libevent\evutil.h" />
+    <ClInclude Include="include\Ping.hpp" />
+    <ClInclude Include="include\Semophore.hpp" />
+    <ClInclude Include="include\SharedMemory.hpp" />
+    <ClInclude Include="include\SynQueue.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\ClientHandleThread.cpp" />
-    <ClCompile Include="src\DigitCoding.cpp" />
-    <ClCompile Include="src\ListenerThread.cpp" />
-    <ClCompile Include="src\SocketBase.cpp" />
-    <ClCompile Include="src\SocketClient.cpp" />
-    <ClCompile Include="src\SocketServer.cpp" />
+    <ClCompile Include="src\Ping.cpp" />
+    <ClCompile Include="src\Semophore.cpp" />
+    <ClCompile Include="src\SharedMemory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />

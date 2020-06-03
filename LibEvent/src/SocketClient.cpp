@@ -42,7 +42,7 @@ bool CSocketClient::Init(std::string &szError)
 		if (bResult)
 		{
 			m_bInitWSA = true;
-			srand(time(NULL));
+			srand((unsigned int)time(NULL));
 		}
 	}
 
