@@ -602,6 +602,130 @@ void CLogFile::Print(const eLOG_FILE_LEVEL& eLogLevel, const char* szFormat, ...
 	}
 }
 
+void CLogFile::PrintHex(const eLOG_FILE_LEVEL& eLogLevel, const string &szPrompt, unsigned char *buff, size_t len, 
+	unsigned char ucPreSpace)
+{
+	if (nullptr == buff || 0 == len)
+		return;
+
+	CheckLogFile();
+
+	m_LogMember.m_LevelLock.lock();
+	eLOG_FILE_LEVEL eTemp = m_LogMember.m_eLogLevel;
+	m_LogMember.m_LevelLock.unlock();
+
+	//输出级别低于日志级别，丢弃
+	if ((E_LOG_LEVEL_ALL != eTemp) && (short)eLogLevel > (short)eTemp)
+	{
+		return;
+	}
+
+	unsigned char ch = 0, temp[16] = { 0 };
+	size_t iPos = 0, iSurplusLen = 0;
+	unsigned int uiAddress = 0;
+	char *pPreSpace = new char[ucPreSpace + 1]{ 0 };
+	std::string szPrint, szDump;
+	char printbuf[128] = { 0 };
+	const std::string szHead = "Address   0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  Dump",
+		szFullFormat = "%s%08x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x  %s\n";
+
+	memset(pPreSpace, ' ', ucPreSpace);
+
+	//头
+	snprintf(printbuf, sizeof(printbuf), "%s%s\n", pPreSpace, szHead.c_str());
+	szPrint = printbuf;
+	memset(printbuf, 0, sizeof(printbuf));
+
+	//数据
+	do
+	{
+		iSurplusLen = len - iPos;
+
+		if (iSurplusLen >= 16)
+		{
+			memcpy(temp, buff + iPos, 16);
+
+			for (unsigned int i = 0; i < 16; ++i)
+			{
+				ch = temp[i];
+
+				if (ch >= 32 && ch <= 126)
+					szDump += (char)ch;
+				else
+					szDump += ".";
+			}
+
+			snprintf(printbuf, sizeof(printbuf), szFullFormat.c_str(), pPreSpace, uiAddress, temp[0], temp[1], temp[2], temp[3],
+				temp[4], temp[5], temp[6], temp[7], temp[8], temp[9], temp[10], temp[11], temp[12], temp[13], temp[14], temp[15],
+				szDump.c_str());
+			szPrint += printbuf;
+			memset(printbuf, 0, sizeof(printbuf));
+
+			iPos += 16;
+		}
+		else
+		{
+			if (iSurplusLen > 0)
+			{
+				memcpy(temp, buff + iPos, iSurplusLen);
+
+				for (unsigned int i = 0; i < iSurplusLen; ++i)
+				{
+					ch = temp[i];
+
+					if (ch >= 32 && ch <= 126)
+						szDump += (char)ch;
+					else
+						szDump += ".";
+				}
+
+				//计算格式
+				unsigned int uiWide = 48;
+
+				snprintf(printbuf, sizeof(printbuf), "%s%08x", pPreSpace, uiAddress);
+				szPrint += printbuf;
+				memset(printbuf, 0, sizeof(printbuf));
+
+				for (unsigned int i = 0; i < iSurplusLen; ++i)
+				{
+					uiWide -= 3;
+
+					snprintf(printbuf, sizeof(printbuf), " %02x", temp[i]);
+					szPrint += printbuf;
+					memset(printbuf, 0, sizeof(printbuf));
+				}
+
+				snprintf(printbuf, sizeof(printbuf), "  %*s", uiWide, " ");
+				szPrint += printbuf + szDump + "\n";
+			}
+
+			iPos += iSurplusLen;
+		}
+
+		++uiAddress;
+		memset(temp, 0, sizeof(temp));
+		szDump.clear();
+	} while (iPos < len);
+
+	delete[] pPreSpace;
+
+#ifdef _DEBUG
+	std::cout << GetDateTimeStr() << CLogFileMember::GetLogLevelStr(eLogLevel) << szPrompt << "\n" << szPrint << std::endl;
+#endif
+
+	if (m_LogMember.m_bOpen)
+	{
+		m_LogMember.m_LogLock.lock();
+		m_LogMember.m_Ofstream << GetDateTimeStr() << CLogFileMember::GetLogLevelStr(eLogLevel) << szPrompt << "\n" << szPrint
+			<< std::endl;
+
+		if (!m_LogMember.m_bLogendl)
+			m_LogMember.m_bLogendl = true;
+
+		m_LogMember.m_LogLock.unlock();
+	}
+}
+
 int CLogFile::GetCurrentMillisecond()
 {
 	//获取当前时间的毫秒数

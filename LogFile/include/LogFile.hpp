@@ -52,6 +52,8 @@ public:
 #define LOG_FORMAT_MAX_LENGTH (2621445U) //最大一次格式化的日志长度，256K
 
 	void Print(const eLOG_FILE_LEVEL& eLogLevel, const char* szFormat, ...); //按格式打印日志
+	void PrintHex(const eLOG_FILE_LEVEL& eLogLevel, const string &szPrompt, unsigned char *buff, size_t len, 
+		unsigned char ucPreSpace = 16); //按16进制输出
 
 private:
 	void Init(); //初始化
