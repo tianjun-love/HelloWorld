@@ -326,17 +326,23 @@ bool CSM4::Decrypt(const std::string &szInEncryptData, std::string &szOutData, s
 		return false;
 	}
 
-	uChar8 *pInData = new uChar8[szInEncryptData.length() / 2 + 1]{ 0 };
-	size_t iInDataLen = HexStringToBytes(szInEncryptData, pInData, szInEncryptData.length() / 2 + 1);
+	uChar8 *in = new uChar8[szInEncryptData.length() / 2 + 1]{ 0 };
+
+	if (nullptr == in)
+	{
+		szError = "申请内存块失败！";
+		return false;
+	}
+
+	size_t iInDataLen = HexStringToBytes(szInEncryptData, in, szInEncryptData.length() / 2 + 1);
 
 	//参数判断,不符合sm4 规范不用解码
 	if (iInDataLen % SM4_BLOCK_SIZE != 0)
 	{
+		delete[] in;
 		szError = "密文长度不符合SM4规范，长度:" + std::to_string(iInDataLen);
 		return false;
 	}
-
-	char *in = (char*)pInData;
 
 	//读出随机盐值
 #if SM4_SALT_BYTES > 0	
@@ -357,8 +363,9 @@ bool CSM4::Decrypt(const std::string &szInEncryptData, std::string &szOutData, s
 	SetKeyContext(SM4Context, pSaltBuff, false);
 
 	//处理
+	bool bRet = true;
 	int iRoundCounts = iInDataLen / SM4_BLOCK_SIZE;
-	uChar8 *pInPos = (uChar8 *)(in + SM4_SALT_BYTES); //明文处理位置
+	uChar8 *pInPos = (in + SM4_SALT_BYTES); //明文处理位置
 	uChar8 *pOutPos = (uChar8 *)out; //密文输出位置
 	for (int i = 0;i < iRoundCounts;i++)
 	{
@@ -382,30 +389,33 @@ bool CSM4::Decrypt(const std::string &szInEncryptData, std::string &szOutData, s
 
 	if (paddingValue > SM4_BLOCK_SIZE)
 	{
+		bRet = false;
 		szError = "密文填充值错误,可能是密码错误!";
-		delete[] out;
-
-		return false;
 	}
-
-	for (size_t i = iInDataLen - paddingValue; i < iInDataLen; i++)
+	else
 	{
-		if (out[i] != paddingValue) 
+		for (size_t i = iInDataLen - paddingValue; i < iInDataLen; i++)
 		{
-			szError = "密文填充值错误,可能是密文被损坏!";
-
-			delete[]out;
-			return false;
+			if (out[i] != paddingValue)
+			{
+				bRet = false;
+				szError = "密文填充值错误,可能是密文被损坏!";
+				break;
+			}
 		}
 	}
 
 	// 明文
-	szOutData = std::move(std::string(out, iInDataLen - paddingValue));
+	if (bRet)
+	{
+		szOutData = std::move(std::string(out, iInDataLen - paddingValue));
+	}
 
 	// 释放内存
 	delete[] out;
+	delete[] in;
 
-	return true;
+	return bRet;
 }
 
 bool CSM4::Decrypt(const char* inDeyData, uInt32 inDeyDataLen, char *&outData, uInt32 &outBufLen, std::string &szError) const
@@ -450,6 +460,7 @@ bool CSM4::Decrypt(const char* inDeyData, uInt32 inDeyDataLen, char *&outData, u
 	SetKeyContext(SM4Context, pSaltBuff, false);
 
 	//处理
+	bool bRet = true;
 	int iRoundCounts = inDeyDataLen / SM4_BLOCK_SIZE;
 	const uChar8 *pInPos = (const uChar8 *)(inDeyData + SM4_SALT_BYTES); //明文处理位置
 	uChar8 *pOutPos = (uChar8 *)outData; //密文输出位置
@@ -474,33 +485,36 @@ bool CSM4::Decrypt(const char* inDeyData, uInt32 inDeyDataLen, char *&outData, u
 	
 	if (paddingValue > SM4_BLOCK_SIZE)
 	{
+		bRet = false;
 		szError = "密文填充值错误,可能是密码错误!";
-
-		delete[] outData;
-		outData = nullptr;
-		outBufLen = 0;
-
-		return false;
 	}
-
-	for (uInt32 i = inDeyDataLen - paddingValue; i < inDeyDataLen; i++)
+	else
 	{
-		if (outData[i] != paddingValue)
+		for (uInt32 i = inDeyDataLen - paddingValue; i < inDeyDataLen; i++)
 		{
-			szError = "密文填充值错误,可能是密文被损坏!";
-
-			delete[] outData;
-			outData = nullptr;
-			outBufLen = 0;
-
-			return false;
+			if (outData[i] != paddingValue)
+			{
+				bRet = false;
+				szError = "密文填充值错误,可能是密文被损坏!";
+				break;
+			}
 		}
 	}
 
-	//明文长度
-	outBufLen -= paddingValue;
+	if (bRet)
+	{
+		//明文长度
+		outBufLen -= paddingValue;
+	}
+	else
+	{
+		//失败时释放内存
+		delete[] outData;
+		outData = nullptr;
+		outBufLen = 0;
+	}
 
-	return true;
+	return bRet;
 }
 
 bool CSM4::EncryptFile(const std::string &szInData, const std::string &szOutFileName, std::string &szError, bool bLowercase) const
