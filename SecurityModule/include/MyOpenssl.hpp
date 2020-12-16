@@ -8,7 +8,7 @@
 #define __MY_OPENSSL_HPP__
 
 #include <cstring>
-#include "Base64Convert.hpp"
+#include "CodeConvert.hpp"
 
 /*
 加密算法：

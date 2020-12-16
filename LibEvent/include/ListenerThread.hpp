@@ -17,7 +17,7 @@
 class CListenerThread
 {
 public:
-	CListenerThread(const std::string &szIP, int iPort, int iMaxConn, CLogFile &log, SynQueue<SClientObject*> &connDeque);
+	CListenerThread(const std::string &szIP, int iPort, int iMaxConn, CLogFile &log, SynQueue<CClientObject*> &connDeque);
 	CListenerThread(const CListenerThread &Other) = delete;
 	~CListenerThread();
 	CListenerThread& operator=(const CListenerThread &Other) = delete;
@@ -36,7 +36,7 @@ private:
 	int                      m_iServerPort;     //服务端口
 	int                      m_iMaxConnect;     //最大连接数
 	CLogFile                 &m_LogFile;        //日志对象
-	SynQueue<SClientObject*> &m_ConnectDeque;   //客户端连接队列
+	SynQueue<CClientObject*> &m_ConnectDeque;   //客户端连接队列
 
 	std::thread              *m_pThread;        //监听线程
 	evutil_socket_t          m_iListenFd;       //监听的socket句柄

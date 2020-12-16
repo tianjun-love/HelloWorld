@@ -9,38 +9,41 @@
 
 #include <string>
 #include <cstring>
+#include <map>
+#include <vector>
 #include "event2/util.h"
 
-//客户端信息
-struct SClientInfo
+//客户端会话
+class CClientSession
 {
-	std::string  szClientInfo;         //IP + ":" + Port
-	std::string  szClientIP;           //IP
-	bool         bLogined;             //是否己登陆
-	unsigned int uiThreadNO;           //所属处理线程编号
+public:
+	CClientSession() : uiClientPort(0), ullThreadNO(0), bLogined(false) {};
+	~CClientSession() {};
 
-	SClientInfo() : bLogined(false), uiThreadNO(0) {};
-	~SClientInfo() {};
+public:
+	std::string          szClientInfo;         //IP + ":" + Port
+	std::string          szClientIP;           //IP
+	ev_uint32_t          uiClientPort;         //端口
+	ev_uint64_t          ullThreadNO;          //所属处理线程编号
+	std::string          szUserName;           //登陆用户名称
+	bool                 bLogined;             //登陆标志
+	std::map<int, void*> UserDataCache;        //用户数据缓存，如果需要，注意在客户端断开连接时手工释放
+	std::vector<void*>   UserAttrCache;        //用户属性缓存，如果需要，注意在客户端断开连接时手工释放
+
 };
 
 //客户端连接数据
-struct SClientData
+class CClientData
 {
-	bool               bSecurityTunnel;      //是否安全通道
-	bool               bReadSignLength;      //是否读取签名长度
-	unsigned int       uiMsgTotalLength;     //消息总长度
-	unsigned char      *pMsgBuffer;          //消息缓存，子类不用释放
-	unsigned int       uiMsgReadedLength;    //消息己读取长度
-	unsigned char      sessionKeyBuffer[16]; //会话密钥
-	unsigned long long ullMsgID;             //消息ID
-
-	SClientData() : bSecurityTunnel(false), bReadSignLength(false), uiMsgTotalLength(0), pMsgBuffer(nullptr),
+public:
+	CClientData() : bSecurityTunnel(false), bReadSignLength(false), uiMsgTotalLength(0), pMsgBuffer(nullptr),
 		uiMsgReadedLength(0), ullMsgID(0) {
 		memset(sessionKeyBuffer, 0, 16);
 	};
-	SClientData(const SClientData& Other) = delete;
-	~SClientData() { Clear(); };
-	SClientData& operator=(const SClientData& Other) = delete;
+	CClientData(const CClientData& Other) = delete;
+	~CClientData() { Clear(); };
+	CClientData& operator=(const CClientData& Other) = delete;
+
 	void Clear() {
 		uiMsgTotalLength = 0;
 		uiMsgReadedLength = 0;
@@ -50,22 +53,36 @@ struct SClientData
 			pMsgBuffer = nullptr;
 		}
 	}
+
+public:
+	bool               bSecurityTunnel;      //是否安全通道
+	bool               bReadSignLength;      //是否读取签名长度
+	unsigned int       uiMsgTotalLength;     //消息总长度
+	unsigned char      *pMsgBuffer;          //消息缓存，子类不用释放
+	unsigned int       uiMsgReadedLength;    //消息己读取长度
+	unsigned char      sessionKeyBuffer[16]; //会话密钥
+	unsigned long long ullMsgID;             //消息ID
+
 };
 
 //客户端对象
-struct SClientObject
+class CClientObject
 {
-	void            *pHandleObject;  //用户参数，数据处理服务对象
-	void            *pOtherObject;   //用户参数，其它对象
-	evutil_socket_t iClientFd;       //客户端连接句柄
-	SClientInfo     ClientInfo;      //客户端信息
-	SClientData     ClientData;      //客户端数据
+public:
+	CClientObject() : iClientFd(-1), pHandleObject(nullptr), pOther(nullptr) {};
+	CClientObject(const CClientObject& Other) = delete;
+	~CClientObject() { Clear(); };
+	CClientObject& operator=(const CClientObject& Other) = delete;
 
-	SClientObject() : pHandleObject(nullptr), pOtherObject(nullptr), iClientFd(-1) {};
-	SClientObject(const SClientObject& Other) = delete;
-	~SClientObject() { Clear(); };
-	SClientObject& operator=(const SClientObject& Other) = delete;
-	void Clear() { ClientData.Clear(); };
+	void Clear() { Data.Clear(); };
+
+public:
+	evutil_socket_t iClientFd;       //客户端连接句柄
+	void            *pHandleObject;  //数据处理服务对象
+	void            *pOther;         //其它对象
+	CClientSession	Session;         //客户端会话
+	CClientData     Data;            //客户端数据
+
 };
 
 #endif

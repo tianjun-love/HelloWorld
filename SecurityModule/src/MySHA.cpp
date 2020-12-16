@@ -1,6 +1,6 @@
-﻿#include <string.h>
+﻿#include "../include/MySHA.hpp"
+#include <cstring>
 #include <fstream>
-#include "../include/MySHA.hpp"
 
 #ifdef _WIN32
 #include <io.h>
@@ -192,6 +192,7 @@ static const unsigned long long K512[80] = {
 	a = t1 + t2; \
 }
 
+
 static const unsigned int K[64] = {
 	0x428a2f98L, 0x71374491L, 0xb5c0fbcfL, 0xe9b5dba5L,
 	0x3956c25bL, 0x59f111f1L, 0x923f82a4L, 0xab1c5ed5L,
@@ -290,7 +291,9 @@ static const unsigned char padding[64] = {
 
 #endif /* !RUNTIME_ENDIAN */
 
-static void burnStack (int size)
+
+
+static void burnStack (long long size)
 {
 	char buf[128];
 
@@ -302,71 +305,105 @@ static void burnStack (int size)
 
 ///////////////////////////////////////////////////////////////
 
-string CSHA::StringToSHA256(const char* pSrc, int iLen, bool bLowercase)
+CSHA::CSHA()
 {
+}
+
+CSHA::~CSHA()
+{
+}
+
+std::string CSHA::StringToSHA256(const std::string &szSrc, bool bLowercase)
+{
+	return StringToSHA256(szSrc.c_str(), szSrc.length(), bLowercase);
+}
+
+std::string CSHA::StringToSHA256(const char* pSrc, size_t iLen, bool bLowercase)
+{
+	if (nullptr == pSrc || 0 == iLen)
+		return "";
+
+	uint8_t buff[SHA256_DIGEST_LENGTH]{ '\0' };
+
+	if (StringToSHA256(pSrc, iLen, buff, SHA256_DIGEST_LENGTH))
+	{
+		//转字符串
+		return BytesToHexString(buff, SHA256_DIGEST_LENGTH, bLowercase);
+	}
+	else
+		return "";
+}
+
+bool CSHA::StringToSHA256(const std::string &szSrc, uint8_t* pDst, uint32_t iDstBufLen)
+{
+	return StringToSHA256(szSrc.c_str(), szSrc.length(), pDst, iDstBufLen);
+}
+
+bool CSHA::StringToSHA256(const char* pSrc, size_t iLen, uint8_t* pDst, uint32_t iDstBufLen)
+{
+	if (nullptr == pSrc || 0 == iLen || nullptr == pDst || 0 == iDstBufLen)
+		return false;
+
 	SSHA256Context SHA256Context;
-	unsigned char hash[SHA256_HASH_SIZE];
+	unsigned char hash[SHA256_DIGEST_LENGTH];
 
 	SHA256Init(&SHA256Context);
 
-	SHA256Update(&SHA256Context , pSrc, iLen);
+	SHA256Update(&SHA256Context, pSrc, iLen);
 	SHA256Final(&SHA256Context, hash);
 
-	//转字符串
-	return BytesToHexString(hash, SHA256_HASH_SIZE, bLowercase);
+	//复制结果
+	memcpy(pDst, hash, (iDstBufLen <= SHA256_DIGEST_LENGTH ? iDstBufLen : SHA256_DIGEST_LENGTH));
+
+	return true;
 }
 
-string CSHA::StringToSHA256(const string & szSrc, bool bLowercase)
+std::string CSHA::FileToSHA256(const std::string & szFileName, bool bLowercase)
 {
-	return StringToSHA256(szSrc.c_str(), szSrc.size(), bLowercase);
-}
+	uint8_t buff[SHA256_DIGEST_LENGTH + 1]{ '\0' };
 
-string CSHA::FileToSHA256(const string & szFileName, bool bLowercase)
-{
-	if (szFileName.empty() || !CheckFileExist(szFileName))
+	if (FileToSHA256(szFileName, buff, SHA256_DIGEST_LENGTH))
+	{
+		return BytesToHexString(buff, SHA256_DIGEST_LENGTH, bLowercase);
+	}
+	else
 		return "";
-
-	std::ifstream FileIn(szFileName.c_str(), std::ios::binary);
-	if (FileIn.fail())
-		return "";
-
-	std::string szInputData((std::istreambuf_iterator<char>(FileIn)), std::istreambuf_iterator<char>());
-
-	return StringToSHA256(szInputData.c_str(), szInputData.length(), bLowercase);
 }
 
-bool CSHA::CheckFileExist(const std::string &szFileName)
+bool CSHA::FileToSHA256(const std::string& szFileName, uint8_t* pDst, uint32_t iDstBufLen)
 {
-	if (szFileName.empty())
+	if (szFileName.empty() || !CheckFileExist(szFileName) || nullptr == pDst || 0 == iDstBufLen)
 		return false;
 
-	int iRet = 0;
+	std::ifstream FileIn(szFileName.c_str(), std::ios::in | std::ios::binary);
+	if (FileIn.fail())
+		return false;
 
-#ifdef _WIN32
-	iRet = _access(szFileName.c_str(), 0);
-#else
-	iRet = access(szFileName.c_str(), F_OK);
-#endif // WIN32
+	SSHA256Context SHA256Context;
+	unsigned char hash[SHA256_DIGEST_LENGTH];
 
-	return (0 == iRet);
-}
+	SHA256Init(&SHA256Context);
 
-string CSHA::BytesToHexString(const unsigned char *in, size_t size, bool bLowercase)
-{
-	string str;
-	int strLen = size * 2;
-	char*  buf = new char[strLen + 3];
-	memset(buf, 0, strLen + 3);
+	const std::streamsize iBufLen = 1024;
+	char buf[iBufLen] = { '\0' };
+	uint32_t readLen = 0;
 
-	for (size_t i = 0; i < size; i++)
+	while (!FileIn.eof())
 	{
-		snprintf(buf + i * 2, 3, (bLowercase ? "%02x" : "%02X"), in[i]);
+		FileIn.read(buf, iBufLen);
+		readLen = (uint32_t)FileIn.gcount();
+
+		if (readLen > 0)
+			SHA256Update(&SHA256Context, (const uint8_t*)buf, readLen);
 	}
 
-	str = buf;
-	delete buf;
+	SHA256Final(&SHA256Context, hash);
+	FileIn.close();
 
-	return std::move(str);
+	//复制结果
+	memcpy(pDst, hash, (iDstBufLen <= SHA256_DIGEST_LENGTH ? iDstBufLen : SHA256_DIGEST_LENGTH));
+
+	return true;
 }
 
 void CSHA::SHA256Init(SSHA256Context *sc)
@@ -388,11 +425,11 @@ void CSHA::SHA256Init(SSHA256Context *sc)
 }
 
 
-void CSHA::SHA256Update(SSHA256Context *sc, const void *vdata, unsigned int len)
+void CSHA::SHA256Update(SSHA256Context *sc, const void *vdata, size_t len)
 {
 	const unsigned char *data = (unsigned char *)vdata;
-	unsigned int bufferBytesLeft;
-	unsigned int bytesToCopy;
+	size_t bufferBytesLeft;
+	size_t bytesToCopy;
 	int needBurn = 0;
 
 #ifdef SHA256_FAST_COPY
@@ -447,7 +484,7 @@ void CSHA::SHA256Update(SSHA256Context *sc, const void *vdata, unsigned int len)
 
 		sc->totalLength += bytesToCopy * 8L;
 
-		sc->bufferLength += bytesToCopy;
+		sc->bufferLength += (unsigned int)bytesToCopy;
 		data += bytesToCopy;
 		len -= bytesToCopy;
 
@@ -463,7 +500,9 @@ void CSHA::SHA256Update(SSHA256Context *sc, const void *vdata, unsigned int len)
 		burnStack (sizeof (unsigned int[74]) + sizeof (unsigned int *[6]) + sizeof (int));
 }
 
-void CSHA::SHA256Final(SSHA256Context *sc, unsigned char hash[SHA256_HASH_SIZE])
+
+
+void CSHA::SHA256Final(SSHA256Context *sc, unsigned char hash[SHA256_DIGEST_LENGTH])
 {
 	unsigned int bytesToPad;
 	unsigned long long lengthPad;
@@ -486,12 +525,13 @@ void CSHA::SHA256Final(SSHA256Context *sc, unsigned char hash[SHA256_HASH_SIZE])
 			hash[0] = (unsigned char) (sc->hash[i] >> 24);
 			hash[1] = (unsigned char) (sc->hash[i] >> 16);
 			hash[2] = (unsigned char) (sc->hash[i] >> 8);
-			hash[3] = (unsigned char) sc->hash[i];
+			hash[3] = (unsigned char) (sc->hash[i]);
 		#endif /* SHA256_FAST_COPY */
 			hash += 4;
 		}
 	}
 }
+
 
 void CSHA::SHA256Guts(CSHA::SSHA256Context *sc, const unsigned int *cbuf)
 {
@@ -605,7 +645,7 @@ void CSHA::SHA256Guts(CSHA::SSHA256Context *sc, const unsigned int *cbuf)
 /////////////////////////////////////////////////////////
 void CSHA::SHA512Init(SSHA512Context * sc)
 {
-	memset(sc,0,sizeof(*sc));
+	memset(sc, 0, sizeof(*sc));
 
 	sc->h[0] = 0x6a09e667f3bcc908ULL;
 	sc->h[1] = 0xbb67ae8584caa73bULL;
@@ -622,7 +662,7 @@ void CSHA::SHA512Init(SSHA512Context * sc)
 	sc->md_len = SHA512_DIGEST_LENGTH;
 }
 
-void CSHA::SHA512Update(SSHA512Context * sc, const void * vdata, unsigned int len)
+void CSHA::SHA512Update(SSHA512Context * sc, const void * vdata, size_t len)
 {
 	unsigned long long l;
 	unsigned char *p = sc->u.p;
@@ -748,6 +788,7 @@ void CSHA::SHA512Final(SSHA512Context * sc, unsigned char hash[SHA512_DIGEST_LEN
 	return ;
 }
 
+
 void CSHA::SHA512BlockDataOrder(SSHA512Context *ctx, const void *in, size_t num)
 {
 	const unsigned long long *W = (unsigned long long *)in;
@@ -866,8 +907,16 @@ void CSHA::SHA512BlockDataOrder(SSHA512Context *ctx, const void *in, size_t num)
 	}
 }
 
-string CSHA::StringToSHA512(const char * pSrc, int iLen, bool bLowercase)
+std::string CSHA::StringToSHA512(const std::string & szSrc, bool bLowercase)
 {
+	return StringToSHA512(szSrc.c_str(), szSrc.size(), bLowercase);
+}
+
+std::string CSHA::StringToSHA512(const char * pSrc, size_t iLen, bool bLowercase)
+{
+	if (nullptr == pSrc || 0 == iLen)
+		return "";
+
 	SSHA512Context SHA512Context;
 	unsigned char hash[SHA512_DIGEST_LENGTH];
 
@@ -880,23 +929,76 @@ string CSHA::StringToSHA512(const char * pSrc, int iLen, bool bLowercase)
 	return BytesToHexString(hash, SHA512_DIGEST_LENGTH, bLowercase);
 }
 
-string CSHA::StringToSHA512(const string & szSrc, bool bLowercase)
+bool CSHA::StringToSHA512(const std::string &szSrc, uint8_t* pDst, uint32_t iDstBufLen)
 {
-	return StringToSHA512(szSrc.c_str(), szSrc.size(), bLowercase);
+	return StringToSHA512(szSrc.c_str(), szSrc.length(), pDst, iDstBufLen);
 }
 
-string CSHA::FileToSHA512(const string & szFileName, bool bLowercase)
+bool CSHA::StringToSHA512(const char* pSrc, size_t iLen, uint8_t* pDst, uint32_t iDstBufLen)
 {
-	if (szFileName.empty() || !CheckFileExist(szFileName))
-		return "";
+	if (nullptr == pSrc || 0 == iLen || nullptr == pDst || 0 == iDstBufLen)
+		return false;
 
-	std::ifstream FileIn(szFileName.c_str(), std::ios::binary);
+	SSHA512Context SHA512Context;
+	unsigned char hash[SHA512_DIGEST_LENGTH];
+
+	SHA512Init(&SHA512Context);
+
+	SHA512Update(&SHA512Context, pSrc, iLen);
+	SHA512Final(&SHA512Context, hash);
+
+	//复制结果
+	memcpy(pDst, hash, (iDstBufLen <= SHA512_DIGEST_LENGTH ? iDstBufLen : SHA512_DIGEST_LENGTH));
+
+	return true;
+}
+
+std::string CSHA::FileToSHA512(const std::string & szFileName, bool bLowercase)
+{
+	uint8_t buff[SHA512_DIGEST_LENGTH + 1]{ '\0' };
+
+	if (FileToSHA512(szFileName, buff, SHA512_DIGEST_LENGTH))
+	{
+		return BytesToHexString(buff, SHA512_DIGEST_LENGTH, bLowercase);
+	}
+	else
+		return "";
+}
+
+bool CSHA::FileToSHA512(const std::string& szFileName, uint8_t* pDst, uint32_t iDstBufLen)
+{
+	if (szFileName.empty() || !CheckFileExist(szFileName) || nullptr == pDst || 0 == iDstBufLen)
+		return false;
+
+	std::ifstream FileIn(szFileName.c_str(), std::ios::in | std::ios::binary);
 	if (FileIn.fail())
-		return "";
+		return false;
 
-	std::string szInputData((std::istreambuf_iterator<char>(FileIn)), std::istreambuf_iterator<char>());
+	SSHA512Context SHA512Context;
+	unsigned char hash[SHA512_DIGEST_LENGTH];
 
-	return StringToSHA512(szInputData, bLowercase);
+	SHA512Init(&SHA512Context);
+
+	const std::streamsize iBufLen = 1024;
+	char buf[iBufLen] = { '\0' };
+	uint32_t readLen = 0;
+
+	while (!FileIn.eof())
+	{
+		FileIn.read(buf, iBufLen);
+		readLen = (uint32_t)FileIn.gcount();
+
+		if (readLen > 0)
+			SHA512Update(&SHA512Context, (const uint8_t*)buf, readLen);
+	}
+
+	SHA512Final(&SHA512Context, hash);
+	FileIn.close();
+
+	//复制结果
+	memcpy(pDst, hash, (iDstBufLen <= SHA512_DIGEST_LENGTH ? iDstBufLen : SHA512_DIGEST_LENGTH));
+
+	return true;
 }
 
 /////////////////////////////////////////////////////////
@@ -920,7 +1022,7 @@ void CSHA::SHA384Init(SSHA384Context * sc)
 	sc->md_len = SHA384_DIGEST_LENGTH;
 }
 
-void CSHA::SHA384Update(SSHA384Context * sc, const void * vdata, unsigned int len)
+void CSHA::SHA384Update(SSHA384Context * sc, const void * vdata, size_t len)
 {
 	return SHA512Update((SSHA512Context *)sc,vdata,len);
 }
@@ -930,8 +1032,16 @@ void CSHA::SHA384Final(SSHA384Context * sc, unsigned char hash[SHA384_DIGEST_LEN
 	return SHA512Final((SSHA512Context *)sc,hash);
 }
 
-string CSHA::StringToSHA384(const char * pSrc, int iLen, bool bLowercase)
+std::string CSHA::StringToSHA384(const std::string & szSrc, bool bLowercase)
 {
+	return StringToSHA384(szSrc.c_str(), szSrc.size(), bLowercase);
+}
+
+std::string CSHA::StringToSHA384(const char * pSrc, size_t iLen, bool bLowercase)
+{
+	if (nullptr == pSrc || 0 == iLen)
+		return "";
+
 	SSHA384Context SHA384Context;
 	unsigned char hash[SHA384_DIGEST_LENGTH];
 
@@ -944,21 +1054,74 @@ string CSHA::StringToSHA384(const char * pSrc, int iLen, bool bLowercase)
 	return BytesToHexString(hash, SHA384_DIGEST_LENGTH, bLowercase);
 }
 
-string CSHA::StringToSHA384(const string & szSrc, bool bLowercase)
+bool CSHA::StringToSHA384(const std::string &szSrc, uint8_t* pDst, uint32_t iDstBufLen)
 {
-	return StringToSHA384(szSrc.c_str(), szSrc.size(), bLowercase);
+	return StringToSHA384(szSrc.c_str(), szSrc.length(), pDst, iDstBufLen);
 }
 
-string CSHA::FileToSHA384(const string & szFileName, bool bLowercase)
+bool CSHA::StringToSHA384(const char* pSrc, size_t iLen, uint8_t* pDst, uint32_t iDstBufLen)
 {
-	if (szFileName.empty() || !CheckFileExist(szFileName))
-		return "";
+	if (nullptr == pSrc || 0 == iLen || nullptr == pDst || 0 == iDstBufLen)
+		return false;
 
-	std::ifstream FileIn(szFileName.c_str(), std::ios::binary);
+	SSHA384Context SHA384Context;
+	unsigned char hash[SHA384_DIGEST_LENGTH];
+
+	SHA384Init(&SHA384Context);
+
+	SHA384Update(&SHA384Context, pSrc, iLen);
+	SHA384Final(&SHA384Context, hash);
+
+	//复制结果
+	memcpy(pDst, hash, (iDstBufLen <= SHA384_DIGEST_LENGTH ? iDstBufLen : SHA384_DIGEST_LENGTH));
+
+	return true;
+}
+
+std::string CSHA::FileToSHA384(const std::string & szFileName, bool bLowercase)
+{
+	uint8_t buff[SHA384_DIGEST_LENGTH + 1]{ '\0' };
+
+	if (FileToSHA384(szFileName, buff, SHA384_DIGEST_LENGTH))
+	{
+		return BytesToHexString(buff, SHA384_DIGEST_LENGTH, bLowercase);
+	}
+	else
+		return "";
+}
+
+bool CSHA::FileToSHA384(const std::string& szFileName, uint8_t* pDst, uint32_t iDstBufLen)
+{
+	if (szFileName.empty() || !CheckFileExist(szFileName) || nullptr == pDst || 0 == iDstBufLen)
+		return false;
+
+	std::ifstream FileIn(szFileName.c_str(), std::ios::in | std::ios::binary);
 	if (FileIn.fail())
-		return "";
+		return false;
 
-	std::string szInputData((std::istreambuf_iterator<char>(FileIn)), std::istreambuf_iterator<char>());
+	SSHA384Context SHA384Context;
+	unsigned char hash[SHA384_DIGEST_LENGTH];
 
-	return StringToSHA384(szInputData, bLowercase);
+	SHA384Init(&SHA384Context);
+
+	const std::streamsize iBufLen = 1024;
+	char buf[iBufLen] = { '\0' };
+	uint32_t readLen = 0;
+
+	while (!FileIn.eof())
+	{
+		FileIn.read(buf, iBufLen);
+		readLen = (uint32_t)FileIn.gcount();
+
+		if (readLen > 0)
+			SHA384Update(&SHA384Context, (const uint8_t*)buf, readLen);
+	}
+
+	SHA384Final(&SHA384Context, hash);
+	FileIn.close();
+
+	//复制结果
+	memcpy(pDst, hash, (iDstBufLen <= SHA384_DIGEST_LENGTH ? iDstBufLen : SHA384_DIGEST_LENGTH));
+
+	return true;
 }

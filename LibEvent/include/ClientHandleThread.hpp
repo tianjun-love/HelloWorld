@@ -15,7 +15,7 @@
 class CClientHandleThread
 {
 public:
-	CClientHandleThread(unsigned int uiNO, CLogFile &log);
+	CClientHandleThread(ev_uint64_t ullNO, CLogFile &log, bool bKeepAlive);
 	CClientHandleThread(const CClientHandleThread &Other) = delete;
 	~CClientHandleThread();
 	CClientHandleThread& operator=(const CClientHandleThread &Other) = delete;
@@ -23,8 +23,9 @@ public:
 	bool Start(std::string &szError);
 	void Stop();
 
-	void AddClient(SClientObject *client);
-	unsigned int GetThreadNO() const;
+	void AddClient(CClientObject *client);
+	ev_uint64_t GetThreadNO() const;
+	bool GetRunFlag() const;
 
 private:
 	void HandleThread();
@@ -35,8 +36,9 @@ private:
 
 private:
 	bool               m_bRunFlag;        //运行标志
-	const unsigned int m_uiThreadNO;      //线程编号
+	const ev_uint64_t  m_ullThreadNO;     //线程编号
 	CLogFile           &m_LogFile;        //日志对象
+	const bool         m_bKeepAlive;      //是否是长连接
 					   
 	std::thread        *m_pThread;        //循环线程
 	struct timeval     m_BeginTime;       //开始时间

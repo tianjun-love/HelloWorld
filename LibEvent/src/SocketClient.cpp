@@ -12,10 +12,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <fcntl.h>
 #endif
 
-CSocketClient::CSocketClient(const std::string& szServerIP, int iServerPort, int iTimeOut) : 
-CSocketBase(szServerIP, iServerPort, iTimeOut), m_lConnectId(0)
+CSocketClient::CSocketClient(const std::string& szServerIP, int iServerPort, int iTimeOut) :
+CSocketBase(szServerIP, iServerPort, iTimeOut), m_bLogined(false), m_lConnectId(0)
 {
 }
 
@@ -98,6 +99,7 @@ bool CSocketClient::Connect(std::string& szError)
 		if (-1 == connect(m_lConnectId, (sockaddr*)&sin, sizeof(sin)))
 		{
 			//连接超时，3秒
+			int iError = -1;
 			fd_set rfd;
 			struct timeval tv;
 			tv.tv_sec = 3;
@@ -107,20 +109,21 @@ bool CSocketClient::Connect(std::string& szError)
 			FD_SET(m_lConnectId, &rfd);
 
 			//检查连接状态
-			int iRet = select(m_lConnectId + 1, 0, &rfd, 0, &tv);
+			int iRet = select(m_lConnectId + 1, NULL, &rfd, NULL, &tv);
 			if (iRet <= 0)
 			{
 				bResult = false;
+				iError = errno;
 				DisConnect();
 
 				if (0 == iRet)
 					szError = std::string("Connect server failed:Connection timed out !");
 				else
-					szError = std::string("Connect server failed:") + GetErrorMsg(errno);
+					szError = std::string("Connect server failed(errno:" + std::to_string(iError) + "):") + GetErrorMsg(iError);
 			}
 			else
 			{
-				int iError = -1, iLength = sizeof(iError);
+				int iLength = sizeof(iError);
 
 #ifdef _WIN32
 				getsockopt(m_lConnectId, SOL_SOCKET, SO_ERROR, (char*)&iError, &iLength);
@@ -132,7 +135,7 @@ bool CSocketClient::Connect(std::string& szError)
 				{
 					bResult = false;
 					DisConnect();
-					szError = std::string("Connect server failed:") + GetErrorMsg(iError);
+					szError = std::string("Connect server failed(errno:" + std::to_string(iError) + "):") + GetErrorMsg(iError);
 				}
 			}
 
@@ -189,6 +192,7 @@ bool CSocketClient::Reconnect(std::string& szError)
 void CSocketClient::DisConnect()
 {
 	m_bStatus = false;
+	m_bLogined = false;
 
 	if (m_lConnectId > 0)
 	{
@@ -199,6 +203,17 @@ void CSocketClient::DisConnect()
 #endif
 		m_lConnectId = 0;
 	}
+}
+
+/*********************************************************************
+功能：	获取是否已经登陆
+参数：	无
+返回：	登陆返回true
+修改：
+*********************************************************************/
+bool CSocketClient::IsLogined() const
+{
+	return m_bLogined;
 }
 
 /*********************************************************************
@@ -235,6 +250,7 @@ int CSocketClient::SendMsg(const char* data, int data_len, std::string& szError)
 			if (0 == iRet)
 			{
 				m_bStatus = false;
+				m_bLogined = false;
 				bExit = true;
 				iRet = -1;
 				szError = "Server active disconnected !";
@@ -247,6 +263,7 @@ int CSocketClient::SendMsg(const char* data, int data_len, std::string& szError)
 				{
 				case 0:
 					m_bStatus = false;
+					m_bLogined = false;
 					bExit = true;
 					szError = "Server disconnected !";
 					break;
@@ -316,6 +333,7 @@ int CSocketClient::RecvMsg(char* data, int buf_len, std::string& szError)
 			if (0 == iRet)
 			{
 				m_bStatus = false;
+				m_bLogined = false;
 				bExit = true;
 				iRet = -1;
 				szError = "Server active disconnected !";
@@ -330,6 +348,7 @@ int CSocketClient::RecvMsg(char* data, int buf_len, std::string& szError)
 				case 0:
 				{
 					m_bStatus = false;
+					m_bLogined = false;
 					bExit = true;
 					szError = "Server disconnected or recv timeout !";
 				}
@@ -344,7 +363,7 @@ int CSocketClient::RecvMsg(char* data, int buf_len, std::string& szError)
 					if ((time(NULL) - tBegin) > (time_t)m_iTimeOut)
 					{
 						bExit = true;
-						szError = "Recv server data timeout !";
+						szError = "Recv server data timeout, return code:" + std::to_string(iTemp);
 					}
 					else
 					{
@@ -389,7 +408,7 @@ bool CSocketClient::SendMsgWithEOF_Zero(const std::string &szData, std::string& 
 	//多发送两个换行
 	bool bExit = true;
 	std::string szTempData = szData + "\n\n"; //给web判断结束使用
-	const int iTotalLength = (int)szTempData.length();
+	const int iTotalLength = szTempData.length();
 	const char *pBuf = szTempData.c_str();
 	int iRet = 0, iSendLength = 0;
 	time_t tBegin = time(NULL);

@@ -40,3 +40,4 @@
 *.exp
 *.log
 */Debug/*
+*.VC.db

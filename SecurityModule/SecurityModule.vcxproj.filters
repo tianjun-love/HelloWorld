@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\Base64Convert.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="include\MyMD5.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -33,11 +30,20 @@
     <ClInclude Include="include\MySM4.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="include\CodeConvert.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\HashBase.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EncryptionBase.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\MyAES.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Base64Convert.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="src\MyMD5.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -51,6 +57,18 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="src\MySM4.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CodeConvert.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\HashBase.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\EncryptionBase.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\MyAES.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

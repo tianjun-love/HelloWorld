@@ -7,69 +7,66 @@
 #ifndef __MY_SM3_HPP__
 #define __MY_SM3_HPP__
 
-#include <string>
+#include "HashBase.hpp"
 
-class CSM3
+class CSM3 : public CHashBase
 {
 public:
-
-	typedef unsigned int uInt32;  //需要确保字长为32位
-	static const unsigned int blocksize  = 64;
-	static const unsigned int padsize    = 64;
-	static const unsigned int resultsize = 32;
-
-	typedef struct sm3_context
+	//长度定义
+	enum ELENGTH_DEFINES : uint16_t
 	{
-		uInt32        total[2];           /*!< number of bytes processed  */
-		uInt32        state[8];           /*!< intermediate digest state  */
-		unsigned char buffer[blocksize];  /*!< data block being processed */
-		unsigned char digest[resultsize]; /*!< result                     */
-	}SSM3Context;
+		E_BLOCK_SIZE  = 64,
+		E_PAD_SIZE    = 64,
+		E_RESULT_SIZE = 32
+	};
+
+	struct SSM3Context
+	{
+		uint32_t      total[2];              /*!< number of bytes processed  */
+		uint32_t      state[8];              /*!< intermediate digest state  */
+		unsigned char buffer[E_BLOCK_SIZE];  /*!< data block being processed */
+		unsigned char digest[E_RESULT_SIZE]; /*!< result                     */
+	};
 	
-	typedef struct hmac_sm3_context
+	struct SHMACContext
 	{
 		SSM3Context   SM3Context;
-		unsigned char iIpad;               //HMAC Inner padding
-		unsigned char iOpad;               //HMAC Outer padding   
-		unsigned char pKeyHash[blocksize];
-
-	}SHMACContext;
+		unsigned char iIpad;                 //HMAC Inner padding
+		unsigned char iOpad;                 //HMAC Outer padding   
+		unsigned char pKeyHash[E_BLOCK_SIZE];
+	};
 
 public:
 	CSM3();
-	CSM3(const CSM3& Other) = delete;
 	~CSM3();
 
-	static std::string StringToSM3(const char* pSrc, uInt32 iLen, bool bLowercase = false);
+	static std::string StringToSM3(const char* pSrc, uint32_t iLen, bool bLowercase = false);
 	static std::string StringToSM3(const std::string& szSrc, bool bLowercase = false);
-	static bool StringToSM3(const char* pSrc, uInt32 iLen, char* pDst, uInt32 iDstBufLen);
-	static bool StringToSM3(const std::string& szSrc, char* pDst, uInt32 iDstBufLen);
+	static bool StringToSM3(const char* pSrc, uint32_t iLen, uint8_t* pDst, uint32_t iDstBufLen);
+	static bool StringToSM3(const std::string& szSrc, uint8_t* pDst, uint32_t iDstBufLen);
 	static std::string FileToSM3(const std::string& szFileName, bool bLowercase = false);
-	static bool FileToSM3(const std::string& szFileName, char* pDst, uInt32 iDstBufLen);
+	static bool FileToSM3(const std::string& szFileName, uint8_t* pDst, uint32_t iDstBufLen);
 
-	static std::string StringToHMAC(const char *pSrc, uInt32 iLen, const char* pKey, uInt32 iKeyLen, bool bLowercase = false);
-	static std::string StringToHMAC(const std::string& szSrc, const char* pKey, uInt32 iKeyLen, bool bLowercase = false);
-	static bool StringToHMAC(const char *pSrc, uInt32 iLen, const char* pKey, uInt32 iKeyLen, char* pDst, uInt32 iDstBufLen);
-	static bool StringToHMAC(const std::string& szSrc, const char* pKey, uInt32 iKeyLen, char* pDst, uInt32 iDstBufLen);
-	static std::string FileToHMAC(const std::string& szFileName, const char* pKey, uInt32 iKeyLen, bool bLowercase = false);
-	static bool FileToHMAC(const std::string& szFileName, const char* pKey, uInt32 iKeyLen, char* pDst, uInt32 iDstBufLen);
+	static std::string StringToHMAC(const char *pSrc, uint32_t iLen, const char* pKey, uint32_t iKeyLen, bool bLowercase = false);
+	static std::string StringToHMAC(const std::string& szSrc, const char* pKey, uint32_t iKeyLen, bool bLowercase = false);
+	static bool StringToHMAC(const char *pSrc, uint32_t iLen, const char* pKey, uint32_t iKeyLen, char* pDst, uint32_t iDstBufLen);
+	static bool StringToHMAC(const std::string& szSrc, const char* pKey, uint32_t iKeyLen, char* pDst, uint32_t iDstBufLen);
+	static std::string FileToHMAC(const std::string& szFileName, const char* pKey, uint32_t iKeyLen, bool bLowercase = false);
+	static bool FileToHMAC(const std::string& szFileName, const char* pKey, uint32_t iKeyLen, char* pDst, uint32_t iDstBufLen);
 
 	//为适应openssl evp 接口
 	static void QtSM3Init(SSM3Context *pCtx);
-	static void QtSM3Update(SSM3Context *pCtx, const void *pVdata, uInt32 iDataLen);
-	static void QtSM3Final(SSM3Context *pCtx, unsigned char hash[resultsize]);
+	static void QtSM3Update(SSM3Context *pCtx, const void *pVdata, uint32_t iDataLen);
+	static void QtSM3Final(SSM3Context *pCtx, unsigned char hash[E_RESULT_SIZE]);
 
 private:
-	static bool CheckFileExist(const std::string &szFileName);
-	static std::string BytesToHexString(const unsigned char *pIn, size_t iSize, bool bLowercase);
-
 	static void SM3Init(SSM3Context *pCtx);
-	static void SM3Update(SSM3Context *pCtx, const void *pVdata, uInt32 iDataLen);
+	static void SM3Update(SSM3Context *pCtx, const void *pVdata, uint32_t iDataLen);
 	static void SM3Final(SSM3Context *pCtx);
-	static void SM3Guts(SSM3Context *pCtx, unsigned char data[blocksize]);
+	static void SM3Guts(SSM3Context *pCtx, unsigned char data[E_BLOCK_SIZE]);
 
-	static void HMACInit(SHMACContext *pCtx, const char *pKey, uInt32 iKeyLen);
-	static void HMACUpdate(SHMACContext *pCtx, const void *pVdata, uInt32 iDataLen);
+	static void HMACInit(SHMACContext *pCtx, const char *pKey, uint32_t iKeyLen);
+	static void HMACUpdate(SHMACContext *pCtx, const void *pVdata, uint32_t iDataLen);
 	static void HMACFinal(SHMACContext *pCtx);
 };
 

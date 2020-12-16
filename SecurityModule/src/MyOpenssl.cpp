@@ -143,7 +143,7 @@ int COpenssl::Encrypt(ECipherType eCipher, EKeyType eKeyType, const std::string 
 	if (0 <= iRet)
 	{
 		iRet = iEncryptedLen;
-		szEncrypted = CBase64Convert::Encode64((const char*)pEncryptedData, iEncryptedLen, (E_CIPHER_AES != eCipher ? m_bLineFeed : false));
+		szEncrypted = CCodeConvert::EncodeBase64(pEncryptedData, iEncryptedLen, (E_CIPHER_AES != eCipher ? m_bLineFeed : false));
 	}
 
 	if (nullptr != pEncryptedData)
@@ -174,15 +174,16 @@ int COpenssl::Decrypt(ECipherType eCipher, EKeyType eKeyType, const std::string 
 	}
 
 	int iRet = 0;
-	size_t uiInDataLen = 0;
-	char *pInData = CBase64Convert::Decode64(szEncrypted, uiInDataLen);
+	size_t uiInDataLen = (szEncrypted.length() / 4 + 1) * 3;
+	unsigned char *pInData = new unsigned char[uiInDataLen + 1] {'\0'};
 
 	if (nullptr != pInData)
 	{
+		uiInDataLen = CCodeConvert::DecodeBase64(szEncrypted, pInData, (uint32_t)uiInDataLen);
 		int iDecryptedLen = 0;
 		unsigned char* pDecryptedData = nullptr;
 
-		iRet = Decrypt(eCipher, eKeyType, pInData, uiInDataLen, pDecryptedData, iDecryptedLen, szError);
+		iRet = Decrypt(eCipher, eKeyType, (const char*)pInData, (int)uiInDataLen, pDecryptedData, iDecryptedLen, szError);
 
 		if (0 <= iRet)
 		{
@@ -437,7 +438,7 @@ bool COpenssl::RSAPublicKey(const std::string &szPubKeyFile, const std::string &
 	if (bEncrypt)
 	{
 		if (RSAPublicKey(szPubKeyFile, szIn.c_str(), szIn.length(), pOut, uiOutLen, szError, bEncrypt))
-			szOut = CBase64Convert::Encode64((const char*)pOut, uiOutLen);
+			szOut = CCodeConvert::EncodeBase64(pOut, uiOutLen);
 		else
 			bResult = false;
 	}
@@ -445,18 +446,20 @@ bool COpenssl::RSAPublicKey(const std::string &szPubKeyFile, const std::string &
 	{
 		if (!szIn.empty())
 		{
-			size_t uiInLen = 0;
-			char *pIn = CBase64Convert::Decode64(szIn, uiInLen);
+			size_t uiInLen = (szIn.length() / 4 + 1) * 3;
+			char *pInData = new char[uiInLen + 1]{ '\0' };
 
-			if (nullptr != pIn)
+			if (nullptr != pInData)
 			{
-				if (RSAPublicKey(szPubKeyFile, pIn, uiInLen, pOut, uiOutLen, szError, bEncrypt))
+				uiInLen = CCodeConvert::DecodeBase64(szIn, (unsigned char*)pInData, (uint32_t)uiInLen);
+
+				if (RSAPublicKey(szPubKeyFile, pInData, uiInLen, pOut, uiOutLen, szError, bEncrypt))
 					szOut = (const char*)pOut;
 				else
 					bResult = false;
 
-				delete[] pIn;
-				pIn = nullptr;
+				delete[] pInData;
+				pInData = nullptr;
 			}
 			else
 			{
@@ -503,7 +506,7 @@ bool COpenssl::RSAPrivateKey(const std::string &szPriKeyFile, const std::string 
 	if (bEncrypt)
 	{
 		if (RSAPrivateKey(szPriKeyFile, szPassword.c_str(), szIn.c_str(), szIn.length(), pOut, uiOutLen, szError, bEncrypt))
-			szOut = CBase64Convert::Encode64((const char*)pOut, uiOutLen);
+			szOut = CCodeConvert::EncodeBase64(pOut, uiOutLen);
 		else
 			bResult = false;
 	}
@@ -511,18 +514,20 @@ bool COpenssl::RSAPrivateKey(const std::string &szPriKeyFile, const std::string 
 	{
 		if (!szIn.empty())
 		{
-			size_t uiInLen = 0;
-			char *pIn = CBase64Convert::Decode64(szIn, uiInLen);
+			size_t uiInLen = (szIn.length() / 4 + 1) * 3;
+			char *pInData = new char[uiInLen + 1]{ '\0' };
 
-			if (nullptr != pIn)
+			if (nullptr != pInData)
 			{
-				if (RSAPrivateKey(szPriKeyFile, szPassword.c_str(), pIn, uiInLen, pOut, uiOutLen, szError, bEncrypt))
+				uiInLen = CCodeConvert::DecodeBase64(szIn, (unsigned char*)pInData, (uint32_t)uiInLen);
+
+				if (RSAPrivateKey(szPriKeyFile, szPassword.c_str(), pInData, uiInLen, pOut, uiOutLen, szError, bEncrypt))
 					szOut = (const char*)pOut;
 				else
 					bResult = false;
 
-				delete[] pIn;
-				pIn = nullptr;
+				delete[] pInData;
+				pInData = nullptr;
 			}
 			else
 			{

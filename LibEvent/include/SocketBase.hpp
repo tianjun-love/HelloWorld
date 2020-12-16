@@ -20,9 +20,10 @@ public:
 	virtual ~CSocketBase();
 	CSocketBase& operator=(const CSocketBase &Other);
 	
-	static std::string GetErrorMsg(unsigned int sysErrCode);
 	static unsigned int GetRandomNumber(unsigned int min = 0, unsigned int max = 4199999999);
-	static void GetRandomBytes(void *buf, unsigned int buf_len);
+	static bool GetRandomBytes(void *buf, unsigned int buf_len);
+	static std::string GetErrorMsg(int sysErrCode);
+	static std::string GetStrerror(int sysErrCode);
 	static std::string DateTimeString(short nType = 0);
 	static bool CheckIPFormat(const std::string &szIP, bool bIsIPv4 = true);
 	static std::string GetHexString(const unsigned char *data, unsigned int data_len, bool bLowercase = false);

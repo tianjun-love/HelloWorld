@@ -16,10 +16,10 @@
 #ifndef GET_ULONG_BE
 #define GET_ULONG_BE(n,b,i)                             \
 {                                                       \
-    (n) = ( (uInt32) (b)[(i)    ] << 24 )        \
-        | ( (uInt32) (b)[(i) + 1] << 16 )        \
-        | ( (uInt32) (b)[(i) + 2] <<  8 )        \
-        | ( (uInt32) (b)[(i) + 3]       );       \
+    (n) = ( (uint32_t) (b)[(i)    ] << 24 )        \
+        | ( (uint32_t) (b)[(i) + 1] << 16 )        \
+        | ( (uint32_t) (b)[(i) + 2] <<  8 )        \
+        | ( (uint32_t) (b)[(i) + 3]       );       \
 }
 #endif
 
@@ -50,9 +50,9 @@ CSM3::~CSM3()
 {
 }
 
-std::string CSM3::StringToSM3(const char* pSrc, uInt32 iLen, bool bLowercase)
+std::string CSM3::StringToSM3(const char* pSrc, uint32_t iLen, bool bLowercase)
 {
-	if (nullptr == pSrc || iLen <= 0)
+	if (nullptr == pSrc || iLen == 0)
 		return "";
 
 	SSM3Context SM3Context;
@@ -62,17 +62,17 @@ std::string CSM3::StringToSM3(const char* pSrc, uInt32 iLen, bool bLowercase)
 	SM3Final(&SM3Context);
 
 	//转字符串
-	return BytesToHexString(SM3Context.digest, resultsize, bLowercase);
+	return BytesToHexString(SM3Context.digest, E_RESULT_SIZE, bLowercase);
 }
 
 std::string CSM3::StringToSM3(const std::string& szSrc, bool bLowercase)
 {
-	return StringToSM3(szSrc.c_str(), szSrc.length(), bLowercase);
+	return StringToSM3(szSrc.c_str(), (uint32_t)szSrc.length(), bLowercase);
 }
 
-bool CSM3::StringToSM3(const char* pSrc, uInt32 iLen, char* pDst, uInt32 iDstBufLen)
+bool CSM3::StringToSM3(const char* pSrc, uint32_t iLen, uint8_t* pDst, uint32_t iDstBufLen)
 {
-	if (nullptr == pSrc || iLen <= 0 || nullptr == pDst || iDstBufLen <= 0)
+	if (nullptr == pSrc || iLen <= 0 || nullptr == pDst || iDstBufLen == 0)
 		return false;
 
 	SSM3Context SM3Context;
@@ -82,80 +82,62 @@ bool CSM3::StringToSM3(const char* pSrc, uInt32 iLen, char* pDst, uInt32 iDstBuf
 	SM3Final(&SM3Context);
 
 	//复制数据
-	memcpy(pDst, SM3Context.digest, (iDstBufLen <= resultsize ? iDstBufLen : resultsize));
+	memcpy(pDst, SM3Context.digest, (iDstBufLen <= E_RESULT_SIZE ? iDstBufLen : E_RESULT_SIZE));
 
 	return true;
 }
 
-bool CSM3::StringToSM3(const std::string& szSrc, char* pDst, uInt32 iDstBufLen)
+bool CSM3::StringToSM3(const std::string& szSrc, uint8_t* pDst, uint32_t iDstBufLen)
 {
-	return StringToSM3(szSrc.c_str(), szSrc.length(), pDst, iDstBufLen);
+	return StringToSM3(szSrc.c_str(), (uint32_t)szSrc.length(), pDst, iDstBufLen);
 }
 
 std::string CSM3::FileToSM3(const std::string& szFileName, bool bLowercase)
 {
-	if (szFileName.empty() || !CheckFileExist(szFileName))
-		return "";
+	uint8_t buff[E_RESULT_SIZE + 1]{ '\0' };
 
-	std::ifstream FileIn(szFileName.c_str(), std::ios::binary);
-	if (FileIn.fail())
-		return "";
-
-	std::string szInputData((std::istreambuf_iterator<char>(FileIn)), std::istreambuf_iterator<char>());
-	FileIn.close();
-
-	return StringToSM3(szInputData.c_str(), szInputData.length());
-}
-
-bool CSM3::FileToSM3(const std::string& szFileName, char* pDst, uInt32 iDstBufLen)
-{
-	if (szFileName.empty() || !CheckFileExist(szFileName) || nullptr == pDst || iDstBufLen <= 0)
-		return false;
-
-	std::ifstream FileIn(szFileName.c_str(), std::ios::binary);
-	if (FileIn.fail())
-		return false;
-
-	std::string szInputData((std::istreambuf_iterator<char>(FileIn)), std::istreambuf_iterator<char>());
-	FileIn.close();
-
-	return StringToSM3(szInputData.c_str(), szInputData.length(), pDst, iDstBufLen);
-}
-
-bool CSM3::CheckFileExist(const std::string &szFileName)
-{
-	if (szFileName.empty())
-		return false;
-
-	int iRet = 0;
-
-#ifdef _WIN32
-	iRet = _access(szFileName.c_str(), 0);
-#else
-	iRet = access(szFileName.c_str(), F_OK);
-#endif // WIN32
-
-	return (0 == iRet);
-}
-
-std::string CSM3::BytesToHexString(const unsigned char *pIn, size_t iSize, bool bLowercase)
-{
-	std::string str;
-	int strLen = iSize * 2;
-	char*  buf = new char[strLen + 3];
-	memset(buf, 0, strLen + 3);
-
-	for (size_t i = 0; i < iSize; i++)
+	if (FileToSM3(szFileName, buff, E_RESULT_SIZE))
 	{
-		snprintf(buf + i * 2, 3, (bLowercase ? "%02x" : "%02X"), pIn[i]);
+		return BytesToHexString(buff, E_RESULT_SIZE, bLowercase);
+	}
+	else
+		return "";
+}
+
+bool CSM3::FileToSM3(const std::string& szFileName, uint8_t* pDst, uint32_t iDstBufLen)
+{
+	if (szFileName.empty() || !CheckFileExist(szFileName) || nullptr == pDst || iDstBufLen == 0)
+		return false;
+
+	std::ifstream FileIn(szFileName.c_str(), std::ios::binary);
+	if (FileIn.fail())
+		return false;
+
+	SSM3Context SM3Context;
+
+	SM3Init(&SM3Context);
+
+	const std::streamsize iBufLen = 1024;
+	char buf[iBufLen] = { '\0' };
+	uint32_t readLen = 0;
+
+	while (!FileIn.eof())
+	{
+		FileIn.read(buf, iBufLen);
+		readLen = (uint32_t)FileIn.gcount();
+
+		if (readLen > 0)
+			SM3Update(&SM3Context, (const uint8_t*)buf, readLen);
 	}
 
-	str = buf;
-	delete buf;
+	SM3Final(&SM3Context);
+	FileIn.close();
 
-	return std::move(str);
+	//复制数据
+	memcpy(pDst, SM3Context.digest, (iDstBufLen <= E_RESULT_SIZE ? iDstBufLen : E_RESULT_SIZE));
+
+	return true;
 }
-
 
 void CSM3::SM3Init(SSM3Context * pCtx)
 {
@@ -171,24 +153,24 @@ void CSM3::SM3Init(SSM3Context * pCtx)
 	pCtx->state[6] = 0xE38DEE4DUL;
 	pCtx->state[7] = 0xB0FB0E4EUL;
 
-    memset(pCtx->digest, 0, resultsize);
+    memset(pCtx->digest, 0, E_RESULT_SIZE);
 }
 
-void CSM3::SM3Update(SSM3Context * pCtx, const void * pVdata, uInt32 iDataLen)
+void CSM3::SM3Update(SSM3Context * pCtx, const void * pVdata, uint32_t iDataLen)
 {
 	int fill;
-	uInt32 left;
+	uint32_t left;
 
 	unsigned char *input = (unsigned char *)pVdata;
 	int ilen = iDataLen;
 
 	left = pCtx->total[0] & 0x3F;
-	fill = blocksize - left;
+	fill = E_BLOCK_SIZE - left;
 
 	pCtx->total[0] += ilen;
 	pCtx->total[0] &= 0xFFFFFFFF;
 
-	if (pCtx->total[0] < (uInt32)ilen)
+	if (pCtx->total[0] < (uint32_t)ilen)
 		pCtx->total[1]++;
 
 	if (left && ilen >= fill)
@@ -200,11 +182,11 @@ void CSM3::SM3Update(SSM3Context * pCtx, const void * pVdata, uInt32 iDataLen)
 		left = 0;
 	}
 
-	while (ilen >= blocksize)
+	while (ilen >= E_BLOCK_SIZE)
 	{
 		SM3Guts(pCtx, input);
-		input += blocksize;
-		ilen -= blocksize;
+		input += E_BLOCK_SIZE;
+		ilen -= E_BLOCK_SIZE;
 	}
 
 	if (ilen > 0)
@@ -215,12 +197,12 @@ void CSM3::SM3Update(SSM3Context * pCtx, const void * pVdata, uInt32 iDataLen)
 }
 
 
-void CSM3::SM3Guts(SSM3Context * pCtx, unsigned char data[blocksize])
+void CSM3::SM3Guts(SSM3Context * pCtx, unsigned char data[E_BLOCK_SIZE])
 {
-	uInt32 SS1, SS2, TT1, TT2, W[68], W1[64];
-	uInt32 A, B, C, D, E, F, G, H;
-	uInt32 T[64];
-	uInt32 Temp1, Temp2, Temp3, Temp4, Temp5;
+	uint32_t SS1, SS2, TT1, TT2, W[68], W1[64];
+	uint32_t A, B, C, D, E, F, G, H;
+	uint32_t T[64];
+	uint32_t Temp1, Temp2, Temp3, Temp4, Temp5;
 	int j;
 
 	for (j = 0; j < 16; j++)
@@ -273,7 +255,7 @@ void CSM3::SM3Guts(SSM3Context * pCtx, unsigned char data[blocksize])
 		W[j] = Temp4 ^ Temp5;
 	}
 
-	for (j = 0; j < blocksize; j++)
+	for (j = 0; j < E_BLOCK_SIZE; j++)
 	{
 		W1[j] = W[j] ^ W[j + 4];
 	}
@@ -334,8 +316,8 @@ void CSM3::SM3Guts(SSM3Context * pCtx, unsigned char data[blocksize])
 
 void CSM3::SM3Final(SSM3Context * pCtx)
 {
-	uInt32 last, padn;
-	uInt32 high, low;
+	uint32_t last, padn;
+	uint32_t high, low;
 	unsigned char msglen[8];
 
 	high = (pCtx->total[0] >> 29)
@@ -369,23 +351,23 @@ void CSM3::QtSM3Init(SSM3Context *pCtx)
 	return SM3Init(pCtx);
 }
 
-void CSM3::QtSM3Update(SSM3Context *pCtx, const void *pVdata, uInt32 iDataLen)
+void CSM3::QtSM3Update(SSM3Context *pCtx, const void *pVdata, uint32_t iDataLen)
 {
 	return SM3Update(pCtx, pVdata, iDataLen);
 }
 
-void CSM3::QtSM3Final(SSM3Context *pCtx, unsigned char hash[resultsize])
+void CSM3::QtSM3Final(SSM3Context *pCtx, unsigned char hash[E_RESULT_SIZE])
 {
 	SM3Final(pCtx);
-	memcpy(hash , pCtx->digest, resultsize);
+	memcpy(hash , pCtx->digest, E_RESULT_SIZE);
 }
 
-std::string CSM3::StringToHMAC(const std::string& szSrc, const char* pKey, uInt32 iKeyLen, bool bLowercase)
+std::string CSM3::StringToHMAC(const std::string& szSrc, const char* pKey, uint32_t iKeyLen, bool bLowercase)
 {
-	return StringToHMAC(szSrc.c_str(), szSrc.length(), pKey, iKeyLen, bLowercase);
+	return StringToHMAC(szSrc.c_str(), (uint32_t)szSrc.length(), pKey, iKeyLen, bLowercase);
 }
 
-std::string CSM3::StringToHMAC(const char *pSrc, uInt32 iLen, const char* pKey, uInt32 iKeyLen, bool bLowercase)
+std::string CSM3::StringToHMAC(const char *pSrc, uint32_t iLen, const char* pKey, uint32_t iKeyLen, bool bLowercase)
 {
 	if (nullptr == pSrc || iLen <= 0 || pKey == nullptr || iKeyLen <= 0)
 		return "";
@@ -397,10 +379,10 @@ std::string CSM3::StringToHMAC(const char *pSrc, uInt32 iLen, const char* pKey, 
 	HMACFinal(&HMACContext);
 
 	//转字符串
-	return BytesToHexString(HMACContext.SM3Context.digest, resultsize, bLowercase);
+	return BytesToHexString(HMACContext.SM3Context.digest, E_RESULT_SIZE, bLowercase);
 }
 
-bool CSM3::StringToHMAC(const char *pSrc, uInt32 iLen, const char* pKey, uInt32 iKeyLen, char* pDst, uInt32 iDstBufLen)
+bool CSM3::StringToHMAC(const char *pSrc, uint32_t iLen, const char* pKey, uint32_t iKeyLen, char* pDst, uint32_t iDstBufLen)
 {
 	if (nullptr == pSrc || iLen <= 0 || pKey == nullptr || iKeyLen <= 0 || nullptr == pDst || iDstBufLen <= 0)
 		return false;
@@ -412,17 +394,17 @@ bool CSM3::StringToHMAC(const char *pSrc, uInt32 iLen, const char* pKey, uInt32 
 	HMACFinal(&HMACContext);
 
 	//复制数据
-	memcpy(pDst, HMACContext.SM3Context.digest, (iDstBufLen <= resultsize ? iDstBufLen : resultsize));
+	memcpy(pDst, HMACContext.SM3Context.digest, (iDstBufLen <= E_RESULT_SIZE ? iDstBufLen : E_RESULT_SIZE));
 
 	return true;
 }
 
-bool CSM3::StringToHMAC(const std::string& szSrc, const char* pKey, uInt32 iKeyLen, char* pDst, uInt32 iDstBufLen)
+bool CSM3::StringToHMAC(const std::string& szSrc, const char* pKey, uint32_t iKeyLen, char* pDst, uint32_t iDstBufLen)
 {
-	return StringToHMAC(szSrc.c_str(), szSrc.length(), pKey, iKeyLen, pDst, iDstBufLen);
+	return StringToHMAC(szSrc.c_str(), (uint32_t)szSrc.length(), pKey, iKeyLen, pDst, iDstBufLen);
 }
 
-std::string CSM3::FileToHMAC(const std::string& szFileName, const char* pKey, uInt32 iKeyLen, bool bLowercase)
+std::string CSM3::FileToHMAC(const std::string& szFileName, const char* pKey, uint32_t iKeyLen, bool bLowercase)
 {
 	if (szFileName.empty() || !CheckFileExist(szFileName) || nullptr == pKey || iKeyLen <= 0)
 		return "";
@@ -436,7 +418,7 @@ std::string CSM3::FileToHMAC(const std::string& szFileName, const char* pKey, uI
 	return StringToHMAC(szInputData, pKey, iKeyLen, bLowercase);
 }
 
-bool CSM3::FileToHMAC(const std::string& szFileName, const char* pKey, uInt32 iKeyLen, char* pDst, uInt32 iDstBufLen)
+bool CSM3::FileToHMAC(const std::string& szFileName, const char* pKey, uint32_t iKeyLen, char* pDst, uint32_t iDstBufLen)
 {
 	if (szFileName.empty() || !CheckFileExist(szFileName) || nullptr == pKey || iKeyLen <= 0 || nullptr == pDst || iDstBufLen <= 0)
 		return false;
@@ -448,23 +430,23 @@ bool CSM3::FileToHMAC(const std::string& szFileName, const char* pKey, uInt32 iK
 	std::string szInputData((std::istreambuf_iterator<char>(FileIn)), std::istreambuf_iterator<char>());
 	FileIn.close();
 
-	return StringToHMAC(szInputData.c_str(), szInputData.length(), pKey, iKeyLen, pDst, iDstBufLen);
+	return StringToHMAC(szInputData.c_str(), (uint32_t)szInputData.length(), pKey, iKeyLen, pDst, iDstBufLen);
 }
 
-void CSM3::HMACInit(SHMACContext *pCtx, const char *pKey, uInt32 iKeyLen)
+void CSM3::HMACInit(SHMACContext *pCtx, const char *pKey, uint32_t iKeyLen)
 {
 	pCtx->iIpad = 0x36; //Inner padding
 	pCtx->iOpad = 0x5C; //Outer padding 
 	//0. HMAC 算法对于秘钥长度不够1块,则用0填充。因此此处直接初始化为0.
-	memset(pCtx->pKeyHash, 0, blocksize);
+	memset(pCtx->pKeyHash, 0, E_BLOCK_SIZE);
 
-	if (iKeyLen > blocksize)
+	if (iKeyLen > E_BLOCK_SIZE)
 	{
 		// 秘钥太长, 使用SM3 算法计算hash
 		SM3Init(&pCtx->SM3Context);
 		SM3Update(&pCtx->SM3Context, pKey, iKeyLen);
 		SM3Final(&pCtx->SM3Context); //用0填充
-		memcpy(pCtx->pKeyHash, pCtx->SM3Context.digest, resultsize);
+		memcpy(pCtx->pKeyHash, pCtx->SM3Context.digest, E_RESULT_SIZE);
 	}
 	else
 	{
@@ -472,24 +454,24 @@ void CSM3::HMACInit(SHMACContext *pCtx, const char *pKey, uInt32 iKeyLen)
 	}
 
 	//2. 秘钥异或 Inner pad
-	for (int i = 0; i < blocksize; i++)
+	for (int i = 0; i < E_BLOCK_SIZE; i++)
 	{
 		pCtx->pKeyHash[i] ^= pCtx->iIpad;
 	}
 
 	//3. 初始化
 	SM3Init(&pCtx->SM3Context);
-	SM3Update(&pCtx->SM3Context, pCtx->pKeyHash, blocksize);
+	SM3Update(&pCtx->SM3Context, pCtx->pKeyHash, E_BLOCK_SIZE);
 }
 
-void CSM3::HMACUpdate(SHMACContext *pCtx, const void *pVdata, uInt32 iDataLen)
+void CSM3::HMACUpdate(SHMACContext *pCtx, const void *pVdata, uint32_t iDataLen)
 {
 	SM3Update(&pCtx->SM3Context, pVdata, iDataLen);
 }
 
 void CSM3::HMACFinal(SHMACContext *pCtx)
 {
-	for (int i = 0; i < blocksize; i++)
+	for (int i = 0; i < E_BLOCK_SIZE; i++)
 	{
 		pCtx->pKeyHash[i] ^= (pCtx->iIpad ^ pCtx->iOpad);
 	}
@@ -497,10 +479,10 @@ void CSM3::HMACFinal(SHMACContext *pCtx)
 	SM3Final(&pCtx->SM3Context);
 
 	char hash[32]{ 0 };
-	memcpy(hash ,pCtx->SM3Context.digest, resultsize);
+	memcpy(hash ,pCtx->SM3Context.digest, E_RESULT_SIZE);
 
 	SM3Init(&pCtx->SM3Context);
-	SM3Update(&pCtx->SM3Context, pCtx->pKeyHash, blocksize);
+	SM3Update(&pCtx->SM3Context, pCtx->pKeyHash, E_BLOCK_SIZE);
 	SM3Update(&pCtx->SM3Context, hash, 32);
 	SM3Final(&pCtx->SM3Context);
 

@@ -13,7 +13,7 @@
 #include <unistd.h>
 #endif
 
-CSocketBase::CSocketBase(const std::string &szIP, int iPort, int iTimeout) : m_bStatus(false), m_bInitWSA(false), 
+CSocketBase::CSocketBase(const std::string &szIP, int iPort, int iTimeout) : m_bStatus(false), m_bInitWSA(false),
 m_szServerIP(szIP), m_iServerPort(iPort), m_iTimeOut(iTimeout)
 {
 }
@@ -43,38 +43,6 @@ CSocketBase& CSocketBase::operator=(const CSocketBase &Other)
 }
 
 /*********************************************************************
-功能：	获取系统错误信息
-参数：	sysErrCode 系统错误码
-返回：	错误信息
-修改：
-*********************************************************************/
-std::string CSocketBase::GetErrorMsg(unsigned int sysErrCode)
-{
-#ifdef _WIN32
-	std::string szError;
-	LPVOID lpMsgBuf = NULL;
-
-	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, sysErrCode,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&lpMsgBuf, 0, NULL);
-
-	if (NULL != lpMsgBuf)
-	{
-		szError = (LPSTR)lpMsgBuf;
-		LocalFree(lpMsgBuf);
-		return std::move(szError);
-	}
-	else
-	{
-		szError = "FormatMessage failed, error code:" + std::to_string(GetLastError()) + " original code:" 
-			+ std::to_string(sysErrCode);
-		return std::move(szError);
-	}
-#else
-	return std::move(std::string(strerror(sysErrCode)));
-#endif
-}
-
-/*********************************************************************
 功能：	获取随机数
 参数：	min 最小值
 *		max 最大值
@@ -87,7 +55,10 @@ unsigned int CSocketBase::GetRandomNumber(unsigned int min, unsigned int max)
 	//std::random_device rd; //随机数生成器，种子
 
 	//填充随机n个字节到buf中，当种子
-	GetRandomBytes(&iNumber, sizeof(iNumber));
+	if (!GetRandomBytes(&iNumber, sizeof(iNumber)))
+	{
+		iNumber = rand();
+	}
 
 	//平均分布
 	std::mt19937 eng(iNumber);
@@ -107,13 +78,73 @@ unsigned int CSocketBase::GetRandomNumber(unsigned int min, unsigned int max)
 功能：	获取随机字节
 参数：	buf 存放字节缓存
 *		buf_len 获取的字节数
-返回：	无
+返回：	成功返回true
 修改：
 *********************************************************************/
-void CSocketBase::GetRandomBytes(void *buf, unsigned int buf_len)
+bool CSocketBase::GetRandomBytes(void *buf, unsigned int buf_len)
 {
 	//填充随机n个字节到buf中
 	evutil_secure_rng_get_bytes(buf, buf_len);
+
+	return true;
+}
+
+/*********************************************************************
+功能：	获取系统错误信息
+参数：	sysErrCode 系统错误码
+返回：	错误信息
+修改：
+*********************************************************************/
+std::string CSocketBase::GetErrorMsg(int sysErrCode)
+{
+#ifdef _WIN32
+	std::string szError;
+	LPVOID lpMsgBuf = NULL;
+
+	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, sysErrCode,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&lpMsgBuf, 0, NULL);
+
+	if (NULL != lpMsgBuf)
+	{
+		szError = (LPSTR)lpMsgBuf;
+		LocalFree(lpMsgBuf);
+		return std::move(szError);
+	}
+	else
+	{
+		szError = "FormatMessage failed, error code:" + std::to_string(GetLastError()) + " original code:"
+			+ std::to_string(sysErrCode);
+		return std::move(szError);
+	}
+#else
+	return GetStrerror(sysErrCode);
+#endif
+}
+
+/*********************************************************************
+功能：	获取系统错误信息
+参数：	sysErrCode 系统错误码
+返回：	错误信息
+修改：
+*********************************************************************/
+std::string CSocketBase::GetStrerror(int sysErrCode)
+{
+	std::string szRet;
+	char buf[2048] = { '\0' };
+
+#ifdef _WIN32
+	if (0 == strerror_s(buf, 2047, sysErrCode))
+		szRet = buf;
+	else
+		szRet = "strerror_s work wrong, source error code:" + std::to_string(sysErrCode);
+#else
+	if (nullptr != strerror_r(sysErrCode, buf, 2047))
+		szRet = buf;
+	else
+		szRet = "strerror_r work wrong, source error code:" + std::to_string(sysErrCode);
+#endif
+
+	return std::move(szRet);
 }
 
 /*********************************************************************
@@ -198,11 +229,7 @@ bool CSocketBase::CheckIPFormat(const std::string &szIP, bool bIsIPv4)
 			{
 				//判断数字是否是合法
 				int a = 0, b = 0, c = 0, d = 0;
-#ifdef _WIN32
-				sscanf_s(szIP.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
-#else
 				sscanf(szIP.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
-#endif
 
 				if (a > 255 || b > 255 || c > 255 || d > 254)
 					return false;
@@ -250,14 +277,17 @@ std::string CSocketBase::GetHexString(const unsigned char *data, unsigned int da
 	int n = 0;
 	char *pStrTemp = new char[data_len * 2 + 1];
 
-	for (unsigned int i = 0; i < data_len; ++i)
+	if (nullptr != pStrTemp)
 	{
-		n += snprintf(pStrTemp + n, 3, (bLowercase ? "%02x" : "%02X"), data[i]);
-	}
+		for (unsigned int i = 0; i < data_len; ++i)
+		{
+			n += snprintf(pStrTemp + n, 3, (bLowercase ? "%02x" : "%02X"), data[i]);
+		}
 
-	pStrTemp[n] = '\0';
-	szReturnHex = pStrTemp;
-	delete[] pStrTemp;
+		pStrTemp[n] = '\0';
+		szReturnHex = pStrTemp;
+		delete[] pStrTemp;
+	}
 
 	return std::move(szReturnHex);
 }

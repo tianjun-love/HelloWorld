@@ -5,7 +5,7 @@
 #include <arpa/inet.h>
 #endif
 
-CListenerThread::CListenerThread(const std::string &szIP, int iPort, int iMaxConn, CLogFile &log, SynQueue<SClientObject*> &connDeque) :
+CListenerThread::CListenerThread(const std::string &szIP, int iPort, int iMaxConn, CLogFile &log, SynQueue<CClientObject*> &connDeque) :
 	m_bRunFlag(false), m_szServerIP(szIP), m_iServerPort(iPort), m_iMaxConnect(iMaxConn), m_LogFile(log), m_ConnectDeque(connDeque),
 	m_pThread(nullptr), m_iListenFd(-1), m_pEventBase(nullptr), m_pEventListener(nullptr)
 {
@@ -172,22 +172,22 @@ void CListenerThread::listener_cb(struct evconnlistener *listener, evutil_socket
 		return;
 
 	std::string szClientIP = inet_ntoa(((struct sockaddr_in*)sa)->sin_addr);
-	int iClientPort = ((struct sockaddr_in*)sa)->sin_port;
-	SClientObject *client = new SClientObject();
+	USHORT nClientPort = ((struct sockaddr_in*)sa)->sin_port;
+	CClientObject *client = new CClientObject();
 
 	if (nullptr == client)
 	{
-		pServer->m_LogFile << E_LOG_LEVEL_SERIOUS << "Client [" + szClientIP << ":" << iClientPort << "] connect, but new client object return nullptr !"
+		pServer->m_LogFile << E_LOG_LEVEL_SERIOUS << "Client [" + szClientIP << ":" << nClientPort << "] connect, but new client object return nullptr !"
 			<< logendl;
 		return;
 	}
 	else
-		pServer->m_LogFile << E_LOG_LEVEL_PROMPT << "Client [" + szClientIP << ":" << iClientPort << "] connected !" << logendl;
+		pServer->m_LogFile << E_LOG_LEVEL_PROMPT << "Client [" + szClientIP << ":" << nClientPort << "] connected !" << logendl;
 
 	client->iClientFd = fd;
-	client->ClientInfo.bLogined = false;
-	client->ClientInfo.szClientIP = szClientIP;
-	client->ClientInfo.szClientInfo = szClientIP + ":" + std::to_string(iClientPort);
+	client->Session.szClientIP = szClientIP;
+	client->Session.uiClientPort = nClientPort;
+	client->Session.szClientInfo = szClientIP + ":" + std::to_string(nClientPort);
 
 	//插入队列
 	pServer->m_ConnectDeque.Put(client);

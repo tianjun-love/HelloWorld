@@ -1,7 +1,8 @@
 ﻿#include "../include/MySM4.hpp"
 #include "../include/MyMD5.hpp"
-#include <random>
-#include <fstream>
+#include "../include/CodeConvert.hpp"
+
+#include <cstring>
 
 /*
 * 32-bit integer manipulation macros (big endian)
@@ -117,658 +118,552 @@ static unsigned long sm4F(unsigned long x0, unsigned long x1, unsigned long x2, 
 	return (x0^sm4Lt(x1^x2^x3^rk));
 }
 
-CSM4::CSM4()
+CSM4::CSM4(EMODE_TYPE eMode) : CEncryptionBase(eMode, E_KEY_128)
 {
-	ClearKey();
 }
 
-CSM4::CSM4(const uChar8 *pKey, uInt32 iKeyLen, const uChar8* pIV, uInt32 iIVLen, ESM4_MODE eMode)
+CSM4::CSM4(const uint8_t *pKey, uint32_t iKeyLen, EMODE_TYPE eMode) : CEncryptionBase(eMode, E_KEY_128)
 {
-	m_eMode = eMode;
-	SetKey(pKey, iKeyLen, pIV, iIVLen);
+	SetKey(pKey, iKeyLen);
+}
+
+CSM4::CSM4(const uint8_t *pKey, uint32_t iKeyLen, const uint8_t *pIV, uint32_t iIVLen, EMODE_TYPE eMode) : 
+	CEncryptionBase(eMode, E_KEY_128)
+{
+	SetKey(pKey, iKeyLen);
+	SetIV(pIV, iIVLen);
 }
 
 CSM4::~CSM4()
 {
-	ClearKey();
 }
 
-void CSM4::SetKey(const uChar8* pKey, uInt32 iKeyLen, const uChar8* pIV, uInt32 iIVLen)
+/*********************************************************************
+功能：	设置密钥，自定义处理，IV跟着设置
+参数：	pKey 密钥
+*		iKeyLen 密钥长度
+返回：	无
+修改：
+*********************************************************************/
+void CSM4::SetKeyAndIvCustom(const uint8_t* pKey, uint32_t iKeyLen)
 {
 	ClearKey();
 
 	if (nullptr != pKey && iKeyLen > 0)
 	{
-		memcpy(m_KeyArr, pKey, (iKeyLen > SM4_BLOCK_SIZE ? SM4_BLOCK_SIZE : iKeyLen));
-	}
+		//密码
+		CMD5::StringToMD5((const char*)pKey, iKeyLen, m_KeyArray, E_KEY_LENGTH);
 
-	if (nullptr != pIV && iIVLen > 0)
-	{
-		memcpy(m_IvArr, pIV, (iIVLen > SM4_BLOCK_SIZE ? SM4_BLOCK_SIZE : iIVLen));
+		//计算IV值
+		uint8_t *pTemp = new uint8_t[iKeyLen + 1]{ 0 };
+		for (uint32_t i = 0; i < iKeyLen; ++i)
+		{
+			//反转密码串
+			pTemp[i] = pKey[iKeyLen - i - 1];
+		}
+
+		CMD5::StringToMD5((const char*)pTemp, iKeyLen, m_IVArray, E_IV_LENGTH);
+
+		delete[] pTemp;
 	}
 }
 
-void CSM4::ClearKey()
-{
-	memset(m_KeyArr, 0, sizeof(m_KeyArr));
-	memset(m_IvArr, 0, sizeof(m_IvArr));
-}
 
-bool CSM4::Encrypt(const std::string &szInData, std::string &szOutEncryptData, std::string &szError, bool bLowercase) const
+/*********************************************************************
+功能：	加密
+参数：	szIn 待加密串
+*		szOut 加密串
+*		eEncodeType 加密串编码类型
+*		szError 错误信息
+返回：	成功返回true
+修改：
+*********************************************************************/
+bool CSM4::Encrypt(const std::string &szIn, std::string &szOut, EENCODE_TYPE eEncodeType, std::string &szError) const
 {
-	if (szInData.empty())
+	if (szIn.empty())
 	{
 		szError = "待加密字符串为空！";
 		return false;
 	}
 
-	//计算追加填充,保证为16 的整数倍	
-	uChar8 paddingBuff[SM4_BLOCK_SIZE] = { 0 };
-	int paddingSize = Padding(szInData.c_str(), szInData.length(), paddingBuff);
+	uint32_t outLen = 0;
+	uint8_t *out = nullptr;
 
-	char *in = (char *)szInData.c_str();
-	int inLen = szInData.length();
-
-	//设置输出缓冲
-	uInt32 outBufLen = SM4_SALT_BYTES + inLen + paddingSize;
-	char *out = new char[outBufLen + 1];
-	memset(out, 0, outBufLen + 1);
-
-	//设置随机盐值	
-#if SM4_SALT_BYTES > 0
-	uChar8 saltBuff[SM4_SALT_BYTES] = { 0 };
-	GetRandBytes(SM4_SALT_BYTES,saltBuff);
-	memcpy(out,saltBuff, SM4_SALT_BYTES);
-	uChar8 *pSaltBuff = saltBuff;
-#else
-	uChar8 *pSaltBuff = nullptr;
-#endif
-
-	//设置密钥上下文
-	SSM4Context SM4Context;
-	SetKeyContext(SM4Context, pSaltBuff, true);
-	uChar8 pIv[SM4_BLOCK_SIZE] = { 0 };
-	memcpy(pIv, m_IvArr, SM4_BLOCK_SIZE);
-
-	//处理
-	int iRoundCounts = inLen / SM4_BLOCK_SIZE;
-	uChar8 *pInPos = (uChar8 *)in; //明文处理位置
-	uChar8 *pOutPos = (uChar8 *)(out + SM4_SALT_BYTES); //密文输出位置
-	for (int i = 0;i < iRoundCounts;i++)
+	if (!Encrypt(szIn.c_str(), (uint32_t)szIn.length(), out, outLen, szError))
 	{
-
-		switch (m_eMode)
-		{
-		case ESM4_MODE_CBC:// CBC 模式
-			CBCCipher(SM4Context, pIv, pInPos, pOutPos);
-
-			break;
-		case ESM4_MODE_EBC:// EBC 模式
-			EBCCipher(SM4Context, pInPos, pOutPos);
-			break;
-		}
-
-		pInPos += SM4_BLOCK_SIZE;
-		pOutPos += SM4_BLOCK_SIZE;
+		return false;
 	}
-
-	//加密最后一块
-	uChar8 dealBuff[SM4_BLOCK_SIZE] = { 0 };
-	memcpy(dealBuff, (in + (SM4_BLOCK_SIZE * iRoundCounts)), inLen - (SM4_BLOCK_SIZE * iRoundCounts));
-	memcpy(&dealBuff[inLen - (SM4_BLOCK_SIZE * iRoundCounts)], paddingBuff, paddingSize);
-	switch (m_eMode)
+	else
 	{
-	case ESM4_MODE_CBC:// CBC 模式
-		CBCCipher(SM4Context, pIv, dealBuff, pOutPos);
+		//编码
+		if (E_CODE_BASE64 == eEncodeType)
+			szOut = CCodeConvert::EncodeBase64(out, outLen);
+		else if (E_CODE_HEX == eEncodeType)
+			szOut = CCodeConvert::EncodeHex(out, outLen);
+		else
+			szOut = std::string((const char*)out, outLen);
 
-		break;
-	case ESM4_MODE_EBC:// EBC 模式
-		EBCCipher(SM4Context, dealBuff, pOutPos);
-		break;
+		delete[] out;
 	}
-
-	//需要对密文编码,防止出现不可识别的字符 16进制编码		
-	szOutEncryptData = BytesToHexString((const uChar8*)out, outBufLen);
-
-	// 释放内存 
-	delete[] out;
 
 	return true;
 }
 
-bool CSM4::Encrypt(const char *inData, uInt32 inDataLen, char *&outEnyData, uInt32 &outBufLen, std::string &szError) const
+/*********************************************************************
+功能：	加密
+参数：	in 待加密串
+*		inLen 待加密串长度
+*		out 加密串，调用者释放
+*		outLen 加密串长度
+*		szError 错误信息
+返回：	成功返回true
+修改：
+*********************************************************************/
+bool CSM4::Encrypt(const char *in, uint32_t inLen, uint8_t *&out, uint32_t &outLen, std::string &szError) const
 {
-	if (nullptr == inData || inDataLen <= 0)
+	if (nullptr == in || inLen <= 0)
 	{
-		szError = "参数错误！";
+		szError = "待加密串为空或长度错误！";
 		return false;
 	}
-
-	if (nullptr != outEnyData)
+	else
 	{
-		delete[] outEnyData;
-		outEnyData = nullptr;
+		if (inLen > E_MAX_LENGTH)
+		{
+			szError = "暂时处理数据最大长度为" + std::to_string(E_MAX_LENGTH / 1048576) + "M！";
+			return false;
+		}
+	}
+
+	if (nullptr != out)
+	{
+		outLen = 0;
+		delete[] out;
+		out = nullptr;
 	}
 
 	//计算追加填充,保证为16 的整数倍	
-	uChar8 paddingBuff[SM4_BLOCK_SIZE] = { 0 };
-	int paddingSize = Padding(inData, inDataLen, paddingBuff);
+	uint8_t paddingBuff[E_BLOCK_SIZE] = { 0 };
+	int paddingSize = Padding(in, inLen, paddingBuff);
 
 	//设置输出缓冲
-	outBufLen = SM4_SALT_BYTES + inDataLen + paddingSize;
-	outEnyData = new char[outBufLen + 1]{ '\0' };
+	outLen = E_SALT_LENGTH + inLen + paddingSize;
+	out = new uint8_t[outLen + 1]{ '\0' };
 
-	if (nullptr == outEnyData)
+	if (nullptr == out)
 	{
-		szError = "申请内存块失败！";
+		szError = "申请输出内存缓存失败！";
 		return false;
 	}
 
 	//设置随机盐值	
-#if SM4_SALT_BYTES > 0
-	uChar8 saltBuff[SM4_SALT_BYTES] = { 0 };
-	GetRandBytes(SM4_SALT_BYTES, saltBuff);
-	memcpy(outEnyData, saltBuff, SM4_SALT_BYTES);
-	uChar8 *pSaltBuff = saltBuff;
+#if E_SALT_LENGTH > 0
+	uint8_t saltBuff[E_SALT_LENGTH] = { 0 };
+	GetRandBytes(E_SALT_LENGTH, saltBuff);
+	memcpy(out, saltBuff, E_SALT_LENGTH);
+	uint8_t *pSaltBuff = saltBuff;
 #else
-	uChar8 *pSaltBuff = nullptr;
+	uint8_t *pSaltBuff = nullptr;
 #endif
 
 	//设置密钥上下文
 	SSM4Context SM4Context;
 	SetKeyContext(SM4Context, pSaltBuff, true);
-	uChar8 pIv[SM4_BLOCK_SIZE] = { 0 };
-	memcpy(pIv, m_IvArr, SM4_BLOCK_SIZE);
+	uint8_t pIv[E_IV_LENGTH] = { 0 };
+	memcpy(pIv, m_IVArray, E_IV_LENGTH);
 
 	//处理
-	int iRoundCounts = inDataLen / SM4_BLOCK_SIZE;
-	const uChar8 *pInPos = (const uChar8 *)inData; //明文处理位置
-	uChar8 *pOutPos = (uChar8 *)(outEnyData + SM4_SALT_BYTES); //密文输出位置
+	int iRoundCounts = inLen / E_BLOCK_SIZE;
+	const uint8_t *pInPos = (const uint8_t*)in; //明文处理位置
+	uint8_t *pOutPos = (uint8_t *)(out + E_SALT_LENGTH); //密文输出位置
+
 	for (int i = 0; i < iRoundCounts; i++)
 	{
 
 		switch (m_eMode)
 		{
-		case ESM4_MODE_CBC:// CBC 模式
+		case E_MODE_CBC:// CBC模式
 			CBCCipher(SM4Context, pIv, pInPos, pOutPos);
 			break;
-		case ESM4_MODE_EBC:// EBC 模式
-			EBCCipher(SM4Context, pInPos, pOutPos);
+		case E_MODE_ECB:// ECB模式
+			ECBCipher(SM4Context, pInPos, pOutPos);
 			break;
 		}
 
-		pInPos += SM4_BLOCK_SIZE;
-		pOutPos += SM4_BLOCK_SIZE;
+		pInPos += E_BLOCK_SIZE;
+		pOutPos += E_BLOCK_SIZE;
 	}
 
 	//加密最后一块
-	uChar8 dealBuff[SM4_BLOCK_SIZE] = { 0 };
-	memcpy(dealBuff, (inData + (SM4_BLOCK_SIZE * iRoundCounts)), inDataLen - (SM4_BLOCK_SIZE * iRoundCounts));
-	memcpy(&dealBuff[inDataLen - (SM4_BLOCK_SIZE * iRoundCounts)], paddingBuff, paddingSize);
+	uint8_t dealBuff[E_BLOCK_SIZE] = { 0 };
+	memcpy(dealBuff, (in + (E_BLOCK_SIZE * iRoundCounts)), inLen - (E_BLOCK_SIZE * iRoundCounts));
+	memcpy(&dealBuff[inLen - (E_BLOCK_SIZE * iRoundCounts)], paddingBuff, paddingSize);
+
 	switch (m_eMode)
 	{
-	case ESM4_MODE_CBC:// CBC 模式
+	case E_MODE_CBC:// CBC模式
 		CBCCipher(SM4Context, pIv, dealBuff, pOutPos);
 		break;
-	case ESM4_MODE_EBC:// EBC 模式
-		EBCCipher(SM4Context, dealBuff, pOutPos);
+	case E_MODE_ECB:// ECB模式
+		ECBCipher(SM4Context, dealBuff, pOutPos);
 		break;
 	}
 
 	return true;
 }
 
-bool CSM4::Decrypt(const std::string &szInEncryptData, std::string &szOutData, std::string & szError) const
+/*********************************************************************
+功能：	加密数据到文件
+参数：	in 待加密串
+*		inLen 待加密串长度
+*		szOutFileName 输出文件名称
+*		eEncodeType 加密串编码类型
+*		szError 错误信息
+返回：	成功返回true
+修改：
+*********************************************************************/
+bool CSM4::EncryptToFile(const char *in, uint32_t inLen, const std::string &szOutFileName, EENCODE_TYPE eEncodeType,
+	std::string &szError) const
 {
-	if (szInEncryptData.empty())
+	if (szOutFileName.empty())
 	{
-		szError = "密文为空！";
+		szError = "加密后存放数据文件：" + szOutFileName + " 名称为空！";
 		return false;
 	}
 
-	uChar8 *in = new uChar8[szInEncryptData.length() / 2 + 1]{ 0 };
+	//加密
+	std::string szInTemp(in, inLen), szOutTemp;
 
-	if (nullptr == in)
+	if (!Encrypt(szInTemp, szOutTemp, eEncodeType, szError))
 	{
-		szError = "申请内存块失败！";
 		return false;
 	}
 
-	size_t iInDataLen = HexStringToBytes(szInEncryptData, in, szInEncryptData.length() / 2 + 1);
+	return WriteDataToFile(szOutFileName, szOutTemp.c_str(), (int64_t)szOutTemp.length(), szError);
+}
 
-	//参数判断,不符合sm4 规范不用解码
-	if (iInDataLen % SM4_BLOCK_SIZE != 0)
+/*********************************************************************
+功能：	解密
+参数：	in 待解密串
+*		inLen 待解密串长度
+*		out 解密串，调用者释放
+*		outLen 解密串长度
+*		szError 错误信息
+返回：	成功返回true
+修改：
+*********************************************************************/
+bool CSM4::Decrypt(const std::string &szIn, EENCODE_TYPE eDecodeType, std::string &szOut, std::string & szError) const
+{
+	uint32_t iTempLen = 0;
+
+	if (szIn.empty())
 	{
-		delete[] in;
-		szError = "密文长度不符合SM4规范，长度:" + std::to_string(iInDataLen);
+		szError = "待解密串为空！";
 		return false;
+	}
+	else
+	{
+		//检查格式
+		if (E_CODE_BASE64 == eDecodeType)
+		{
+			if (CheckEncryptedData(szIn, eDecodeType, szError))
+				iTempLen = (uint32_t)(szIn.length() / 4 + 1) * 3;
+			else
+				return false;
+		}
+		else if (E_CODE_HEX == eDecodeType)
+		{
+			if (CheckEncryptedData(szIn, eDecodeType, szError))
+				iTempLen = (uint32_t)szIn.length() / 2;
+			else
+				return false;
+		}
+		else
+		{
+			if (CheckEncryptedData(szIn, eDecodeType, szError))
+				iTempLen = (uint32_t)szIn.length();
+			else
+				return false;
+		}
+	}
+
+	bool bRet = true;
+	uint8_t *pTemp = new uint8_t[iTempLen + 1]{ '\0' };
+	uint32_t outLen = 0;
+	char *out = nullptr;
+
+	//转char*
+	if (nullptr == pTemp)
+	{
+		szError = "申请内存缓存失败！";
+		return false;
+	}
+	else
+	{
+		if (E_CODE_BASE64 == eDecodeType)
+			iTempLen = CCodeConvert::DecodeBase64(szIn, pTemp, iTempLen);
+		else if (E_CODE_HEX == eDecodeType)
+			iTempLen = CCodeConvert::DecodeHex(szIn, pTemp, iTempLen);
+		else
+			memcpy(pTemp, szIn.c_str(), iTempLen);
+	}
+
+	//解密
+	if (!Decrypt(pTemp, iTempLen, out, outLen, szError))
+	{
+		bRet = false;
+	}
+	else
+	{
+		szOut = std::string(out, outLen);
+		delete[] out;
+	}
+
+	// 释放内存
+	delete[] pTemp;
+
+	return bRet;
+}
+
+/*********************************************************************
+功能：	解密
+参数：	in 待解密串
+*		inLen 待解密串长度
+*		out 解密串，调用者释放
+*		outLen 解密串长度
+*		szError 错误信息
+返回：	成功返回true
+修改：
+*********************************************************************/
+bool CSM4::Decrypt(const uint8_t *in, uint32_t inLen, char *&out, uint32_t &outLen, std::string &szError) const
+{
+	if (nullptr == in || inLen <= 0 || inLen % E_BLOCK_SIZE != 0)
+	{
+		szError = "待解密串为空或长度错误（必须是16的整倍数）！";
+		return false;
+	}
+	else if (inLen > (E_MAX_LENGTH + E_BLOCK_SIZE))
+	{
+		szError = "暂时处理数据最大长度为" + std::to_string(E_MAX_LENGTH / 1048576) + "M！";
+		return false;
+	}
+
+	if (nullptr != out)
+	{
+		outLen = 0;
+		delete[] out;
+		out = nullptr;
 	}
 
 	//读出随机盐值
-#if SM4_SALT_BYTES > 0	
-	uChar8 saltBuff[SM4_SALT_BYTES] = { 0 };
-	memcpy(saltBuff, in, SM4_SALT_BYTES);
-	inLen -= SM4_SALT_BYTES;
-	uChar8 *pSaltBuff = saltBuff;
+#if E_SALT_LENGTH > 0	
+	uint8_t saltBuff[E_SALT_LENGTH] = { 0 };
+	memcpy(saltBuff, in, E_SALT_LENGTH);
+	inLen -= E_SALT_LENGTH;
+	uint8_t *pSaltBuff = saltBuff;
 #else
-	uChar8 *pSaltBuff = nullptr;
+	uint8_t *pSaltBuff = nullptr;
 #endif
+
 	//设置输出缓冲
-	char * out = new char[iInDataLen + 1 ];
-	memset(out, 0, iInDataLen + 1);
-	uChar8 pIv[SM4_BLOCK_SIZE] = {0};
-	memcpy(pIv, m_IvArr, SM4_BLOCK_SIZE);
+	outLen = inLen;
+	out = new char[outLen + 1]{ '\0' };
+	uint8_t pIv[E_IV_LENGTH] = { 0 };
+	memcpy(pIv, m_IVArray, E_IV_LENGTH);
+
+	if (nullptr == out)
+	{
+		outLen = 0;
+		szError = "申请输出内存缓存失败！";
+		return false;
+	}
+
 	//设置密钥上下文
 	SSM4Context SM4Context;
 	SetKeyContext(SM4Context, pSaltBuff, false);
 
 	//处理
 	bool bRet = true;
-	int iRoundCounts = iInDataLen / SM4_BLOCK_SIZE;
-	uChar8 *pInPos = (in + SM4_SALT_BYTES); //明文处理位置
-	uChar8 *pOutPos = (uChar8 *)out; //密文输出位置
-	for (int i = 0;i < iRoundCounts;i++)
+	int iRoundCounts = inLen / E_BLOCK_SIZE;
+	const uint8_t *pInPos = in + E_SALT_LENGTH; //明文处理位置
+	uint8_t *pOutPos = (uint8_t*)out; //密文输出位置
+
+	for (int i = 0; i < iRoundCounts; i++)
 	{
 		switch (m_eMode)
 		{
-		case ESM4_MODE_CBC:// CBC 模式
+		case E_MODE_CBC: //CBC模式
 			CBCCipher(SM4Context, pIv, pInPos, pOutPos);
-
 			break;
-		case ESM4_MODE_EBC:// EBC 模式
-			EBCCipher(SM4Context, pInPos, pOutPos);
+		case E_MODE_ECB: //ECB模式
+			ECBCipher(SM4Context, pInPos, pOutPos);
 			break;
 		}
 
-		pInPos += SM4_BLOCK_SIZE;
-		pOutPos += SM4_BLOCK_SIZE;
+		pInPos += E_BLOCK_SIZE;
+		pOutPos += E_BLOCK_SIZE;
 	}
 
 	//校验填充
-	size_t paddingValue = out[iInDataLen - 1];
-
-	if (paddingValue > SM4_BLOCK_SIZE)
+	uint32_t paddingValue = out[inLen - 1];
+	
+	if (paddingValue <= E_BLOCK_SIZE)
 	{
-		bRet = false;
-		szError = "密文填充值错误,可能是密码错误!";
-	}
-	else
-	{
-		for (size_t i = iInDataLen - paddingValue; i < iInDataLen; i++)
+		for (uint32_t i = inLen - paddingValue; i < inLen; i++)
 		{
 			if (out[i] != paddingValue)
 			{
 				bRet = false;
-				szError = "密文填充值错误,可能是密文被损坏!";
+				szError = "密文填充值错误，可能是密文被损坏！";
 				break;
 			}
 		}
 	}
-
-	// 明文
-	if (bRet)
-	{
-		szOutData = std::move(std::string(out, iInDataLen - paddingValue));
-	}
-
-	// 释放内存
-	delete[] out;
-	delete[] in;
-
-	return bRet;
-}
-
-bool CSM4::Decrypt(const char* inDeyData, uInt32 inDeyDataLen, char *&outData, uInt32 &outBufLen, std::string &szError) const
-{
-	//参数判断,不符合sm4 规范不用解码
-	if (inDeyDataLen % SM4_BLOCK_SIZE != 0)
-	{
-		szError = "密文长度不符合SM4规范，长度:" + std::to_string(inDeyDataLen);
-		return false;
-	}
-
-	if (nullptr != outData)
-	{
-		delete[] outData;
-		outData = nullptr;
-	}
-
-	//读出随机盐值
-#if SM4_SALT_BYTES > 0	
-	uChar8 saltBuff[SM4_SALT_BYTES] = { 0 };
-	memcpy(saltBuff, inDeyData, SM4_SALT_BYTES);
-	inDeyDataLen -= SM4_SALT_BYTES;
-	uChar8 *pSaltBuff = saltBuff;
-#else
-	uChar8 *pSaltBuff = nullptr;
-#endif
-
-	//设置输出缓冲
-	outBufLen = inDeyDataLen;
-	outData = new char[outBufLen + 1]{ '\0' };
-	uChar8 pIv[SM4_BLOCK_SIZE] = { 0 };
-	memcpy(pIv, m_IvArr, SM4_BLOCK_SIZE);
-
-	if (nullptr == outData)
-	{
-		szError = "申请内存块失败！";
-		return false;
-	}
-
-	//设置密钥上下文
-	SSM4Context SM4Context;
-	SetKeyContext(SM4Context, pSaltBuff, false);
-
-	//处理
-	bool bRet = true;
-	int iRoundCounts = inDeyDataLen / SM4_BLOCK_SIZE;
-	const uChar8 *pInPos = (const uChar8 *)(inDeyData + SM4_SALT_BYTES); //明文处理位置
-	uChar8 *pOutPos = (uChar8 *)outData; //密文输出位置
-	for (int i = 0; i < iRoundCounts; i++)
-	{
-		switch (m_eMode)
-		{
-		case ESM4_MODE_CBC:// CBC 模式
-			CBCCipher(SM4Context, pIv, pInPos, pOutPos);
-			break;
-		case ESM4_MODE_EBC:// EBC 模式
-			EBCCipher(SM4Context, pInPos, pOutPos);
-			break;
-		}
-
-		pInPos += SM4_BLOCK_SIZE;
-		pOutPos += SM4_BLOCK_SIZE;
-	}
-
-	//校验填充
-	uInt32 paddingValue = outData[inDeyDataLen - 1];
-	
-	if (paddingValue > SM4_BLOCK_SIZE)
+	else
 	{
 		bRet = false;
-		szError = "密文填充值错误,可能是密码错误!";
+		szError = "密文填充值错误，可能是密码错误！";
 	}
-	else
-	{
-		for (uInt32 i = inDeyDataLen - paddingValue; i < inDeyDataLen; i++)
-		{
-			if (outData[i] != paddingValue)
-			{
-				bRet = false;
-				szError = "密文填充值错误,可能是密文被损坏!";
-				break;
-			}
-		}
-	}
+	
 
+	//明文长度
 	if (bRet)
-	{
-		//明文长度
-		outBufLen -= paddingValue;
-	}
+		outLen -= paddingValue;
 	else
 	{
-		//失败时释放内存
-		delete[] outData;
-		outData = nullptr;
-		outBufLen = 0;
+		outLen = 0;
+		delete[] out;
+		out = nullptr;
 	}
 
 	return bRet;
 }
 
-bool CSM4::EncryptFile(const std::string &szInData, const std::string &szOutFileName, std::string &szError, bool bLowercase) const
-{
-	if (szInData.empty())
-	{
-		szError = "待加密的串为空！";
-		return false;
-	}
-
-	if (szOutFileName.empty())
-	{
-		szError = "加密输出文件名称为空！";
-		return false;
-	}
-
-	std::string szOutEncryptData;
-	if (Encrypt(szInData, szOutEncryptData, szError))
-	{
-		std::ofstream outFile(szOutFileName.c_str());
-		if (outFile.is_open() && outFile.good())
-		{
-			outFile << szOutEncryptData;
-			outFile.close();
-
-			return true;
-		}
-		else
-		{
-			szError = "打开加密输出文件：" + szOutFileName + "失败！";
-			return false;
-		}
-	}
-	else
-		return false;
-}
-
-bool CSM4::DecryptFile(const std::string & szInFileName, std::string & szOutData, std::string & szError) const
+/*********************************************************************
+功能：	解密文件中的内容
+参数：	szInFileName 待解密文件名称
+*		eDecodeType 文件中的解码类型
+*		out 解密串，调用都释放
+*		outLen 解密串长度
+*		szError 错误信息
+返回：	成功返回true
+修改：
+*********************************************************************/
+bool CSM4::DecryptFromFile(const std::string &szInFileName, EENCODE_TYPE eDecodeType, char *&out, uint32_t &outLen,
+	std::string &szError) const
 {
 	if (szInFileName.empty())
 	{
-		szError = "解密输入文件名称为空！";
+		szError = "待解密文件名称为空！";
 		return false;
-	}
-
-	if (!CMD5::CheckFileExist(szInFileName))
-	{
-		szError = "解密输入文件不存在！";
-		return false;
-	}
-
-	std::ifstream inFile(szInFileName.c_str());
-	if (inFile.is_open() && inFile.good())
-	{
-		std::string szInEncryptData((std::istreambuf_iterator<char>(inFile)), std::istreambuf_iterator<char>());
-		inFile.close();
-
-		return Decrypt(szInEncryptData, szOutData, szError);
 	}
 	else
 	{
-		szError = "打开解密输入文件：" + szInFileName + "失败！";
-		return false;
+		if (!CheckFileExist(szInFileName))
+		{
+			szError = "待解密文件：" + szInFileName + " 不存在！";
+			return false;
+		}
 	}
-}
 
-/**
-* 将字节数组，处理成16进制的字串
-* eg:{0xb1,0x94,0x6a,0xc9,0x24,0x92,0xd2,0x34,0x7c,0x62,0x35,0xb4,0xd2,0x61,0x11,0x84}
-* 处理结果为"b1946ac92492d2347c6235b4d2611184"
-*/
-std::string CSM4::BytesToHexString(const uChar8 *in, size_t size, bool bLowercase)
-{
-	std::string str;
-	int strLen = size * 2;
-	char*  buf = new char[strLen + 3];
-	memset(buf, 0, strLen + 3);
-
-	for (size_t i = 0; i < size; i++)
+	if (nullptr != out)
 	{
-		snprintf(buf + i * 2, 3, (bLowercase ? "%02x" : "%02X"), in[i]);
+		outLen = 0;
+		delete[] out;
+		out = nullptr;
 	}
 
-	str = buf;
-	delete buf;
+	bool bRet = true;
+	int64_t fileSize = 0;
+	char *fileData = nullptr;
 
-	return str;
-}
-
-/**
-* 将16 进制字符串处理成字节数组
-* eg: md5 "b1946ac92492d2347c6235b4d2611184"
-* 处理结果为{0xb1,0x94,0x6a,0xc9,0x24,0x92,0xd2,0x34,0x7c,0x62,0x35,0xb4,0xd2,0x61,0x11,0x84}
-*/
-size_t CSM4::HexStringToBytes(const std::string &str, uChar8 *out, size_t out_buf_len)
-{
-	if (0 == out_buf_len)
-		return 0;
-
-	size_t out_len = 0;
-	unsigned char h = 0, l = 0;
-
-	for (size_t i = 0; i < str.size(); i += 2)
+	//读取文件内容
+	if (ReadDataFromFile(szInFileName, fileData, fileSize, szError))
 	{
-		h = HexCharToInt(str[i]);
-		l = HexCharToInt(str[i + 1]);
-		out[out_len++] = (h << 4) | l;
+		if (fileSize <= 0)
+		{
+			bRet = false;
+			szError = "待解密文件为空！";
+		}
+		else
+		{
+			std::string szInTemp(fileData, fileSize), szOutTemp;
 
-		//防止越界
-		if (out_len >= out_buf_len)
-			break;
+			//解密
+			bRet = Decrypt(szInTemp, eDecodeType, szOutTemp, szError);
+			if (bRet)
+			{
+				outLen = (uint32_t)szOutTemp.length();
+				out = new char[outLen + 1]{ '\0' };
+
+				if (nullptr == out)
+				{
+					bRet = false;
+					outLen = 0;
+					szError = "申请输出内存缓存失败！";
+				}
+				else
+					memcpy(out, szOutTemp.c_str(), outLen);
+			}
+
+			delete[] fileData;
+			fileData = nullptr;
+			fileSize = 0;
+		}
 	}
+	else
+		bRet = false;
 
-	return out_len;
-}
-unsigned char CSM4::HexCharToInt(char hex)
-{
-	switch (hex)
-	{
-	case '0':
-		return 0;
-	case '1':
-		return 1;
-	case '2':
-		return 2;
-	case '3':
-		return 3;
-	case '4':
-		return 4;
-	case '5':
-		return 5;
-	case '6':
-		return 6;
-	case '7':
-		return 7;
-	case '8':
-		return 8;
-	case '9':
-		return 9;
-	case 'a':
-	case 'A':
-		return 10;
-	case 'b':
-	case 'B':
-		return 11;
-	case 'c':
-	case 'C':
-		return 12;
-	case 'd':
-	case 'D':
-		return 13;
-	case 'e':
-	case 'E':
-		return 14;
-	default:
-		break;
-	}
-
-	return 15;
-}
-char CSM4::IntToHexChar(unsigned char x, bool bLowercase)
-{
-	switch (x)
-	{
-	case 0:
-		return '0';
-	case 1:
-		return '1';
-	case 2:
-		return '2';
-	case 3:
-		return '3';
-	case 4:
-		return '4';
-	case 5:
-		return '5';
-	case 6:
-		return '6';
-	case 7:
-		return '7';
-	case 8:
-		return '8';
-	case 9:
-		return '9';
-	case 10:
-		return (bLowercase ? 'a' : 'A');
-	case 11:
-		return (bLowercase ? 'b' : 'B');
-	case 12:
-		return (bLowercase ? 'c' : 'C');
-	case 13:
-		return (bLowercase ? 'd' : 'D');
-	case 14:
-		return (bLowercase ? 'e' : 'E');
-	default:
-		break;
-	}
-
-	return (bLowercase ? 'f' : 'F');
+	return bRet;
 }
 
-/**
-* 获取长度为 iByteCounts 个字节的随机数,保存于pByteBuff 中
-*/
-void CSM4::GetRandBytes(uInt32 iByteCounts, uChar8 *pByteBuff)
+/*********************************************************************
+功能：	设置密钥上下文
+参数：	SM4Context 密钥上下文结构体
+*		pSalt 盐值
+*		bEncrypted true:加密，false:解密
+返回：	无
+修改：
+*********************************************************************/
+void CSM4::SetKeyContext(SSM4Context &SM4Context, uint8_t *pSalt, bool bEncrypted) const
 {
-	std::random_device rd;
-	std::uniform_int_distribution<int> uni_dist(0, 255);
+	uint8_t keyArr[E_KEY_LENGTH] = { 0 };
 
-	for (uInt32 i = 0; i < iByteCounts; i++)
-	{
-		pByteBuff[i] = uni_dist(rd);
-	}
-}
-
-/*
-* 设置密钥上下文
-*/
-void CSM4::SetKeyContext(SSM4Context &SM4Context, uChar8 *pSalt, bool encrypted) const
-{
-	uChar8 keyArr[SM4_BLOCK_SIZE] = { 0 };
 	//设置密钥
-#if SM4_SALT_BYTES > 0	
-
-	uChar8 keyBuff[SM4_BLOCK_SIZE + SM4_SALT_BYTES] = { 0 };
-	memcpy(keyBuff, m_md5KeyArr, SM4_BLOCK_SIZE);
-	memcpy(&keyBuff[SM4_BLOCK_SIZE], pSalt, SM4_SALT_BYTES);
-	size_t size = HexStringToBytes(CMD5::StringToMD5((const char *)keyBuff, SM4_BLOCK_SIZE + SM4_SALT_BYTES), keyArr, SM4_BLOCK_SIZE);
+#if E_SALT_LENGTH > 0
+	uint8_t keyBuff[E_KEY_LENGTH + E_SALT_LENGTH] = { 0 };
+	memcpy(keyBuff, m_KeyArray, E_KEY_LENGTH);
+	memcpy(&keyBuff[E_KEY_LENGTH], pSalt, E_SALT_LENGTH);
+	CMD5::StringToMD5((const char*)keyBuff, E_BLOCK_SIZE + E_SALT_LENGTH, (char*)keyArr, E_KEY_LENGTH);
 #else
-	memcpy(keyArr, m_KeyArr, SM4_BLOCK_SIZE);
+	memcpy(keyArr, m_KeyArray, E_KEY_LENGTH);
 #endif
-	SetSubkey(SM4Context.sk, keyArr);
 
-	SM4Context.encrypted = encrypted;
+	SetSubkey(SM4Context.sk, keyArr);
+	SM4Context.encrypted = bEncrypted;
 
 	if (!SM4Context.encrypted) //解密
 	{
 		//需要颠倒密钥
-		for (int i = 0; i < SM4_BLOCK_SIZE; i++)
+		for (int i = 0; i < E_KEY_LENGTH; i++)
 		{
 			SWAP((SM4Context.sk[i]), (SM4Context.sk[31 - i]));
 		}
 	}
 }
 
-/*
-* 密钥扩展算法 (轮密钥由加密密钥通过密钥扩展算法生成)
-*/
-void CSM4::SetSubkey(unsigned long SK[32], uChar8 key[SM4_BLOCK_SIZE]) const
+/*********************************************************************
+功能：	密钥扩展算法 (轮密钥由加密密钥通过密钥扩展算法生成)
+参数：	sk 轮密钥存放buff
+*		key 加密密钥
+返回：	无
+修改：
+*********************************************************************/
+void CSM4::SetSubkey(unsigned long *sk, uint8_t *key) const
 {
 	unsigned long MK[4];
 	unsigned long k[36];
 	unsigned long i = 0;
-
 
 	GET_ULONG_BE(MK[0], key, 0);
 	GET_ULONG_BE(MK[1], key, 4);
@@ -779,22 +674,25 @@ void CSM4::SetSubkey(unsigned long SK[32], uChar8 key[SM4_BLOCK_SIZE]) const
 	k[2] = MK[2] ^ FK[2];
 	k[3] = MK[3] ^ FK[3];
 
-	for (; i < 32; i++)
+	for (; i < E_ROUND_KEY_LENGTH; i++)
 	{
 		k[i + 4] = k[i] ^ (SM4CalciRK(k[i + 1] ^ k[i + 2] ^ k[i + 3] ^ CK[i]));
-		SK[i] = k[i + 4];
+		sk[i] = k[i + 4];
 	}
 }
 
-/**
-* T' 变换
-*/
+/*********************************************************************
+功能：	T' 变换
+参数：	ka 值
+返回：	变换后的值
+修改：
+*********************************************************************/
 unsigned long CSM4::SM4CalciRK(unsigned long ka) const
 {
 	unsigned long bb = 0;
 	unsigned long rk = 0;
-	uChar8 a[4];
-	uChar8 b[4];
+	uint8_t a[4];
+	uint8_t b[4];
 	PUT_ULONG_BE(ka, a, 0)
 		b[0] = sm4Sbox(a[0]);
 	b[1] = sm4Sbox(a[1]);
@@ -806,7 +704,14 @@ unsigned long CSM4::SM4CalciRK(unsigned long ka) const
 	return rk;
 }
 
-void CSM4::SM4OneRound(unsigned long sk[32], uChar8 input[SM4_BLOCK_SIZE], uChar8 output[SM4_BLOCK_SIZE]) const
+/*********************************************************************
+功能：	一轮处理
+参数：	input 输入数据，块大小
+*		output 输出数据，块大小
+返回：	无
+修改：
+*********************************************************************/
+void CSM4::SM4OneRound(unsigned long *sk, const uint8_t *input, uint8_t *output) const
 {
 	unsigned long i = 0;
 	unsigned long ulbuf[36];
@@ -816,7 +721,7 @@ void CSM4::SM4OneRound(unsigned long sk[32], uChar8 input[SM4_BLOCK_SIZE], uChar
 		GET_ULONG_BE(ulbuf[1], input, 4)
 		GET_ULONG_BE(ulbuf[2], input, 8)
 		GET_ULONG_BE(ulbuf[3], input, 12)
-		while (i < 32)
+		while (i < E_ROUND_KEY_LENGTH)
 		{
 			ulbuf[i + 4] = sm4F(ulbuf[i], ulbuf[i + 1], ulbuf[i + 2], ulbuf[i + 3], sk[i]);
 
@@ -828,12 +733,17 @@ void CSM4::SM4OneRound(unsigned long sk[32], uChar8 input[SM4_BLOCK_SIZE], uChar
 	PUT_ULONG_BE(ulbuf[32], output, 12);
 }
 
-/**
- * 计算填充
-*/
-int CSM4::Padding(const char* pInData, int iInDataLen, uChar8 * paddingBuff) const
+/*********************************************************************
+功能：	计算填充
+参数：	pInData 待加密串
+*		iInDataLen 待加密串长度
+*		paddingBuff 填充buff，填充字符为填充的字节数转char
+返回：	填充的字节数
+修改：
+*********************************************************************/
+int CSM4::Padding(const char* pInData, int iInDataLen, uint8_t *paddingBuff) const
 {
-	uChar8 paddingSize = SM4_BLOCK_SIZE - iInDataLen % SM4_BLOCK_SIZE;
+	uint8_t paddingSize = E_BLOCK_SIZE - iInDataLen % E_BLOCK_SIZE;
 
 	for (int i = 0;i < paddingSize; i++)
 	{
@@ -843,60 +753,75 @@ int CSM4::Padding(const char* pInData, int iInDataLen, uChar8 * paddingBuff) con
 	return paddingSize;
 }
 
-void CSM4::CBCCipher(SSM4Context & SM4Context, uChar8 *pIv, const uChar8 * pSrc, uChar8 * pDest) const
+/*********************************************************************
+功能：	CBC加解密处理
+参数：	SM4Context 密钥上下文
+*		pIv IV值
+*		pSrc 待处理串
+*		pDest 输出串
+返回：	填充的字节数
+修改：
+*********************************************************************/
+void CSM4::CBCCipher(SSM4Context &SM4Context, uint8_t *pIv, const uint8_t *pSrc, uint8_t *pDest) const
 {
-	uChar8 buff[SM4_BLOCK_SIZE] = { 0 };
+	uint8_t buff[E_BLOCK_SIZE] = { 0 };
 
 	if (SM4Context.encrypted) //加密
 	{
 		//补入IV 值
-		for (int i = 0; i < SM4_BLOCK_SIZE; i++)
+		for (int i = 0; i < E_BLOCK_SIZE; i++)
 		{
 			buff[i] = (pSrc[i] ^ pIv[i]);
 		}
 
-		for (int i = 0;i < SM4_BLOCK_SIZE; i++)
+		for (int i = 0; i < E_REPEAT_ROUND; i++)
 		{			
 			SM4OneRound(SM4Context.sk, buff, pDest);
-
-			memcpy(buff, pDest, SM4_BLOCK_SIZE); //准备下一轮加密
+			memcpy(buff, pDest, E_BLOCK_SIZE); //准备下一轮加密
 		}
 
 		//拷贝新的IV 值
-		memcpy(pIv, pDest, SM4_BLOCK_SIZE);
+		memcpy(pIv, pDest, E_IV_LENGTH);
 	}
 	else //解密
 	{		
-		uChar8 tmpIn[SM4_BLOCK_SIZE] = { 0 };
-		memcpy(tmpIn, pSrc, SM4_BLOCK_SIZE);
+		uint8_t tmpIn[E_BLOCK_SIZE] = { 0 };
+		memcpy(tmpIn, pSrc, E_BLOCK_SIZE);
 
-		for (int i = 0;i < SM4_BLOCK_SIZE; i++)
+		for (int i = 0; i < E_REPEAT_ROUND; i++)
 		{
 			SM4OneRound(SM4Context.sk, tmpIn, buff);
 
-			memcpy(tmpIn, buff, SM4_BLOCK_SIZE); //准备下一轮解码
+			memcpy(tmpIn, buff, E_BLOCK_SIZE); //准备下一轮解码
 		}
 
 		//除掉IV 值
-		for (int i = 0; i < SM4_BLOCK_SIZE; i++)
+		for (int i = 0; i < E_BLOCK_SIZE; i++)
 		{
 			pDest[i] = (buff[i] ^ pIv[i]);
 		}
 
 		//拷贝新的IV 值
-		memcpy(pIv, pSrc, SM4_BLOCK_SIZE);
+		memcpy(pIv, pSrc, E_IV_LENGTH);
 	}
 }
 
-void CSM4::EBCCipher(SSM4Context & SM4Context, const uChar8 * pSrc, uChar8 * pDest) const
+/*********************************************************************
+功能：	ECB加解密处理
+参数：	SM4Context 密钥上下文
+*		pSrc 待处理串
+*		pDest 输出串
+返回：	填充的字节数
+修改：
+*********************************************************************/
+void CSM4::ECBCipher(SSM4Context &SM4Context, const uint8_t *pSrc, uint8_t *pDest) const
 {
-	uChar8 buff[SM4_BLOCK_SIZE] = { 0 };
-	memcpy(buff, pSrc, SM4_BLOCK_SIZE);
+	uint8_t buff[E_BLOCK_SIZE] = { 0 };
+	memcpy(buff, pSrc, E_BLOCK_SIZE);
 
-	for (int i = 0;i < SM4_BLOCK_SIZE; i++)
+	for (int i = 0; i < E_REPEAT_ROUND; i++)
 	{
 		SM4OneRound(SM4Context.sk, buff, pDest);
-
-		memcpy(buff, pDest, SM4_BLOCK_SIZE);
+		memcpy(buff, pDest, E_BLOCK_SIZE);
 	}
 }

@@ -6,8 +6,8 @@
 #include <arpa/inet.h>
 #endif
 
-CClientHandleThread::CClientHandleThread(unsigned int uiNO, CLogFile &log) : m_bRunFlag(false), m_uiThreadNO(uiNO), m_LogFile(log),
-m_pThread(nullptr), m_pEvent(nullptr), m_pEventBase(nullptr)
+CClientHandleThread::CClientHandleThread(ev_uint64_t ullNO, CLogFile &log, bool bKeepAlive) : m_bRunFlag(false), m_ullThreadNO(ullNO), 
+m_LogFile(log), m_bKeepAlive(bKeepAlive), m_pThread(nullptr), m_pEvent(nullptr), m_pEventBase(nullptr)
 {
 	timerclear(&m_BeginTime);
 }
@@ -97,20 +97,21 @@ void CClientHandleThread::Stop()
 {
 	if (m_bRunFlag)
 	{
+		//修改运行标志
 		m_bRunFlag = false;
+	}
 
-		//停止循环
-		if (nullptr != m_pEventBase)
-		{
-			timeval tv;
-			tv.tv_sec = 0;
-			tv.tv_usec = 50;
+	//停止循环
+	if (nullptr != m_pEventBase)
+	{
+		timeval tv;
+		tv.tv_sec = 0;
+		tv.tv_usec = 50;
 
-			event_base_loopexit(m_pEventBase, &tv);
+		event_base_loopexit(m_pEventBase, &tv);
 
-			m_LogFile << E_LOG_LEVEL_ALL << "Client handle thread [" << m_uiThreadNO << "] stop dispatch !"
-				<< logendl;
-		}
+		m_LogFile << E_LOG_LEVEL_ALL << "Client handle thread [" << m_ullThreadNO << "] stop dispatch !"
+			<< logendl;
 	}
 
 	if (nullptr != m_pThread)
@@ -139,12 +140,12 @@ void CClientHandleThread::Stop()
 返回：	无
 修改：
 *********************************************************************/
-void CClientHandleThread::AddClient(SClientObject *client)
+void CClientHandleThread::AddClient(CClientObject *client)
 {
 	if (nullptr == client)
 		return;
 
-	CSocketServer *pServer = (CSocketServer*)client->pHandleObject;
+	CSocketServer *pServer = (CSocketServer*)(client->pHandleObject);
 
 	//设置不阻塞
 	evutil_make_socket_nonblocking(client->iClientFd);
@@ -155,7 +156,7 @@ void CClientHandleThread::AddClient(SClientObject *client)
 	if (nullptr != bev)
 	{
 		//读写超时
-		if (pServer->m_iTimeOut > 0 && !pServer->CheckIsPersistentConnection(client->ClientInfo.szClientIP))
+		if (pServer->m_iTimeOut > 0 && !pServer->CheckIsPersistentConnection(client->Session.szClientIP))
 		{
 			timeval tvRead, tvWrite;
 
@@ -169,21 +170,22 @@ void CClientHandleThread::AddClient(SClientObject *client)
 		}
 
 		//设置回调
-		client->pOtherObject = (void*)this;
-		client->ClientInfo.uiThreadNO = m_uiThreadNO;
+		client->pOther = (void*)this;
+		client->Session.ullThreadNO = m_ullThreadNO;
 		bufferevent_setcb(bev, read_cb, nullptr, error_cb, (void*)client);
 		bufferevent_enable(bev, EV_READ | EV_PERSIST);
 
 		//增加数量
-		pServer->DealThreadClientCount(m_uiThreadNO, true);
+		if (!m_bKeepAlive)
+			pServer->DealThreadClientCount(m_ullThreadNO, true);
 
-		m_LogFile << E_LOG_LEVEL_PROMPT << "Client handle thread [" << m_uiThreadNO << "] add client ["
-			<< client->ClientInfo.szClientInfo << "] success !" << logendl;
+		m_LogFile << E_LOG_LEVEL_PROMPT << "Client handle thread [" << m_ullThreadNO << "] add client ["
+			<< client->Session.szClientInfo << "] success !" << logendl;
 	}
 	else
 	{
-		m_LogFile << E_LOG_LEVEL_WARN << "Client handle thread [" << m_uiThreadNO << "] add client ["
-			<< client->ClientInfo.szClientInfo << "] failed: create new socket bufferevent failed !" << logendl;
+		m_LogFile << E_LOG_LEVEL_WARN << "Client handle thread [" << m_ullThreadNO << "] add client ["
+			<< client->Session.szClientInfo << "] failed: create new socket bufferevent failed !" << logendl;
 
 		delete client;
 		client = nullptr;
@@ -196,9 +198,20 @@ void CClientHandleThread::AddClient(SClientObject *client)
 返回：	线程编号
 修改：
 *********************************************************************/
-unsigned int CClientHandleThread::GetThreadNO() const
+ev_uint64_t CClientHandleThread::GetThreadNO() const
 {
-	return m_uiThreadNO;
+	return m_ullThreadNO;
+}
+
+/*********************************************************************
+功能：	获取运行标志，当长连接时判断是否己结束
+参数：	无
+返回：	运行标志
+修改：
+*********************************************************************/
+bool CClientHandleThread::GetRunFlag() const
+{
+	return m_bRunFlag;
 }
 
 /*********************************************************************
@@ -209,7 +222,7 @@ unsigned int CClientHandleThread::GetThreadNO() const
 *********************************************************************/
 void CClientHandleThread::HandleThread()
 {
-	m_LogFile << E_LOG_LEVEL_ALL << "Client handle thread [" << m_uiThreadNO << "] start dispatch !"
+	m_LogFile << E_LOG_LEVEL_ALL << "Client handle thread [" << m_ullThreadNO << "] start dispatch !"
 		<< logendl;
 
 	evutil_gettimeofday(&m_BeginTime, nullptr);
@@ -266,7 +279,7 @@ void CClientHandleThread::timeout_cb(evutil_socket_t fd, short evFlags, void *ar
 		}
 
 
-		pServer->m_LogFile << E_LOG_LEVEL_PROMPT << "Client handle thread [" << pServer->m_uiThreadNO 
+		pServer->m_LogFile << E_LOG_LEVEL_PROMPT << "Client handle thread [" << pServer->m_ullThreadNO
 			<< "] timeout_cb called, total run " << szOut << logendl;
 	}
 }
@@ -280,34 +293,40 @@ void CClientHandleThread::timeout_cb(evutil_socket_t fd, short evFlags, void *ar
 *********************************************************************/
 void CClientHandleThread::read_cb(struct bufferevent *bev, void* arg)
 {
-	SClientObject* client = (SClientObject*)arg;
-	CSocketServer* pServer = (CSocketServer*)client->pHandleObject;
-	CClientHandleThread *pSelf = (CClientHandleThread*)client->pOtherObject;
+	CClientObject* client = (CClientObject*)arg;
+	CSocketServer* pServer = (CSocketServer*)(client->pHandleObject);
+	CClientHandleThread *pSelf = (CClientHandleThread*)(client->pOther);
 	int iRet = 1;
 
 	//循环读取，尽量多读，防止多个包一起发时，只会收到前面一个
 	do
 	{
 		//处理客户端数据
-		iRet = pServer->ClientDataHandle(bev, client->ClientInfo, client->ClientData);
+		iRet = pServer->ClientDataHandle(bev, client->Session, client->Data);
 
 		if (0 == iRet) //没读到，退出，等待下一次的数据到来
 			break;
 		else if (1 == iRet) //处理成功，清理数据
-			client->ClientData.Clear();
+			client->Data.Clear();
 		else //错误，断开客户端的连接，防止接收脏数据
 		{
-			pServer->m_LogPrint << E_LOG_LEVEL_WARN << "Client handle thread [" << pSelf->m_uiThreadNO << "] recv from [" 
-				<< client->ClientInfo.szClientInfo << "] msg read and handle failed, server active disconnected !" 
+			pServer->m_LogPrint << E_LOG_LEVEL_WARN << "Client handle thread [" << pSelf->m_ullThreadNO << "] recv from ["
+				<< client->Session.szClientInfo << "] msg read and handle failed, server active disconnected !"
 				<< logendl;
 
 			//减少数量
-			pServer->DealThreadClientCount(pSelf->m_uiThreadNO, false);
+			if (!pSelf->m_bKeepAlive)
+				pServer->DealThreadClientCount(pSelf->m_ullThreadNO, false);
 
+			pServer->OnClientDisconnect(client->Session);
 			client->Clear();
 			delete client;
 			client = nullptr;
 			bufferevent_free(bev);
+
+			//修改运行标志
+			if (pSelf->m_bKeepAlive)
+				pSelf->m_bRunFlag = false;
 
 			break;
 		}
@@ -323,12 +342,12 @@ void CClientHandleThread::read_cb(struct bufferevent *bev, void* arg)
 *********************************************************************/
 void CClientHandleThread::write_cb(struct bufferevent *bev, void* arg)
 {
-	SClientObject* client = (SClientObject*)arg;
-	CSocketServer* pServer = (CSocketServer*)client->pHandleObject;
-	CClientHandleThread *pSelf = (CClientHandleThread*)client->pOtherObject;
+	CClientObject* client = (CClientObject*)arg;
+	CSocketServer* pServer = (CSocketServer*)(client->pHandleObject);
+	CClientHandleThread *pSelf = (CClientHandleThread*)(client->pOther);
 
-	pServer->m_LogPrint << E_LOG_LEVEL_PROMPT << "Client handle thread [" << pSelf->m_uiThreadNO << "] client [" 
-		<< client->ClientInfo.szClientInfo << "] msg write completed." << logendl;
+	pServer->m_LogPrint << E_LOG_LEVEL_PROMPT << "Client handle thread [" << pSelf->m_ullThreadNO << "] client ["
+		<< client->Session.szClientInfo << "] msg write completed." << logendl;
 }
 
 /*********************************************************************
@@ -341,9 +360,9 @@ void CClientHandleThread::write_cb(struct bufferevent *bev, void* arg)
 *********************************************************************/
 void CClientHandleThread::error_cb(struct bufferevent *bev, short evFlags, void* arg)
 {
-	SClientObject* client = (SClientObject*)arg;
-	CSocketServer* pServer = (CSocketServer*)client->pHandleObject;
-	CClientHandleThread *pSelf = (CClientHandleThread*)client->pOtherObject;
+	CClientObject* client = (CClientObject*)arg;
+	CSocketServer* pServer = (CSocketServer*)(client->pHandleObject);
+	CClientHandleThread *pSelf = (CClientHandleThread*)(client->pOther);
 	std::string szError;
 
 	//错误处理
@@ -359,24 +378,30 @@ void CClientHandleThread::error_cb(struct bufferevent *bev, short evFlags, void*
 	else
 		szError = "abnormal disconnected, evFlags:" + std::to_string(evFlags);
 
-	pServer->m_LogPrint << E_LOG_LEVEL_WARN << "Client handle thread [" << pSelf->m_uiThreadNO << "] client ["
-		<< client->ClientInfo.szClientInfo << "] " << szError << logendl;
+	pServer->m_LogPrint << E_LOG_LEVEL_WARN << "Client handle thread [" << pSelf->m_ullThreadNO << "] client ["
+		<< client->Session.szClientInfo << "] " << szError << logendl;
 
 	//输出未处理的信息
-	if (client->ClientData.uiMsgTotalLength > 0 && nullptr != client->ClientData.pMsgBuffer)
+	if (client->Data.uiMsgTotalLength > 0 && nullptr != client->Data.pMsgBuffer)
 	{
-		pServer->m_LogPrint << E_LOG_LEVEL_WARN << "Client handle thread [" << pSelf->m_uiThreadNO << "] client [" 
-			<< client->ClientInfo.szClientInfo << "] has untreated data:\n0x" 
-			<< pServer->GetHexString(client->ClientData.pMsgBuffer, client->ClientData.uiMsgTotalLength) 
+		pServer->m_LogPrint << E_LOG_LEVEL_WARN << "Client handle thread [" << pSelf->m_ullThreadNO << "] client ["
+			<< client->Session.szClientInfo << "] has untreated data:\n0x"
+			<< pServer->GetHexString(client->Data.pMsgBuffer, client->Data.uiMsgTotalLength) 
 			<< logendl;
 	}
 
 	//减少数量
-	pServer->DealThreadClientCount(pSelf->m_uiThreadNO, false);
+	if (!pSelf->m_bKeepAlive)
+		pServer->DealThreadClientCount(pSelf->m_ullThreadNO, false);
 
 	//释放资源
+	pServer->OnClientDisconnect(client->Session);
 	client->Clear();
 	delete client;
 	client = nullptr;
 	bufferevent_free(bev);
+
+	//修改运行标志
+	if (pSelf->m_bKeepAlive)
+		pSelf->m_bRunFlag = false;
 }

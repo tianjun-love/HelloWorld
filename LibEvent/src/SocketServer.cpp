@@ -9,8 +9,8 @@ static CLogFile* g_pLogPrint = nullptr; //日志输出，类外的函数使用
 const std::string g_szLibeventLog = "LibeventError.log";
 
 CSocketServer::CSocketServer(CLogFile& log, const std::string& szIP, int iPort, int iMaxConnect, int iReadTimeOut, unsigned int uiClientHandleThreadNum) :
-CSocketBase(szIP, iPort, iReadTimeOut), m_LogPrint(log), m_iMaxConnect(iMaxConnect), m_ConnectDeque(iMaxConnect, nullptr), m_ListenerThread(szIP, iPort, iMaxConnect, log, m_ConnectDeque),
-m_uiHandleThreadNum(uiClientHandleThreadNum)
+CSocketBase(szIP, iPort, iReadTimeOut), m_ConnectDeque(iMaxConnect, nullptr), m_ListenerThread(szIP, iPort, iMaxConnect, log, m_ConnectDeque), 
+m_uiHandleThreadNum(uiClientHandleThreadNum), m_pKeepAliveDealThread(nullptr), m_LogPrint(log), m_iMaxConnect(iMaxConnect)
 {
 }
 
@@ -76,7 +76,7 @@ bool CSocketServer::Init(std::string& szError)
 	//添加处理线程
 	for (unsigned int i = 0, j = 0; i < m_uiHandleThreadNum; ++i)
 	{
-		CClientHandleThread *t = new CClientHandleThread(j, m_LogPrint);
+		CClientHandleThread *t = new CClientHandleThread(j, m_LogPrint, false);
 
 		if (nullptr != t)
 		{
@@ -117,7 +117,7 @@ bool CSocketServer::Start(std::string& szError)
 	if (!m_bStatus)
 	{
 		m_bStatus = true;
-
+		
 		//启动处理线程
 		for (auto &t : m_ClientHandleThreads)
 		{
@@ -125,11 +125,18 @@ bool CSocketServer::Start(std::string& szError)
 			{
 				if (!t->Start(szError))
 				{
-					szError = "Start client handle thread [" + std::to_string(t->GetThreadNO())
+					szError = "Start client handle thread [" + std::to_string(t->GetThreadNO()) 
 						+ "] error:" + szError;
 					return false;
 				}
 			}
+		}
+
+		m_pKeepAliveDealThread = new std::thread(std::bind(&CSocketServer::InnerThreadHandle, this));
+		if (nullptr == m_pKeepAliveDealThread)
+		{
+			szError = "Start keep-alive client handle thread return nullptr !";
+			return false;
 		}
 
 		//启动监听线程
@@ -139,8 +146,9 @@ bool CSocketServer::Start(std::string& szError)
 			return false;
 		}
 
-		SClientObject *client = nullptr;
+		CClientObject *client = nullptr;
 		unsigned int uiIndex = 0;
+		ev_uint64_t ullNO = 0;
 
 		//主线程循环
 		while (m_bStatus)
@@ -151,11 +159,49 @@ bool CSocketServer::Start(std::string& szError)
 			{
 				client->pHandleObject = (void*)this;
 
-				//获取处理线程
-				uiIndex = GetDealThreadNO();
+				if (CheckIsPersistentConnection(client->Session.szClientIP)) //长连接处理，每个连接一个线程
+				{
+					ullNO = ConvertIPAndPortToNum(client->Session.szClientIP, client->Session.uiClientPort);
+					CClientHandleThread *t = new CClientHandleThread(ullNO, m_LogPrint, true);
 
-				//处理
-				m_ClientHandleThreads[uiIndex]->AddClient(client);
+					if (nullptr == t)
+					{
+						m_LogPrint << E_LOG_LEVEL_SERIOUS << "New keep-alive client handle thread [" << ullNO 
+							<< "] object return nullptr !" << logendl;
+					}
+					else
+					{
+						m_LogPrint << E_LOG_LEVEL_PROMPT << "New keep-alive client handle thread [" << ullNO
+							<< "] object success !" << logendl;
+
+						if (!t->Start(szError))
+						{
+							m_LogPrint << E_LOG_LEVEL_SERIOUS << "Start keep-alive client handle thread [" << ullNO
+								<< "] error:" << szError << logendl;
+						}
+						else
+						{
+							m_LogPrint << E_LOG_LEVEL_PROMPT << "Start keep-alive client handle thread [" << ullNO
+								<< "] success !" << logendl;
+
+							//添加客户端处理
+							t->AddClient(client);
+
+							//将线程对象保存
+							m_KeepAliveClientLock.lock();
+							m_KeepAliveClientThreads.push_back(t);
+							m_KeepAliveClientLock.unlock();
+						}
+					}
+				}
+				else //短连接处理
+				{
+					//获取处理线程
+					uiIndex = GetDealThreadNO();
+
+					//处理
+					m_ClientHandleThreads[uiIndex]->AddClient(client);
+				}
 			}
 		}
 	}
@@ -192,6 +238,13 @@ void CSocketServer::Stop()
 				delete t;
 				t = nullptr;
 			}
+		}
+
+		if (nullptr != m_pKeepAliveDealThread)
+		{
+			m_pKeepAliveDealThread->join();
+			delete m_pKeepAliveDealThread;
+			m_pKeepAliveDealThread = nullptr;
 		}
 	}
 }
@@ -242,12 +295,10 @@ std::string CSocketServer::GetSocketInfo(evutil_socket_t fd, std::string *pIP, i
 {
 	sockaddr_in sin;
 	socklen_t len = sizeof(sin);
-	char buf[64]{ '\0' };
 	std::string szReturn;
 
 	getpeername(fd, (struct sockaddr *)&sin, &len);
-	evutil_inet_ntop(AF_INET, &sin.sin_addr, buf, sizeof(buf));
-	szReturn = buf;
+	szReturn = inet_ntoa(sin.sin_addr);
 
 	if (nullptr != pIP)
 		*pIP = szReturn;
@@ -262,18 +313,18 @@ std::string CSocketServer::GetSocketInfo(evutil_socket_t fd, std::string *pIP, i
 
 /*********************************************************************
 功能：	处理线程客户端数量
-参数：	uiThreadNO 线程编号
+参数：	ullThreadNO 线程编号
 *		bIsAdd true:增加，false:减少
 返回：	无
 修改：
 *********************************************************************/
-void CSocketServer::DealThreadClientCount(unsigned int uiThreadNO, bool bIsAdd)
+void CSocketServer::DealThreadClientCount(ev_uint64_t ullThreadNO, bool bIsAdd)
 {
-	std::map<unsigned int, SClientThreadInfo*>::iterator iter;
+	std::map<ev_uint64_t, SClientThreadInfo*>::iterator iter;
 
 	m_ThreadClientCountLock.lock();
 
-	iter = m_ThreadClientCountMap.find(uiThreadNO);
+	iter = m_ThreadClientCountMap.find(ullThreadNO);
 	if (iter != m_ThreadClientCountMap.end())
 	{
 		if (bIsAdd)
@@ -301,7 +352,7 @@ unsigned int CSocketServer::GetDealThreadNO()
 {
 	unsigned int uiIndex = 0;
 	unsigned long long ullWeight = 0;
-	std::map<unsigned int, SClientThreadInfo*>::const_iterator iter;
+	std::map<ev_uint64_t, SClientThreadInfo*>::const_iterator iter;
 
 	m_ThreadClientCountLock.lock();
 
@@ -346,47 +397,48 @@ unsigned int CSocketServer::GetDealThreadNO()
 功能：	客户端数据处理
 参数：	szClientStr 客户端信息，输入
 *		bev bufferevent，输入
-*		clientInfo 客户端信息，输入
+*		clientSession 客户端会话，输入
 *		clientData 客户端数据，输出
 返回：	<0：失败，0：成功但数据不全，1：成功处理
 修改：
 *********************************************************************/
-short CSocketServer::ClientDataHandle(bufferevent *bev, SClientInfo &clientInfo, SClientData &clientData)
+short CSocketServer::ClientDataHandle(bufferevent *bev, CClientSession &session, CClientData &data)
 {
-	size_t iMaxReadLength = bufferevent_get_max_single_read(bev);
+	int iMaxReadLength = bufferevent_get_max_single_read(bev);
 
-	if (nullptr == clientData.pMsgBuffer)
+	if (nullptr == data.pMsgBuffer)
 	{
-		clientData.pMsgBuffer = new unsigned char[iMaxReadLength + 1]{ '\0' };
+		data.pMsgBuffer = new unsigned char[iMaxReadLength + 1]{ '\0' };
 	}
 
 	//读取数据
-	clientData.uiMsgTotalLength = (unsigned int)bufferevent_read(bev, clientData.pMsgBuffer, iMaxReadLength);
+	data.uiMsgTotalLength = bufferevent_read(bev, data.pMsgBuffer, iMaxReadLength);
 
 	//输出
-	if (0 == clientData.uiMsgTotalLength)
+	if (0 == data.uiMsgTotalLength)
 	{
-		m_LogPrint << E_LOG_LEVEL_PROMPT << "Client handle thread [" << clientInfo.uiThreadNO << "] recv from [" << clientInfo.szClientInfo 
-			<< "] data_len:0 !" << logendl;
+		m_LogPrint << E_LOG_LEVEL_PROMPT << "Client handle thread [" << session.ullThreadNO << "] recv from ["
+			<< session.szClientInfo << "] data_len:0 !" << logendl;
 		return 0;
 	}
 	else
 	{
-		m_LogPrint << E_LOG_LEVEL_PROMPT << "Client handle thread [" << clientInfo.uiThreadNO << "] recv from [" << clientInfo.szClientInfo
-			<< "] data_len:" << clientData.uiMsgTotalLength << " data:\n0x" << GetHexString(clientData.pMsgBuffer, clientData.uiMsgTotalLength)
-			<< logendl;
+		m_LogPrint << E_LOG_LEVEL_PROMPT << "Client handle thread [" << session.ullThreadNO << "] recv from ["
+			<< session.szClientInfo << "] data_len:" << data.uiMsgTotalLength << " data:\n0x"
+			<< GetHexString(data.pMsgBuffer, data.uiMsgTotalLength) << logendl;
 
 		//返回相同数据
-		if (0 == bufferevent_write(bev, clientData.pMsgBuffer, clientData.uiMsgTotalLength))
+		if (0 == bufferevent_write(bev, data.pMsgBuffer, data.uiMsgTotalLength))
 		{
-			m_LogPrint << E_LOG_LEVEL_PROMPT << "Client handle thread [" << clientInfo.uiThreadNO << "] send to [" << clientInfo.szClientInfo
-				<< "] same data success !" << logendl;
+			m_LogPrint << E_LOG_LEVEL_PROMPT << "Client handle thread [" << session.ullThreadNO << "] send to ["
+				<< session.szClientInfo << "] same data success !" << logendl;
 			return 1;
 		}
 		else
 		{
-			m_LogPrint << E_LOG_LEVEL_PROMPT << "Client handle thread [" << clientInfo.uiThreadNO << "] send to [" << clientInfo.szClientInfo
-				<< "] same data failed:" << evutil_socket_error_to_string(evutil_socket_geterror(bufferevent_getfd(bev))) << logendl;
+			m_LogPrint << E_LOG_LEVEL_PROMPT << "Client handle thread [" << session.ullThreadNO << "] send to ["
+				<< session.szClientInfo << "] same data failed:" << evutil_socket_error_to_string(evutil_socket_geterror(bufferevent_getfd(bev)))
+				<< logendl;
 			return -1;
 		}
 	}
@@ -401,6 +453,72 @@ short CSocketServer::ClientDataHandle(bufferevent *bev, SClientInfo &clientInfo,
 bool CSocketServer::CheckIsPersistentConnection(const std::string &szClientIP)
 {
 	return false;
+}
+
+/*********************************************************************
+功能：	客户端断开连接时的回调方法，主要是清除会话内的数据
+参数：	clientSession 客户端信息
+返回：	无
+修改：
+*********************************************************************/
+void CSocketServer::OnClientDisconnect(CClientSession &clientSession)
+{
+	return;
+}
+
+/*********************************************************************
+功能：	内部线程回调方法
+参数：	无
+返回：	无
+修改：
+*********************************************************************/
+void CSocketServer::InnerThreadHandle()
+{
+	const unsigned int uiSeconds = 15;
+	std::list<CClientHandleThread*>::iterator iter;
+
+	while (m_bStatus)
+	{
+		std::this_thread::sleep_for(std::chrono::seconds(uiSeconds));
+
+		m_KeepAliveClientLock.lock();
+
+		for (iter = m_KeepAliveClientThreads.begin(); iter != m_KeepAliveClientThreads.end();)
+		{
+			if ((*iter)->GetRunFlag())
+				++iter;
+			else
+			{
+				(*iter)->Stop();
+
+				m_LogPrint << E_LOG_LEVEL_PROMPT << "Stop keep-alive client handle thread [" << (*iter)->GetThreadNO()
+					<< "] success." << logendl;
+
+				delete (*iter);
+				iter = m_KeepAliveClientThreads.erase(iter);
+			}
+		}
+
+		m_KeepAliveClientLock.unlock();
+	}
+}
+
+/*********************************************************************
+功能：	将IP和端口转成数字
+参数：	szIP IP，如："169.202.51.212"
+*		iPort 端口
+返回：	转换的数字
+修改：
+*********************************************************************/
+ev_uint64_t CSocketServer::ConvertIPAndPortToNum(const std::string &szIP, unsigned int iPort)
+{
+	char buf[32]{ '\0' };
+	unsigned int a, b, c, d;
+
+	sscanf(szIP.c_str(), "%u.%u.%u.%u", &a, &b, &c, &d);
+	snprintf(buf, sizeof(buf), "%u%u%u%u%u", a, b, c, d, iPort);
+
+	return std::strtoull(buf, nullptr, 10);
 }
 
 /*********************************************************************
