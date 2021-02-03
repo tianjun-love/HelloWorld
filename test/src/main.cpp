@@ -24,7 +24,9 @@ int main(int argc, char* argv[])
 		cout << "save failed:" << szError << endl;
 
 	//暂停
+#ifdef _WIN32
 	system("pause");
+#endif
 
 	return 0;
 }
