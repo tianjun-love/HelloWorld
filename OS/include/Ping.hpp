@@ -84,7 +84,8 @@ private:
 	static bool UnPackageIcmp(int iDataLen, char* DataBuf, unsigned short pack_id, unsigned short pack_no, PING_RESULT* pResult, 
 		string& szError); //解ICMP包
 	static bool SendPacket(int& fd, sockaddr_in& addr, unsigned short pack_id, unsigned short pack_no, string& szError); //发送包
-	static bool RecvPacket(int& fd, unsigned short pack_id, unsigned short pack_no, PING_RESULT* pResult, string& szError); //接收收包
+	static bool RecvPacket(int& fd, sockaddr_in& addr, unsigned short pack_id, unsigned short pack_no, PING_RESULT* pResult, 
+		string& szError); //接收收包
 
 
 };

@@ -26,6 +26,7 @@ public:
 	static std::string GetStrerror(int sysErrCode);
 	static std::string DateTimeString(short nType = 0);
 	static bool CheckIPFormat(const std::string &szIP, bool bIsIPv4 = true);
+	static bool CheckSocketPortUsed(const std::string &ip, unsigned short port, bool is_tcp = true);
 	static std::string GetHexString(const unsigned char *data, unsigned int data_len, bool bLowercase = false);
 	static std::string GetHexString(const char *data, unsigned int data_len, bool bLowercase = false);
 	static unsigned int FromHexString(const std::string& szHexString, char* data, unsigned int data_len);

@@ -7,8 +7,10 @@
 
 #ifdef _WIN32
 #include <Windows.h>
+#include <WinSock2.h>
 #else
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
 #endif
@@ -138,8 +140,9 @@ std::string CSocketBase::GetStrerror(int sysErrCode)
 	else
 		szRet = "strerror_s work wrong, source error code:" + std::to_string(sysErrCode);
 #else
-	if (nullptr != strerror_r(sysErrCode, buf, 2047))
-		szRet = buf;
+	char *pError = strerror_r(sysErrCode, buf, 2047);
+	if (nullptr != pError)
+		szRet = pError;
 	else
 		szRet = "strerror_r work wrong, source error code:" + std::to_string(sysErrCode);
 #endif
@@ -257,6 +260,63 @@ bool CSocketBase::CheckIPFormat(const std::string &szIP, bool bIsIPv4)
 		//暂时不支持
 		return false;
 	}
+}
+
+/********************************************************************
+功能：	检查socket端口是否被占用
+参数：	ip IP
+*		port 端口
+*		is_udp 协议类型，true:UDP, false:TCP
+返回：	占用返回true
+*********************************************************************/
+bool CSocketBase::CheckSocketPortUsed(const std::string &ip, unsigned short port, bool is_tcp)
+{
+	std::string szError;
+
+#ifdef WIN32
+	WSADATA wsa_data;
+	if (0 != WSAStartup(MAKEWORD(2, 2), &wsa_data)) {
+		return false;
+	}
+#endif
+
+	bool bRes = false;
+	int fd = 0;
+
+	if (is_tcp)
+		fd = (int)socket(AF_INET, SOCK_STREAM, 0);
+	else
+		fd = (int)socket(AF_INET, SOCK_DGRAM, 0);
+
+	if (fd > 0)
+	{
+		struct sockaddr_in addr;
+
+		memset(&addr, 0, sizeof(addr));
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(port);
+
+		if (ip.empty())
+			addr.sin_addr.s_addr = htonl(INADDR_ANY);
+		else
+			inet_pton(AF_INET, ip.c_str(), &addr.sin_addr);
+
+		if (0 > ::bind(fd, (struct sockaddr*)&addr, sizeof(struct sockaddr_in))) {
+			bRes = true;
+		}
+
+#ifdef _WIN32
+		closesocket(fd);
+#else
+		close(fd);
+#endif
+	}
+
+#ifdef WIN32
+	WSACleanup();
+#endif
+
+	return bRes;
 }
 
 /*********************************************************************

@@ -221,25 +221,26 @@ bool CPing::SendPacket(int& fd, sockaddr_in& addr, unsigned short pack_id, unsig
 /*****************************************************************
 功能：	接收包
 参数：	fd socket句柄
+*		addr 绑定的地址
 *		pack_id 包ID
 *		pack_no 序号
 *		pResult 结果容器
 *		szError 错误信息
 返回：	成功返回true
 *****************************************************************/
-bool CPing::RecvPacket(int& fd, unsigned short pack_id, unsigned short pack_no, PING_RESULT* pResult, string& szError)
+bool CPing::RecvPacket(int& fd, sockaddr_in& addr, unsigned short pack_id, unsigned short pack_no, PING_RESULT* pResult, 
+	string& szError)
 {
 	bool bResult = false;
 	int iDataLen = 0;
-	sockaddr_in socket_addr;
 	socklen_t iLen = 0;
 	char buf[ICMP_MAX_BUF] = { 0 };
 
-	memset(&socket_addr, 0, sizeof(socket_addr));
+	iLen = sizeof(addr);
 	memset(buf, 0, ICMP_MAX_BUF);
 
 	//接收返回包
-	iDataLen = recvfrom(fd, buf, ICMP_MAX_BUF - 1, 0, (struct sockaddr*)&socket_addr, &iLen);
+	iDataLen = recvfrom(fd, buf, ICMP_MAX_BUF - 1, 0, (struct sockaddr*)&addr, &iLen);
 
 	//解包
 	if (iDataLen > 0)
@@ -300,7 +301,7 @@ bool CPing::ping(const string& szAddr, string& szError, bool isDomainName, unsig
 
 #ifdef _WIN32
 	WSADATA wsa_data;
-	if (0 != WSAStartup(0x0201, &wsa_data))
+	if (0 != WSAStartup(0x0202, &wsa_data))
 	{
 		szError = "初始化socket环境失败！";
 		return false;
@@ -308,7 +309,7 @@ bool CPing::ping(const string& szAddr, string& szError, bool isDomainName, unsig
 #endif
 
 	//以管理员身份/root运行才会返回成功
-	int fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+	int fd = (int)socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if (fd > 0)
 	{
 		unsigned short pack_id = 0;
@@ -336,19 +337,25 @@ bool CPing::ping(const string& szAddr, string& szError, bool isDomainName, unsig
 		//设置属性
 		/*扩大套接字接收缓冲区到64K这样做主要为了减小接收缓冲区溢出的的可能性,若无意中ping一个广播地址或多播地址,将会引来大量应答*/
 		int size = ICMP_MAX_BUF;
+		setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(size));
+
+#ifdef _WIN32
+		setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&iTimeoutMsec, sizeof(iTimeoutMsec));
+		setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&iTimeoutMsec, sizeof(iTimeoutMsec));
+#else
 		struct timeval ti;
 		ti.tv_sec = iTimeoutMsec / 1000;
 		ti.tv_usec = (iTimeoutMsec % 1000) * 1000;
 
-		setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(size));
 		setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&ti, sizeof(struct timeval));
 		setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&ti, sizeof(struct timeval));
+#endif
 
 		//发送请求
 		if (SendPacket(fd, socket_addr, pack_id, seq, szError))
 		{
 			//接收应答
-			if (RecvPacket(fd, pack_id, seq, pResult, szError))
+			if (RecvPacket(fd, socket_addr, pack_id, seq, pResult, szError))
 			{
 				bResult = true;
 			}
