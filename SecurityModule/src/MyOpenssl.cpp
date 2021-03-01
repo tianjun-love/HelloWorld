@@ -1610,6 +1610,9 @@ int COpenssl::EncryptHandle(ECipherType eCipherType, const void *pCipher, const 
 	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
 	if (nullptr != ctx)
 	{
+		//设置启用填充(默认启用标准填充，应该是PKCS7)，在1.1及后续版本中，会有填充方式选择
+		//EVP_CIPHER_CTX_set_padding(ctx, 1);
+
 		//初始化
 		if (CipherInit(ctx, pCipher, NULL, pKey, pIV, true, szError))
 		{
