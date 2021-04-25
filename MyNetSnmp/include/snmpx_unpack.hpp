@@ -26,7 +26,8 @@ private:
 	int unpack_v3_msgGlobalData(unsigned char* buf, unsigned int buf_len, struct snmpx_t *s);
 	int unpack_v3_msgData(unsigned char*buf, unsigned buf_len, struct snmpx_t* s);
 	int unpack_v3_authData(unsigned char* buf, unsigned int buf_len, struct snmpx_t *s);
-	int check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_user, unsigned char* buf, unsigned int buf_len);
+	int check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_user, unsigned char* buf, unsigned int buf_len,
+		bool is_get_v3_engineID);
 	int decrypt_pdu(const unsigned char* in, unsigned int in_len, const userinfo_t* u, const snmpx_t *r, 
 		unsigned char *out, unsigned int *out_len);
 

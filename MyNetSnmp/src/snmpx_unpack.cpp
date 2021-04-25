@@ -794,15 +794,24 @@ g_end:
 /*
  *重新检查数据合法性
  */
-int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_user, unsigned char* buf, unsigned int buf_len)
+int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_user, unsigned char* buf, unsigned int buf_len,
+	bool is_get_v3_engineID)
 {
 	if (r->msgVersion == 0x03)
 	{
 		if (r->tag == SNMPX_MSG_GET && (r->msgAuthoritativeEngineID == NULL || r->msgAuthoritativeEngineID_len == 0)) {
-
+			//获取v3引擎ID请求不用校验
 		}
-		else if (r->tag == SNMPX_MSG_REPORT) { // 收到引擎ID的时候不需要检查用户名
-
+		else if (r->tag == SNMPX_MSG_REPORT || (is_get_v3_engineID && r->tag == SNMPX_MSG_RESPONSE)) {
+			//收到引擎ID的时候不需要检查，有的设备是以get-response返回
+			if (is_get_v3_engineID && r->tag == SNMPX_MSG_RESPONSE)
+			{
+				if (r->msgAuthoritativeEngineID == NULL || r->msgAuthoritativeEngineID_len == 0)
+				{
+					m_szErrorMsg = "check_rc_snmpx_data failed, get agent AuthoritativeEngineID NULL.";
+					return SNMPX_failure;
+				}
+			}
 		}
 		else //需认证请求消息是否一致
 		{
@@ -1264,7 +1273,10 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 						}
 					}
 					else
+					{
+						//获取引擎ID时，有的设备是以get-response响应，防止t_user==NULL，在调用check_rc_snmpx_data时程序崩溃
 						t_user = (const userinfo_t*)user_info;
+					}
 				}
 				else
 				{
@@ -1274,6 +1286,8 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 					goto g_end;
 				}
 			}
+			else
+				t_user = (const userinfo_t*)user_info;
 		}
 
 		++iter;
