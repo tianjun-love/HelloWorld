@@ -180,9 +180,13 @@ bool CSnmpxClient::SUserUsmInfo::operator == (const userinfo_t& us) const
 	return true;
 }
 
-CSnmpxClient::CSnmpxClient(const std::string &ip, unsigned short port, long timeout, unsigned char retry_times) : 
-	m_szIP(ip), m_nPort(port), m_lTimeout(timeout), m_cRetryTimes(retry_times), m_pUserInfo(NULL)
+CSnmpxClient::CSnmpxClient(const std::string &ip, unsigned short port, long timeout, unsigned char retry_times, bool ping_on_timeout) : 
+	m_szIP(ip), m_nPort(port), m_lTimeout(timeout), m_cRetryTimes(retry_times), m_bPingOnTimeout(ping_on_timeout), m_pUserInfo(NULL)
 {
+	if (ip.empty()){
+		m_szIP = "0.0.0.0";
+	}
+
 	//超时最小500毫秒，不能是负值
 	if (timeout < 500)
 		m_lTimeout = 500;
@@ -194,7 +198,7 @@ CSnmpxClient::~CSnmpxClient()
 {
 	if (NULL != m_pUserInfo)
 	{
-		CUserProccess::snmpx_user_free(m_pUserInfo);
+		free_userinfo_data(m_pUserInfo);
 		m_pUserInfo = NULL;
 	}
 }
@@ -234,7 +238,7 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 			{
 				if (NULL != m_pUserInfo)
 				{
-					CUserProccess::snmpx_user_free(m_pUserInfo);
+					free_userinfo_data(m_pUserInfo);
 					m_pUserInfo = NULL;
 				}
 
@@ -273,7 +277,7 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 			{
 				if (NULL != m_pUserInfo)
 				{
-					CUserProccess::snmpx_user_free(m_pUserInfo);
+					free_userinfo_data(m_pUserInfo);
 					m_pUserInfo = NULL;
 				}
 
@@ -377,7 +381,7 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 	//如果失败则释放对象
 	if (!bResult && NULL != m_pUserInfo)
 	{
-		CUserProccess::snmpx_user_free(m_pUserInfo);
+		free_userinfo_data(m_pUserInfo);
 		m_pUserInfo = NULL;
 	}
 
@@ -1953,7 +1957,7 @@ bool CSnmpxClient::FillSnmpxWalkResultData(const snmpx_t& snmpx, const oid* srcT
 int CSnmpxClient::RequestSnmpx(snmpx_t& snmpx_sd, snmpx_t& snmpx_rc, bool bIsGet, EOidType oidType, const void* pOidList, 
 	std::vector<SSnmpxValue>* pValueVec, string& szError, bool bIsGetEngineID)
 {
-	int fd = 0, sento_result = 0, recvbuf_len = 0, retryTimes = m_cRetryTimes, iErrnoTemp = 0;
+	int fd = 0, sento_result = 0, recvbuf_len = 0, retryTimes = 0, iErrnoTemp = 0;
 	unsigned char sendbuf[MAX_MSG_LEN] = { 0 }; /* upd包最大只可以是65535 */
 	unsigned char recvbuf[MAX_MSG_LEN] = { 0 };
 	const int iRetryEngineTime = 2;
@@ -1971,6 +1975,8 @@ int CSnmpxClient::RequestSnmpx(snmpx_t& snmpx_sd, snmpx_t& snmpx_rc, bool bIsGet
 	//个别类型设备获取引擎ID时，不能正确返回引擎时间，最多重发2次
 	for (int i = 0; i < iRetryEngineTime; ++i)
 	{
+		retryTimes = m_cRetryTimes;
+
 		//接收请求返回，要求重试
 		do
 		{
@@ -2023,22 +2029,27 @@ int CSnmpxClient::RequestSnmpx(snmpx_t& snmpx_sd, snmpx_t& snmpx_rc, bool bIsGet
 			//团体名或加密密码错误会接收超时，用ping测试
 			if (EAGAIN == iErrnoTemp || 0 == iErrnoTemp)
 			{
-				if (CPing::ping(m_szIP, szError))
+				if (m_bPingOnTimeout)
 				{
-					if (3 == m_pUserInfo->version)
-						szError = "接收返回超时，agent未启动或通信密码错误！";
+					if (CPing::ping(m_szIP, szError))
+					{
+						if (3 == m_pUserInfo->version)
+							szError = "接收返回超时，agent未启动或通信密码错误！";
+						else
+							szError = "接收返回超时，agent未启动或团体名错误！";
+					}
 					else
-						szError = "接收返回超时，agent未启动或团体名错误！";
+						szError = "ping失败！";
 				}
 				else
-					szError = "ping失败！";
+					szError = "接收返回超时！";
 
 				return SNMPX_timeout;
 			}
 			else
 			{
 				szError = CErrorStatus::get_err_msg(iErrnoTemp, true, true);
-				return recvbuf_len;
+				return SNMPX_failure;
 			}
 		}
 		else
@@ -2048,7 +2059,7 @@ int CSnmpxClient::RequestSnmpx(snmpx_t& snmpx_sd, snmpx_t& snmpx_rc, bool bIsGet
 		}
 
 		//返回数据解包
-		if (unpack.snmpx_group_unpack((unsigned char*)recvbuf, recvbuf_len, &snmpx_rc, bIsGetEngineID, m_pUserInfo, false) < 0)
+		if (unpack.snmpx_group_unpack(recvbuf, recvbuf_len, &snmpx_rc, bIsGetEngineID, m_pUserInfo, false) < 0)
 		{
 			szError = "接收后解包失败：" + unpack.GetErrorMsg();
 			return SNMPX_failure;

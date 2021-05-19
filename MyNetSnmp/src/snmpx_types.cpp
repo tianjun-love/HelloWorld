@@ -11,6 +11,100 @@
 #include <sys/time.h>
 #endif
 
+//主机字节序，默认是小端
+static bool g_bByteOrder_LE = true;
+
+struct userinfo_t* clone_userinfo_data(const struct userinfo_t *user_info)
+{
+	if (NULL == user_info)
+		return NULL;
+
+	struct userinfo_t *clone_info = (struct userinfo_t*)malloc(sizeof(struct userinfo_t));
+
+	if (NULL == clone_info)
+		return NULL;
+	else
+		memset(clone_info, 0x00, sizeof(struct userinfo_t));
+
+	//深拷贝
+	clone_info->msgID = user_info->msgID;
+	clone_info->version = user_info->version;
+	memcpy(clone_info->userName, user_info->userName, sizeof(user_info->userName));
+	clone_info->safeMode = user_info->safeMode;
+	clone_info->AuthMode = user_info->AuthMode;
+	memcpy(clone_info->AuthPassword, user_info->AuthPassword, sizeof(user_info->AuthPassword));
+	clone_info->PrivMode = user_info->PrivMode;
+	memcpy(clone_info->PrivPassword, user_info->PrivPassword, sizeof(user_info->PrivPassword));
+	clone_info->agentMaxMsg_len = user_info->agentMaxMsg_len;
+
+	clone_info->msgAuthoritativeEngineID_len = user_info->msgAuthoritativeEngineID_len;
+	if (clone_info->msgAuthoritativeEngineID_len > 0 && NULL != user_info->msgAuthoritativeEngineID)
+	{
+		clone_info->msgAuthoritativeEngineID = (unsigned char*)malloc(clone_info->msgAuthoritativeEngineID_len * (sizeof(unsigned char)));
+		memcpy(clone_info->msgAuthoritativeEngineID, user_info->msgAuthoritativeEngineID, clone_info->msgAuthoritativeEngineID_len);
+	}
+
+	clone_info->authPasswordPrivKey_len = user_info->authPasswordPrivKey_len;
+	if (clone_info->authPasswordPrivKey_len > 0 && NULL != user_info->authPasswordPrivKey)
+	{
+		clone_info->authPasswordPrivKey = (unsigned char*)malloc(clone_info->authPasswordPrivKey_len * (sizeof(unsigned char)));
+		memcpy(clone_info->authPasswordPrivKey, user_info->authPasswordPrivKey, clone_info->authPasswordPrivKey_len);
+	}
+
+	clone_info->privPasswdPrivKey_len = user_info->privPasswdPrivKey_len;
+	if (clone_info->privPasswdPrivKey_len > 0 && NULL != user_info->privPasswdPrivKey)
+	{
+		clone_info->privPasswdPrivKey = (unsigned char*)malloc(clone_info->privPasswdPrivKey_len * (sizeof(unsigned char)));
+		memcpy(clone_info->privPasswdPrivKey, user_info->privPasswdPrivKey, clone_info->privPasswdPrivKey_len);
+	}
+
+	return clone_info;
+}
+
+void free_userinfo_data(struct userinfo_t *user_info)
+{
+	if (NULL != user_info)
+	{
+		if (user_info->msgAuthoritativeEngineID != NULL) {
+			free(user_info->msgAuthoritativeEngineID);
+			user_info->msgAuthoritativeEngineID = NULL;
+		}
+
+		if (user_info->authPasswordPrivKey != NULL) {
+			free(user_info->authPasswordPrivKey);
+			user_info->authPasswordPrivKey = NULL;
+		}
+
+		if (user_info->privPasswdPrivKey != NULL) {
+			free(user_info->privPasswdPrivKey);
+			user_info->privPasswdPrivKey = NULL;
+		}
+
+		user_info->msgAuthoritativeEngineID_len = 0;
+		user_info->authPasswordPrivKey_len = 0;
+		user_info->privPasswdPrivKey_len = 0;
+
+		free(user_info);
+		user_info = NULL;
+	}
+}
+
+void free_userinfo_map_data(std::map<std::string, struct userinfo_t*> &user_info_map)
+{
+	if (!user_info_map.empty())
+	{
+		std::map<std::string, struct userinfo_t*>::iterator iter;
+
+		for (iter = user_info_map.begin(); iter != user_info_map.end(); ++iter)
+		{
+			free_userinfo_data(iter->second);
+			iter->second = NULL;
+		}
+
+		user_info_map.clear();
+	}
+}
+
 void free_tlv_data(struct tlv_data *m_tlv_data)
 {
 	if (m_tlv_data->value != NULL)
@@ -158,7 +252,10 @@ int parse_ipaddress_string(const std::string &IP)
 	sscanf(IP.c_str(), "%u.%u.%u.%u", &a[0], &a[1], &a[2], &a[3]);
 #endif
 
-	return (int)((a[3] << 24) + (a[2] << 16) + (a[1] << 8) + a[0]);
+	if (get_byteorder_is_LE())
+		return (int)((a[3] << 24) + (a[2] << 16) + (a[1] << 8) + a[0]);
+	else
+		return (int)((a[0] << 24) + (a[1] << 16) + (a[2] << 8) + a[3]);
 }
 
 std::string get_ipaddress_string(int ipaddress)
@@ -235,7 +332,7 @@ bool parse_oid_string(const std::string &oidStr, oid *oid_buf, std::string &erro
 				}
 				else
 				{
-					oid_buf[oid_len] = strtoul(('.' == *pb ? (pb + 1) : pb), nullptr, 10);
+					oid_buf[oid_len] = (oid)strtoul(('.' == *pb ? (pb + 1) : pb), nullptr, 10);
 					pb = pe;
 				}
 			}
@@ -274,6 +371,11 @@ bool parse_oid_string(const std::string &oidStr, oid *oid_buf, std::string &erro
 	return true;
 }
 
+bool get_byteorder_is_LE()
+{
+	return g_bByteOrder_LE;
+}
+
 std::string get_oid_string(oid* buf, int len)
 {
 	std::string szOid;
@@ -285,7 +387,7 @@ std::string get_oid_string(oid* buf, int len)
 
 		for (int i = 0; i < oidCounts; ++i)
 		{
-			n += snprintf(&OidBuf[n], 1024 - n, ".%lu", buf[i]);
+			n += snprintf(&OidBuf[n], 1024 - n, ".%u", buf[i]);
 		}
 
 		szOid = OidBuf;
@@ -360,7 +462,7 @@ std::string get_hex_print_string(const unsigned char *data, size_t data_len, uns
 	std::string szPrint, szDump;
 	char printbuf[128] = { 0 };
 	const std::string szHead = "Address   0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  Dump",
-		szFullFormat = "%s%08x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x  %s\n";
+		szFullFormat = "%s%08X %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x  %s\n";
 
 	memset(pPreSpace, ' ', blank_space_len);
 
@@ -415,7 +517,7 @@ std::string get_hex_print_string(const unsigned char *data, size_t data_len, uns
 				//计算格式
 				unsigned int uiWide = 48;
 
-				snprintf(printbuf, sizeof(printbuf), "%s%08x", pPreSpace, uiAddress);
+				snprintf(printbuf, sizeof(printbuf), "%s%08X", pPreSpace, uiAddress);
 				szPrint.append(printbuf);
 				memset(printbuf, 0, sizeof(printbuf));
 
@@ -563,7 +665,7 @@ std::string get_vb_items_print_string(const std::list<SSnmpxValue> &vb_list, siz
 
 unsigned short convert_to_ns(unsigned short s)
 {
-	if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+	if (get_byteorder_is_LE())
 	{
 		u_digital_16 d;
 		unsigned char ch;
@@ -581,7 +683,7 @@ unsigned short convert_to_ns(unsigned short s)
 
 unsigned int convert_to_nl(unsigned int l)
 {
-	if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+	if (get_byteorder_is_LE())
 	{
 		u_digital_32 d;
 		unsigned char ch;
@@ -604,7 +706,7 @@ unsigned int convert_to_nl(unsigned int l)
 
 unsigned long long convert_to_nll(unsigned long long ll)
 {
-	if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+	if (get_byteorder_is_LE())
 	{
 		u_digital_64 d;
 		unsigned char ch;
@@ -633,23 +735,41 @@ unsigned long long convert_to_nll(unsigned long long ll)
 	return ll;
 }
 
-bool init_win32_socket_env(std::string &szError)
+bool init_snmpx_global_env(std::string &szError)
 {
+	//初始化windows的socket环境
 #ifdef WIN32
 	WSADATA wsa_data;
 	int ret = WSAStartup(MAKEWORD(2, 2), &wsa_data);
 
 	if (ret != 0) {
-		szError = "WSAStartup failed, return: " + std::to_string(ret);
+		szError = "windows WSAStartup failed, return: " + std::to_string(ret);
 		return false;
 	}
 #endif
 
+	//获取本机CPU字节序
+	u_digital_16 var16;
+
+	var16.un = 0x0102;
+
+	if (0x02 == var16.buff[0])
+	{
+		//小端存储为：0x0201
+		g_bByteOrder_LE = true;
+	}
+	else
+	{
+		//大端存储为：0x0102
+		g_bByteOrder_LE = false;
+	}
+
 	return true;
 }
 
-void free_win32_socket_env()
+void free_snmpx_global_env()
 {
+	//清理windows的socket环境
 #ifdef WIN32
 	WSACleanup();
 #endif

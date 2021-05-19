@@ -1,4 +1,5 @@
 ﻿#include "../include/LogFile.hpp"
+#include "../include/LogFileBackup.hpp"
 #include <stdarg.h>
 
 #ifdef _WIN32
@@ -10,20 +11,16 @@
 #include <sys/time.h>
 #endif
 
-CLogFile::CLogFile() : m_bLogInit(false)
+CLogFile::CLogFile() : m_bLogInit(false), m_iBackupRetain(-1), m_pBackupThread(nullptr)
 {
-	Init();
-	CreateLogFile();
 }
 
-CLogFile::CLogFile(const string& szLogFileName, const string& szLogLevel, const string& szDecollator)
+CLogFile::CLogFile(const string& szLogFileName, const string& szLogLevel, const string& szDecollator,
+	int iBackupRetain) : m_iBackupRetain(iBackupRetain), m_pBackupThread(nullptr)
 {
 	m_LogMember.m_szFileName = szLogFileName;
 	m_LogMember.m_eLogDeco = GetDecollator(szDecollator);
 	m_LogMember.m_eLogLevel = GetLogLevel(szLogLevel);
-
-	Init();
-	CreateLogFile();
 }
 
 CLogFile::~CLogFile()
@@ -31,65 +28,95 @@ CLogFile::~CLogFile()
 	Close();
 }
 
+bool CLogFile::Open(string &szError)
+{
+	if (!m_bLogInit)
+	{
+		m_bLogInit = true;
+		m_LogMember.m_szDate = GetDateTimeStr(false);
+
+		return CreateLogFile(szError);
+	}
+
+	return true;
+}
+
+void CLogFile::Close()
+{
+	if (m_bLogInit)
+	{
+		m_bLogInit = false;
+
+		if (m_LogMember.m_bOpen && m_LogMember.m_Ofstream.is_open())
+		{
+			m_LogMember.m_bOpen = false;
+			m_LogMember.m_Ofstream.close();
+		}
+
+		if (nullptr != m_pBackupThread)
+		{
+			m_pBackupThread->join();
+			delete m_pBackupThread;
+			m_pBackupThread = nullptr;
+		}
+	}
+}
+
+void CLogFile::ActivateBackupOnece()
+{
+	if (m_bLogInit)
+	{
+		//启动备份线程
+		if (nullptr != m_pBackupThread)
+		{
+			m_pBackupThread->join();
+			delete m_pBackupThread;
+			m_pBackupThread = nullptr;
+		}
+
+		m_pBackupThread = new std::thread(&CLogFile::LogFileBackup, this);
+	}
+}
+
 eLOGFILE_DECOLLATOR CLogFile::GetDecollator(const string& szDecollator)
 {
-	F_COMPARE compare;
-
-#ifdef _WIN32
-	compare = _stricmp;
-#else
-	compare = strcasecmp;
-#endif
-
-	if (!compare("minute", szDecollator.c_str()))
-	{
-		return E_LOG_DECO_MINUTE;
-	}
-	else if (!compare("hour", szDecollator.c_str()))
+	if (0 == CLogFileMember::StrCaseCmp("hour", szDecollator.c_str()))
 	{
 		return E_LOG_DECO_HOUR;
 	}
-	else if (!compare("day", szDecollator.c_str()))
+	else if (0 == CLogFileMember::StrCaseCmp("day", szDecollator.c_str()))
 	{
 		return E_LOG_DECO_DAY;
 	}
-	else if (!compare("month", szDecollator.c_str()))
+	else if (0 == CLogFileMember::StrCaseCmp("month", szDecollator.c_str()))
 	{
 		return E_LOG_DECO_MONTH;
 	}
 	else
 	{
-		return E_LOG_DECO_HOUR;
+		return E_LOG_DECO_DAY;
 	}
 }
 
 eLOG_FILE_LEVEL CLogFile::GetLogLevel(const string& szLevel)
 {
-	F_COMPARE compare;
-
-#ifdef _WIN32
-	compare = _stricmp;
-#else
-	compare = strcasecmp;
-#endif
-
-	if (!compare("all", szLevel.c_str()))
+	if (0 == CLogFileMember::StrCaseCmp("all", szLevel.c_str()))
 	{
 		return E_LOG_LEVEL_ALL;
 	}
-	else if (!compare("serious", szLevel.c_str()))
+	else if (0 == CLogFileMember::StrCaseCmp("serious", szLevel.c_str()))
 	{
 		return E_LOG_LEVEL_SERIOUS;
 	}
-	else if (!compare("warn", szLevel.c_str()))
+	else if (0 == CLogFileMember::StrCaseCmp("warn", szLevel.c_str()))
 	{
 		return E_LOG_LEVEL_WARN;
 	}
-	else if (!compare("prompt", szLevel.c_str()))
+	else if (0 == CLogFileMember::StrCaseCmp("prompt", szLevel.c_str()))
 	{
 		return E_LOG_LEVEL_PROMPT;
 	}
-	else if (!compare("debug", szLevel.c_str()))
+	else if (0 == CLogFileMember::StrCaseCmp("debug", szLevel.c_str()))
 	{
 		return E_LOG_LEVEL_DEBUG;
 	}
@@ -109,48 +136,37 @@ void CLogFile::SetLogLevel(const string& szLevel)
 	m_LogMember.m_LevelLock.unlock();
 }
 
-void CLogFile::Close()
-{
-	if (m_bLogInit)
-	{
-		m_bLogInit = false;
-
-		if (m_LogMember.m_bOpen && m_LogMember.m_Ofstream.is_open())
-		{
-			m_LogMember.m_bOpen = false;
-			m_LogMember.m_Ofstream.close();
-		}
-	}
-}
-
-void CLogFile::Init()
-{
-	m_LogMember.m_szDate = GetDateTimeStr(false);
-	m_bLogInit = true;
-}
-
 void CLogFile::CheckLogFile()
 {
 	if (m_bLogInit)
 	{
-		string szFileDate, szCurrDate;
+		string szFileDate, szCurrDate, szError;
 
 		m_Lock.lock();
 
 		szFileDate = m_LogMember.m_szDate;
 		szCurrDate = GetDateTimeStr(false);
 
-		if (szFileDate != szCurrDate)
+		if (szFileDate != szCurrDate || !(m_LogMember.m_Ofstream.is_open() && m_LogMember.m_Ofstream.good()))
 		{
 			m_LogMember.m_szDate = szCurrDate;
-			CreateLogFile();
+
+			if (!CreateLogFile(szError))
+			{
+#ifdef _DEBUG
+				std::cerr << GetDateTimeStr() << szError << std::endl;
+#endif
+			}
+
+			//检查备份
+			ActivateBackupOnece();
 		}
 
 		m_Lock.unlock();
 	}
 }
 
-void CLogFile::CreateLogFile()
+bool CLogFile::CreateLogFile(string &szError)
 {
 	string szFileName = m_LogMember.m_szFileName + "_" + m_LogMember.m_szDate + ".log";
 
@@ -170,14 +186,22 @@ void CLogFile::CreateLogFile()
 	if (m_LogMember.m_Ofstream.is_open() && m_LogMember.m_Ofstream.good())
 	{
 		m_LogMember.m_bOpen = true;
-		std::cout << GetDateTimeStr() << CLogFileMember::GetLogLevelStr(E_LOG_LEVEL_ALL) << "Open log file:" 
-			<< szFileName << " success !" << std::endl;
 	}
 	else
 	{
-		std::cerr << GetDateTimeStr() << CLogFileMember::GetLogLevelStr(E_LOG_LEVEL_ALL) << "Open log file:" 
-			<< szFileName << " failed !" << std::endl;
+		szError = "Open log file: " + szFileName + " failed.";
+		return false;
 	}
+
+	return true;
+}
+
+void CLogFile::LogFileBackup()
+{
+	CLogFileBackup backup(this);
+
+	//备份处理
+	backup.BackupHandle(m_LogMember.m_szFileName, m_LogMember.m_eLogDeco, m_iBackupRetain);
 }
 
 CLogOutObject CLogFile::operator << (const string& Str)
@@ -602,8 +626,7 @@ void CLogFile::Print(const eLOG_FILE_LEVEL& eLogLevel, const char* szFormat, ...
 	}
 }
 
-void CLogFile::PrintHex(const eLOG_FILE_LEVEL& eLogLevel, const string &szPrompt, unsigned char *buff, size_t len, 
-	unsigned char ucPreSpace)
+void CLogFile::PrintHex(const eLOG_FILE_LEVEL& eLogLevel, const string &szPrompt, unsigned char *buff, size_t len, unsigned char ucPreSpace)
 {
 	if (nullptr == buff || 0 == len)
 		return;
@@ -658,7 +681,7 @@ void CLogFile::PrintHex(const eLOG_FILE_LEVEL& eLogLevel, const string &szPrompt
 			snprintf(printbuf, sizeof(printbuf), szFullFormat.c_str(), pPreSpace, uiAddress, temp[0], temp[1], temp[2], temp[3],
 				temp[4], temp[5], temp[6], temp[7], temp[8], temp[9], temp[10], temp[11], temp[12], temp[13], temp[14], temp[15],
 				szDump.c_str());
-			szPrint += printbuf;
+			szPrint.append(printbuf);
 			memset(printbuf, 0, sizeof(printbuf));
 
 			iPos += 16;
@@ -683,7 +706,7 @@ void CLogFile::PrintHex(const eLOG_FILE_LEVEL& eLogLevel, const string &szPrompt
 				unsigned int uiWide = 48;
 
 				snprintf(printbuf, sizeof(printbuf), "%s%08x", pPreSpace, uiAddress);
-				szPrint += printbuf;
+				szPrint.append(printbuf);
 				memset(printbuf, 0, sizeof(printbuf));
 
 				for (unsigned int i = 0; i < iSurplusLen; ++i)
@@ -691,12 +714,12 @@ void CLogFile::PrintHex(const eLOG_FILE_LEVEL& eLogLevel, const string &szPrompt
 					uiWide -= 3;
 
 					snprintf(printbuf, sizeof(printbuf), " %02x", temp[i]);
-					szPrint += printbuf;
+					szPrint.append(printbuf);
 					memset(printbuf, 0, sizeof(printbuf));
 				}
 
 				snprintf(printbuf, sizeof(printbuf), "  %*s", uiWide, " ");
-				szPrint += printbuf + szDump + "\n";
+				szPrint.append(printbuf + szDump + "\n");
 			}
 
 			iPos += iSurplusLen;
@@ -774,9 +797,6 @@ string CLogFile::GetDateTimeStr(bool bIsDateTimeStr, bool bNeedMilliseconds)
 	{
 		switch (m_LogMember.m_eLogDeco)
 		{
-		case E_LOG_DECO_MINUTE:
-			strftime(strDateTime, 20, "%Y%m%d%H%M", &tmTimeTemp);
-			break;
 		case E_LOG_DECO_HOUR:
 			strftime(strDateTime, 16, "%Y%m%d%H", &tmTimeTemp);
 			break;

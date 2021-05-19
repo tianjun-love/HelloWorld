@@ -50,7 +50,7 @@ public:
 	void SetDateTimeSeconds(time_t lSecond);                               //set m_lSeconds
 	clock_t GetDateTimePart(const std::string& szPart, clock_t iAdd = 0) const; //get datetime part
 	std::string GetDateTimeStr(bool bNeedMilliseconds = false) const;           //get date str
-	std::string GetDateStr(const std::string& szDecollator = "-") const;             //get day str
+	std::string GetDateStr(const std::string& szDecollator = "-") const;        //get day str
 	std::string GetTimeStr(const std::string& szDecollator = ":", bool bNeedMilliseconds = false) const; //get time str
 	std::string GetDateMonStr(const std::string& szDecollator = "") const;
 	std::string GetDateHourStr(const std::string& szDecollator = "") const;

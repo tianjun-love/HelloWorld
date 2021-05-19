@@ -457,11 +457,11 @@ std::string CMyCompress::GetTimeStr()
 /*********************************************************
 功能：	获取目录文件
 参数：	szDir 目录名，如./,../xx,tx/
-*		FileList 文件列表
+*		fileList 文件列表
 *		szError 错误信息
 返回：	成功返回true
 *********************************************************/
-bool CMyCompress::GetDirFiles(const std::string& szDir, std::list<SDirFiles> &FileList, std::string &szError)
+bool CMyCompress::GetDirFiles(const std::string& szDir, std::list<SDirFiles> &fileList, std::string &szError)
 {
 	if (szDir.empty())
 	{
@@ -528,7 +528,7 @@ bool CMyCompress::GetDirFiles(const std::string& szDir, std::list<SDirFiles> &Fi
 					}
 				}
 
-				FileList.push_back(file);
+				fileList.push_back(file);
 			}
 		} while (_findnext(hFile, &fileInfo) == 0);
 
@@ -566,7 +566,7 @@ bool CMyCompress::GetDirFiles(const std::string& szDir, std::list<SDirFiles> &Fi
 					}
 				}
 
-				FileList.push_back(file);
+				fileList.push_back(file);
 			}
 		}
 
@@ -580,6 +580,336 @@ bool CMyCompress::GetDirFiles(const std::string& szDir, std::list<SDirFiles> &Fi
 #endif
 
 	return true;
+}
+
+/*********************************************************
+功能：	读取目录里面的文件信息
+参数：	szDir 要读取的目录，win下如：E:\\Work\\*，linux下如：/Work
+*		infoList 文件信息容器
+*		szError 错误信息
+*		bCheckIsDir 是否检查是否目录
+返回：	成功返回true
+*********************************************************/
+bool CMyCompress::GetDirFiles(const std::string& szDir, std::list<SFileInfo>& infoList, std::string& szError, bool bCheckIsDir)
+{
+	if (szDir.empty())
+	{
+		szError = "Dir path can not be empty !";
+		return false;
+	}
+
+	std::string szDirTemp(szDir);
+	SFileInfo file;
+
+	//处理目录
+#ifdef _WIN32
+	if ('*' != szDirTemp[szDirTemp.length() - 1])
+	{
+		if (szDirTemp.length() <= 1 || ('\\' != szDirTemp[szDirTemp.length() - 2] && '/' != szDirTemp[szDirTemp.length() - 2]))
+			szDirTemp.append("\\*");
+		else
+			szDirTemp.append("*");
+	}
+	else
+	{
+		if ('\\' != szDirTemp[szDirTemp.length() - 2] && '/' != szDirTemp[szDirTemp.length() - 2])
+		{
+			szError = "Dir path is wrong !";
+			return false;
+		}
+	}
+
+	if (std::string::npos != szDirTemp.rfind("\\"))
+		file.szBaseDir = szDirTemp.substr(0, szDirTemp.rfind("\\"));
+	else
+		file.szBaseDir = szDirTemp.substr(0, szDirTemp.rfind("/"));
+#else
+	if ("/" != szDirTemp)
+	{
+		if ('/' == szDirTemp[szDirTemp.length() - 1])
+		{
+			szDirTemp.erase(szDirTemp.length() - 1);
+		}
+
+		file.szBaseDir = szDirTemp;
+	}
+#endif
+
+	//检查是否存在
+	if (!CheckFileExists(file.szBaseDir))
+	{
+		szError = "Path:" + szDir + " is not exists !";
+		return false;
+	}
+
+	//检查是否是目录
+	if (bCheckIsDir && e_Dir != CheckFileType(file.szBaseDir))
+	{
+		szError = "Path:" + szDir + " is not a dir !";
+		return false;
+	}
+
+#ifdef _WIN32
+	intptr_t hFile = 0; //文件夹句柄
+	struct _finddata_t fileInfo; //文件句柄
+
+	if ((hFile = _findfirst(szDirTemp.c_str(), &fileInfo)) != -1)
+	{
+		do
+		{
+			//过滤掉当前目录和上层目录
+			if (0 != strcmp(".", fileInfo.name) && 0 != strcmp("..", fileInfo.name))
+			{
+				file.szName = fileInfo.name;
+				file.iAttrib = fileInfo.attrib;
+				file.llCreateTime = fileInfo.time_create;
+				file.llAccessTime = fileInfo.time_access;
+				file.llWriteTime = fileInfo.time_write;
+				file.ullSize = fileInfo.size; //windows获取文件夹的大小是0
+				file.ullOccupySize = (fileInfo.size / 4096 + (0 == (fileInfo.size % 4096) ? 0 : 1)) * 4096;
+
+				WIN32_FIND_DATAA ff32;
+				HANDLE hFind = FindFirstFile((file.szBaseDir + "\\" + file.szName).c_str(), &ff32);
+				if (INVALID_HANDLE_VALUE != hFind)
+				{
+					FILETIME ftLocal;
+					FileTimeToLocalFileTime(&(ff32.ftLastWriteTime), &ftLocal);
+					FileTimeToDosDateTime(&ftLocal, ((LPWORD)&(file.ulDosWriteTime)) + 1, ((LPWORD)&(file.ulDosWriteTime)) + 0);
+					FindClose(hFind);
+				}
+
+				if (fileInfo.attrib & _A_SUBDIR)
+				{
+					file.eType = e_Dir; //文件夹
+
+										//读取子文件夹
+					std::string szChildDir = file.szBaseDir + "\\" + file.szName + "\\*";
+					if (!GetDirFiles(szChildDir, file.SubDirList, szError, false))
+					{
+						break;
+					}
+				}
+				else
+				{
+					//windows下，快捷方式会当成文件，暂时只用后缀名.lnk判断
+					std::string::size_type iPos = file.szName.rfind(".lnk");
+					if (iPos != std::string::npos && file.szName.size() >= 5 && (file.szName.size() - 4) == iPos) //快捷方式
+						file.eType = e_Link;
+					else
+						file.eType = e_File; //文件
+				}
+
+				infoList.push_back(file);
+				file.SubDirList.clear();
+			}
+		} while (_findnext(hFile, &fileInfo) == 0);
+
+		_findclose(hFile);
+	}
+	else
+	{
+		szError = "Open dir failed:" + GetErrorMsg(GetLastError());
+		return false;
+	}
+#else
+	DIR *pDir = nullptr; //目录句柄
+	struct dirent *pDirent = nullptr; //文件句柄
+	struct stat info;
+
+	if ((pDir = opendir(szDirTemp.c_str())) != nullptr)
+	{
+		while ((pDirent = readdir(pDir)) != nullptr)
+		{
+			//过滤掉当前目录和上层目录
+			if (0 != strcmp(".", pDirent->d_name) && 0 != strcmp("..", pDirent->d_name))
+			{
+				std::string szChildFile = file.szBaseDir + "/" + pDirent->d_name;
+
+				//获取属性
+				lstat(szChildFile.c_str(), &info);
+
+				file.szName = pDirent->d_name;
+				file.iAttrib = info.st_mode;
+				file.llCreateTime = info.st_ctime;
+				file.llAccessTime = info.st_atime;
+				file.llWriteTime = info.st_mtime;
+				file.ullSize = info.st_size; //linux获取文件夹大小是4096
+				file.ullOccupySize = info.st_blocks * m_DiskBlockSize;
+
+				if (pDirent->d_type == DT_DIR)
+				{
+					file.eType = e_Dir; //文件夹
+
+										//读取子文件夹
+					if (!GetDirFiles(szChildFile, file.SubDirList, szError, false))
+					{
+						break;
+					}
+				}
+				else
+				{
+					if (pDirent->d_type == DT_LNK) //软连接
+						file.eType = e_Link;
+					else
+						file.eType = e_File; //文件
+				}
+
+				infoList.push_back(file);
+				file.SubDirList.clear();
+			}
+		}
+
+		closedir(pDir);
+	}
+	else
+	{
+		szError = "Open dir failed:" + GetErrorMsg(errno);
+		return false;
+	}
+#endif
+
+	return true;
+}
+
+/*********************************************************
+功能：	读取文件信息
+参数：	szFile 要读取的文件，win下如：E:\\Work\\1.txt，linux下如：/Work/t.txt
+*		info 文件信息
+*		szError 错误信息
+返回：	成功返回true
+*********************************************************/
+bool CMyCompress::GetFileInfo(const std::string& szFile, SFileInfo &info, std::string &szError)
+{
+	//处理文件名
+	std::string szFileTemp(szFile);
+	if (!szFileTemp.empty() 
+		&& "/" != szFileTemp 
+		&& ('/' == szFileTemp[szFileTemp.length() - 1] || '\\' == szFileTemp[szFileTemp.length() - 1]))
+	{
+		szFileTemp.erase(szFileTemp.length() - 1);
+	}
+
+	if (szFileTemp.empty())
+	{
+		szError = "File path can not be empty !";
+		return false;
+	}
+
+	//检查是否存在
+	if (!CheckFileExists(szFileTemp))
+	{
+		szError = "File:" + szFileTemp + " is not exists !";
+		return false;
+	}
+
+	//处理路径
+	std::string::size_type iPos = szFileTemp.rfind("\\");
+	if (std::string::npos == iPos)
+		iPos = szFileTemp.rfind("/");
+
+	if (std::string::npos == iPos)
+	{
+		if ("." == szFileTemp || ".." == szFileTemp)
+			GetRealPath(szFileTemp, info.szBaseDir, szError);
+		else
+			info.szBaseDir = ".";
+
+		info.szName = szFileTemp;
+	}
+	else
+	{
+		if (0 != iPos)
+		{
+			info.szBaseDir = szFileTemp.substr(0, iPos);
+			info.szName = szFileTemp.substr(iPos + 1);
+		}
+		else
+			info.szName = "/";
+	}
+
+	bool bResult = false;
+
+#ifdef _WIN32
+	intptr_t hFind;
+	struct _finddata_t ff32;
+
+	hFind = _findfirst(szFileTemp.c_str(), &ff32);
+	if (-1 != hFind)
+	{
+		if (_A_SUBDIR & ff32.attrib)
+			info.eType = e_Dir;
+		else
+		{
+			if (0 < strlen(ff32.name))
+			{
+				std::string szTemp = ff32.name;
+				std::string::size_type iPos = szTemp.rfind(".lnk");
+
+				if (std::string::npos != iPos && iPos == (szTemp.length() - 4))
+					info.eType = e_Link;
+				else
+					info.eType = e_File;
+			}
+			else
+				info.eType = e_File;
+		}
+
+		info.iAttrib = ff32.attrib;
+		info.llCreateTime = ff32.time_create;
+		info.llAccessTime = ff32.time_access;
+		info.llWriteTime = ff32.time_write;
+		info.ullSize = ff32.size;
+		info.ullOccupySize = (ff32.size / 4096 + (0 == (ff32.size % 4096) ? 0 : 1)) * 4096;
+
+		WIN32_FIND_DATAA ffd;
+		HANDLE hF= FindFirstFile(szFileTemp.c_str(), &ffd);
+		if (INVALID_HANDLE_VALUE != hF)
+		{
+			FILETIME ftLocal;
+			FileTimeToLocalFileTime(&(ffd.ftLastWriteTime), &ftLocal);
+			FileTimeToDosDateTime(&ftLocal, ((LPWORD)&(info.ulDosWriteTime)) + 1, ((LPWORD)&(info.ulDosWriteTime)) + 0);
+			FindClose(hF);
+		}
+
+		bResult = true;
+
+		_findclose(hFind);
+	}
+	else
+	{
+		szError = "Read file info failed:" + GetErrorMsg(GetLastError());
+		return false;
+	}
+#else
+	struct stat st;
+
+	if (0 == lstat(szFileTemp.c_str(), &st))
+	{
+		if (S_ISDIR(st.st_mode))
+			info.eType = e_Dir;
+		else if (S_ISLNK(st.st_mode))
+			info.eType = e_Link;
+		else
+			info.eType = e_File;
+
+		info.iAttrib = st.st_mode;
+		info.llCreateTime = st.st_ctime;
+		info.llAccessTime = st.st_atime;
+		info.llWriteTime = st.st_mtime;
+		info.ullSize = st.st_size;
+		info.ullOccupySize = st.st_blocks * m_DiskBlockSize;
+
+		bResult = true;
+	}
+	else
+	{
+		szError = "Read file info failed:" + GetErrorMsg(errno);
+		return false;
+	}
+
+#endif
+
+	return bResult;
 }
 
 /*********************************************************
@@ -659,7 +989,7 @@ bool CMyCompress::do_compressZIP(zipFile zip, const std::string &szFileName, con
 		std::list<SFileInfo> fileList;
 
 		if (e_Dir == fileInfo.eType)
-			bResult = GetDirInfo(szFileName, fileList, szError, false);
+			bResult = GetDirFiles(szFileName, fileList, szError, false);
 		else if (e_File == fileInfo.eType)
 			bResult = WriteNewFileInZip(zip, szFileName, buf, size_buf, szError);
 		else
@@ -1816,336 +2146,6 @@ bool CMyCompress::Chown(const std::string &szFile, const std::string &szUser, st
 }
 
 /*********************************************************
-功能：	读取文件信息
-参数：	szFile 要读取的文件，win下如：E:\\Work\\1.txt，linux下如：/Work/t.txt
-*		info 文件信息
-*		szError 错误信息
-返回：	成功返回true
-*********************************************************/
-bool CMyCompress::GetFileInfo(const std::string& szFile, SFileInfo &info, std::string &szError)
-{
-	//处理文件名
-	std::string szFileTemp(szFile);
-	if (!szFileTemp.empty() 
-		&& "/" != szFileTemp 
-		&& ('/' == szFileTemp[szFileTemp.length() - 1] || '\\' == szFileTemp[szFileTemp.length() - 1]))
-	{
-		szFileTemp.erase(szFileTemp.length() - 1);
-	}
-
-	if (szFileTemp.empty())
-	{
-		szError = "File path can not be empty !";
-		return false;
-	}
-
-	//检查是否存在
-	if (!CheckFileExists(szFileTemp))
-	{
-		szError = "File:" + szFileTemp + " is not exists !";
-		return false;
-	}
-
-	//处理路径
-	std::string::size_type iPos = szFileTemp.rfind("\\");
-	if (std::string::npos == iPos)
-		iPos = szFileTemp.rfind("/");
-
-	if (std::string::npos == iPos)
-	{
-		if ("." == szFileTemp || ".." == szFileTemp)
-			GetRealPath(szFileTemp, info.szBaseDir, szError);
-		else
-			info.szBaseDir = ".";
-
-		info.szName = szFileTemp;
-	}
-	else
-	{
-		if (0 != iPos)
-		{
-			info.szBaseDir = szFileTemp.substr(0, iPos);
-			info.szName = szFileTemp.substr(iPos + 1);
-		}
-		else
-			info.szName = "/";
-	}
-
-	bool bResult = false;
-
-#ifdef _WIN32
-	intptr_t hFind;
-	struct _finddata_t ff32;
-
-	hFind = _findfirst(szFileTemp.c_str(), &ff32);
-	if (-1 != hFind)
-	{
-		if (_A_SUBDIR & ff32.attrib)
-			info.eType = e_Dir;
-		else
-		{
-			if (0 < strlen(ff32.name))
-			{
-				std::string szTemp = ff32.name;
-				std::string::size_type iPos = szTemp.rfind(".lnk");
-
-				if (std::string::npos != iPos && iPos == (szTemp.length() - 4))
-					info.eType = e_Link;
-				else
-					info.eType = e_File;
-			}
-			else
-				info.eType = e_File;
-		}
-
-		info.iAttrib = ff32.attrib;
-		info.llCreateTime = ff32.time_create;
-		info.llAccessTime = ff32.time_access;
-		info.llWriteTime = ff32.time_write;
-		info.ullSize = ff32.size;
-		info.ullOccupySize = (ff32.size / 4096 + (0 == (ff32.size % 4096) ? 0 : 1)) * 4096;
-
-		WIN32_FIND_DATAA ffd;
-		HANDLE hF= FindFirstFile(szFileTemp.c_str(), &ffd);
-		if (INVALID_HANDLE_VALUE != hF)
-		{
-			FILETIME ftLocal;
-			FileTimeToLocalFileTime(&(ffd.ftLastWriteTime), &ftLocal);
-			FileTimeToDosDateTime(&ftLocal, ((LPWORD)&(info.ulDosWriteTime)) + 1, ((LPWORD)&(info.ulDosWriteTime)) + 0);
-			FindClose(hF);
-		}
-
-		bResult = true;
-
-		_findclose(hFind);
-	}
-	else
-	{
-		szError = "Read file info failed:" + GetErrorMsg(GetLastError());
-		return false;
-	}
-#else
-	struct stat st;
-
-	if (0 == lstat(szFileTemp.c_str(), &st))
-	{
-		if (S_ISDIR(st.st_mode))
-			info.eType = e_Dir;
-		else if (S_ISLNK(st.st_mode))
-			info.eType = e_Link;
-		else
-			info.eType = e_File;
-
-		info.iAttrib = st.st_mode;
-		info.llCreateTime = st.st_ctime;
-		info.llAccessTime = st.st_atime;
-		info.llWriteTime = st.st_mtime;
-		info.ullSize = st.st_size;
-		info.ullOccupySize = st.st_blocks * m_DiskBlockSize;
-
-		bResult = true;
-	}
-	else
-	{
-		szError = "Read file info failed:" + GetErrorMsg(errno);
-		return false;
-	}
-
-#endif
-
-	return bResult;
-}
-
-/*********************************************************
-功能：	读取目录里面的文件信息
-参数：	szDir 要读取的目录，win下如：E:\\Work\\*，linux下如：/Work
-*		infoList 文件信息容器
-*		szError 错误信息
-*		bCheckIsDir 是否检查是否目录
-返回：	成功返回true
-*********************************************************/
-bool CMyCompress::GetDirInfo(const std::string& szDir, std::list<SFileInfo>& infoList, std::string& szError, bool bCheckIsDir)
-{
-	if (szDir.empty())
-	{
-		szError = "Dir path can not be empty !";
-		return false;
-	}
-
-	std::string szDirTemp(szDir);
-	SFileInfo file;
-
-	//处理目录
-#ifdef _WIN32
-	if ('*' != szDirTemp[szDirTemp.length() - 1])
-	{
-		if (szDirTemp.length() <= 1 || ('\\' != szDirTemp[szDirTemp.length() - 2] && '/' != szDirTemp[szDirTemp.length() - 2]))
-			szDirTemp.append("\\*");
-		else
-			szDirTemp.append("*");
-	}
-	else
-	{
-		if ('\\' != szDirTemp[szDirTemp.length() - 2] && '/' != szDirTemp[szDirTemp.length() - 2])
-		{
-			szError = "Dir path is wrong !";
-			return false;
-		}
-	}
-
-	if (std::string::npos != szDirTemp.rfind("\\"))
-		file.szBaseDir = szDirTemp.substr(0, szDirTemp.rfind("\\"));
-	else
-		file.szBaseDir = szDirTemp.substr(0, szDirTemp.rfind("/"));
-#else
-	if ("/" != szDirTemp)
-	{
-		if ('/' == szDirTemp[szDirTemp.length() - 1])
-		{
-			szDirTemp.erase(szDirTemp.length() - 1);
-		}
-
-		file.szBaseDir = szDirTemp;
-	}
-#endif
-
-	//检查是否存在
-	if (!CheckFileExists(file.szBaseDir))
-	{
-		szError = "Path:" + szDir + " is not exists !";
-		return false;
-	}
-
-	//检查是否是目录
-	if (bCheckIsDir && e_Dir != CheckFileType(file.szBaseDir))
-	{
-		szError = "Path:" + szDir + " is not a dir !";
-		return false;
-	}
-
-#ifdef _WIN32
-	intptr_t hFile = 0; //文件夹句柄
-	struct _finddata_t fileInfo; //文件句柄
-
-	if ((hFile = _findfirst(szDirTemp.c_str(), &fileInfo)) != -1)
-	{
-		do
-		{
-			//过滤掉当前目录和上层目录
-			if (0 != strcmp(".", fileInfo.name) && 0 != strcmp("..", fileInfo.name))
-			{
-				file.szName = fileInfo.name;
-				file.iAttrib = fileInfo.attrib;
-				file.llCreateTime = fileInfo.time_create;
-				file.llAccessTime = fileInfo.time_access;
-				file.llWriteTime = fileInfo.time_write;
-				file.ullSize = fileInfo.size; //windows获取文件夹的大小是0
-				file.ullOccupySize = (fileInfo.size / 4096 + (0 == (fileInfo.size % 4096) ? 0 : 1)) * 4096;
-
-				WIN32_FIND_DATAA ff32;
-				HANDLE hFind = FindFirstFile((file.szBaseDir + "\\" + file.szName).c_str(), &ff32);
-				if (INVALID_HANDLE_VALUE != hFind)
-				{
-					FILETIME ftLocal;
-					FileTimeToLocalFileTime(&(ff32.ftLastWriteTime), &ftLocal);
-					FileTimeToDosDateTime(&ftLocal, ((LPWORD)&(file.ulDosWriteTime)) + 1, ((LPWORD)&(file.ulDosWriteTime)) + 0);
-					FindClose(hFind);
-				}
-
-				if (fileInfo.attrib & _A_SUBDIR)
-				{
-					file.eType = e_Dir; //文件夹
-
-				    //读取子文件夹
-					std::string szChildDir = file.szBaseDir + "\\" + file.szName + "\\*";
-					if (!GetDirInfo(szChildDir, file.SubDirList, szError, false))
-					{
-						break;
-					}
-				}
-				else
-				{
-					//windows下，快捷方式会当成文件，暂时只用后缀名.lnk判断
-					std::string::size_type iPos = file.szName.rfind(".lnk");
-					if (iPos != std::string::npos && file.szName.size() >= 5 && (file.szName.size() - 4) == iPos) //快捷方式
-						file.eType = e_Link;
-					else
-						file.eType = e_File; //文件
-				}
-
-				infoList.push_back(file);
-				file.SubDirList.clear();
-			}
-		} while (_findnext(hFile, &fileInfo) == 0);
-
-		_findclose(hFile);
-	}
-	else
-	{
-		szError = "Open dir failed:" + GetErrorMsg(GetLastError());
-		return false;
-	}
-#else
-	DIR *pDir = nullptr; //目录句柄
-	struct dirent *pDirent = nullptr; //文件句柄
-	struct stat info;
-
-	if ((pDir = opendir(szDirTemp.c_str())) != nullptr)
-	{
-		while ((pDirent = readdir(pDir)) != nullptr)
-		{
-			//过滤掉当前目录和上层目录
-			if (0 != strcmp(".", pDirent->d_name) && 0 != strcmp("..", pDirent->d_name))
-			{
-				std::string szChildFile = file.szBaseDir + "/" + pDirent->d_name;
-
-				//获取属性
-				lstat(szChildFile.c_str(), &info);
-
-				file.szName = pDirent->d_name;
-				file.iAttrib = info.st_mode;
-				file.llCreateTime = info.st_ctime;
-				file.llAccessTime = info.st_atime;
-				file.llWriteTime = info.st_mtime;
-				file.ullSize = info.st_size; //linux获取文件夹大小是4096
-				file.ullOccupySize = info.st_blocks * m_DiskBlockSize;
-
-				if (pDirent->d_type == DT_DIR)
-				{
-					file.eType = e_Dir; //文件夹
-
-					//读取子文件夹
-					if (!GetDirInfo(szChildFile, file.SubDirList, szError, false))
-					{
-						break;
-					}
-				}
-				else
-				{
-					if (pDirent->d_type == DT_LNK) //软连接
-						file.eType = e_Link;
-					else
-						file.eType = e_File; //文件
-				}
-
-				infoList.push_back(file);
-				file.SubDirList.clear();
-			}
-		}
-
-		closedir(pDir);
-	}
-	else
-	{
-		szError = "Open dir failed:" + GetErrorMsg(errno);
-		return false;
-	}
-#endif
-
-	return true;
-}
-
-/*********************************************************
 功能：	获取路径信息
 参数：	szPath 路径，如./,../xx,tx/
 *		szResolvedPath 全路径
@@ -2654,7 +2654,7 @@ bool CMyCompress::do_compressGZIP(gzFile gz, const std::string &szFileName, cons
 	{
 		std::list<SFileInfo> fileList;
 
-		if (GetDirInfo(szFileName, fileList, szError, false))
+		if (GetDirFiles(szFileName, fileList, szError, false))
 		{
 			std::string szNameTemp;
 

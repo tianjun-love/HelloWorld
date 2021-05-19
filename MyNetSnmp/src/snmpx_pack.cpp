@@ -45,7 +45,7 @@ int CSnmpxPack::tag_len_pack(unsigned int taglen, unsigned char* buf)
 			unsigned char t_buf[sizeof(unsigned int)] = { 0 };
 			memcpy(t_buf, (unsigned char*)&taglen, sizeof(unsigned int));
 
-			if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+			if (get_byteorder_is_LE())
 			{
 				*(buf + 1) = t_buf[1];
 				*(buf + 2) = t_buf[0];

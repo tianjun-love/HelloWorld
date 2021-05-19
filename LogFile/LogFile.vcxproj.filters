@@ -27,6 +27,9 @@
     <ClInclude Include="include\LogOutObject.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="include\LogFileBackup.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\LogEnd.cpp">
@@ -39,6 +42,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="src\LogOutObject.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\LogFileBackup.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

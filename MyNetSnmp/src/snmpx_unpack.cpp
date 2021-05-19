@@ -800,13 +800,14 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 	if (r->msgVersion == 0x03)
 	{
 		if (r->tag == SNMPX_MSG_GET && (r->msgAuthoritativeEngineID == NULL || r->msgAuthoritativeEngineID_len == 0)) {
-			//获取v3引擎ID请求不用校验
+			//请求引擎ID的时候不需要检查
 		}
-		else if (r->tag == SNMPX_MSG_REPORT || (is_get_v3_engineID && r->tag == SNMPX_MSG_RESPONSE)) {
-			//收到引擎ID的时候不需要检查，有的设备是以get-response返回
+		else if (r->tag == SNMPX_MSG_REPORT || (is_get_v3_engineID && r->tag == SNMPX_MSG_RESPONSE))
+		{
+			//REPORT收到引擎ID的时候不需要检查，有的设备获取引擎ID时，会以get-response返回
 			if (is_get_v3_engineID && r->tag == SNMPX_MSG_RESPONSE)
 			{
-				if (r->msgAuthoritativeEngineID == NULL || r->msgAuthoritativeEngineID_len == 0)
+				if (r->msgAuthoritativeEngineID == NULL || r->msgAuthoritativeEngineID_len == 0) 
 				{
 					m_szErrorMsg = "check_rc_snmpx_data failed, get agent AuthoritativeEngineID NULL.";
 					return SNMPX_failure;
@@ -871,15 +872,18 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 				m_szErrorMsg = "check_rc_snmpx_data failed, recv msgAuthoritativeEngineID is null.";
 				return SNMPX_failure;
 			}
+
 			if (t_user->msgAuthoritativeEngineID == NULL || t_user->msgAuthoritativeEngineID_len == 0) {
 				m_szErrorMsg = "check_rc_snmpx_data failed, user msgAuthoritativeEngineID is null.";
 				return SNMPX_failure;
 			}
+
 			if (t_user->msgAuthoritativeEngineID_len != r->msgAuthoritativeEngineID_len) {
 				m_szErrorMsg = format_err_msg("check_rc_snmpx_data AuthoritativeEngineID failed, user length[0x%02X], recv[0x%02X].",
 					t_user->msgAuthoritativeEngineID_len, r->msgAuthoritativeEngineID_len);
 				return SNMPX_failure;
 			}
+
 			if (memcmp(t_user->msgAuthoritativeEngineID, r->msgAuthoritativeEngineID, t_user->msgAuthoritativeEngineID_len) != 0) {
 				m_szErrorMsg = format_err_msg("check_rc_snmpx_data AuthoritativeEngineID failed, user ID[0x%s], recv [0x%s].",
 					get_hex_string(t_user->msgAuthoritativeEngineID, t_user->msgAuthoritativeEngineID_len).c_str(), 
@@ -949,6 +953,7 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 					r->msgAuthenticationParameters_len) != 0) {
 					r->errcode = 3;//hash报错码
 				}
+
 				if (count_md5_buf != NULL) {
 					free(count_md5_buf);
 				}
@@ -988,6 +993,8 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 
 		if (r->tag == 0)
 		{
+			//在测试时发现，锐捷交换机中，在get一个完全不存在的OID（如：1.3.6.1.4.1.46859.6.3.0）时，返回的PDU类型是0x00
+			//暂时不处理
 			m_szErrorMsg = "check_rc_snmpx_data failed, PDU type is 0x00.";
 			return SNMPX_failure;
 		}
@@ -1039,6 +1046,7 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 	std::list<struct tlv_data*>::iterator iter;
 	struct tlv_data* tlv = NULL;
 	const struct userinfo_t* t_user = NULL;
+	struct userinfo_t* t_user_free = NULL; //在处理trap多用户时使用，不为空时，最后释放
 	int rval = SNMPX_noError;
 
 	unsigned char* decode = NULL;
@@ -1261,22 +1269,21 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 								std::string error;
 
 								//获取用户认证信息
-								t_user = generate_agent_user_info(t_user, r, user_auth_info_cache, error);
+								t_user_free = generate_agent_user_info(t_user, r, user_auth_info_cache, error);
 
-								if (NULL == t_user)
+								if (NULL == t_user_free)
 								{
 									rval = SNMPX_failure;
 									m_szErrorMsg = "snmpx_group_unpack wrong, get v3 agent authoritative info failed: " + error;
 									goto g_end;
 								}
+								else
+									t_user = t_user_free;
 							}
 						}
 					}
 					else
-					{
-						//获取引擎ID时，有的设备是以get-response响应，防止t_user==NULL，在调用check_rc_snmpx_data时程序崩溃
 						t_user = (const userinfo_t*)user_info;
-					}
 				}
 				else
 				{
@@ -1287,7 +1294,10 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 				}
 			}
 			else
+			{
+				//防止有的设备在V3获取引擎ID时，使用get-response上报，造成在调用check_rc_snmpx_data时t_user==NULL，程序崩溃
 				t_user = (const userinfo_t*)user_info;
+			}
 		}
 
 		++iter;
@@ -1373,7 +1383,7 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 	//检查数据
 	if (rval >= 0)
 	{
-		rval = check_rc_snmpx_data(r, t_user, buf, buf_len);
+		rval = check_rc_snmpx_data(r, t_user, buf, buf_len, is_get_v3_engineID);
 
 		if (rval < 0)
 			m_szErrorMsg = "snmpx_group_unpack failed: " + m_szErrorMsg;
@@ -1382,6 +1392,12 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 g_end:
 	//清理内存
 	free_tlv_glist_data(mlist);
+
+	if (t_user_free != NULL)
+	{
+		free_userinfo_data(t_user_free);
+		t_user_free = NULL;
+	}
 
 	if (decode != NULL)
 	{
@@ -1617,8 +1633,8 @@ void CSnmpxUnpack::snmpx_get_vb_value(const variable_bindings* variable_binding,
 		}
 
 		//value
-		oid  oidValue[MAX_OID_LEN] = { 0 };
-		int  oidLen = 0;
+		oid oidValue[MAX_OID_LEN] = { 0 };
+		int oidLen = 0;
 		value->iValLen = variable_binding->val_len;
 		std::string szHex;
 
@@ -1745,7 +1761,7 @@ void CSnmpxUnpack::snmpx_get_vb_value(const variable_bindings* variable_binding,
 	return;
 }
 
-const userinfo_t* CSnmpxUnpack::generate_agent_user_info(const userinfo_t *t_user, const struct snmpx_t* r, const void *user_authinfo_cache, 
+userinfo_t* CSnmpxUnpack::generate_agent_user_info(const userinfo_t *t_user, const struct snmpx_t* r, const void *user_authinfo_cache, 
 	std::string &error)
 {
 	if (user_authinfo_cache == NULL)
@@ -1769,21 +1785,30 @@ const userinfo_t* CSnmpxUnpack::generate_agent_user_info(const userinfo_t *t_use
 		if (r->msgAuthoritativeEngineID_len != agent_iter->second->msgAuthoritativeEngineID_len)
 		{
 			authinfo_cache->first->erase(agent_iter);
-			agent_iter = authinfo_cache->first->end();
 		}
 		else
 		{
 			if (0 != memcmp(r->msgAuthoritativeEngineID, agent_iter->second->msgAuthoritativeEngineID, r->msgAuthoritativeEngineID_len))
 			{
 				authinfo_cache->first->erase(agent_iter);
-				agent_iter = authinfo_cache->first->end();
+			}
+			else
+			{
+				//拷贝一份出来，复用
+				user_info = clone_userinfo_data(agent_iter->second);
+
+				//如果拷贝失败，则删除此条记录，下面重新生成
+				if (NULL == user_info)
+				{
+					authinfo_cache->first->erase(agent_iter);
+				}
 			}
 		}
 	}
 
 	authinfo_cache->second->unlock();
 
-	if (agent_iter == authinfo_cache->first->end())
+	if (NULL == user_info)
 	{
 		//生成
 		user_info = (struct userinfo_t*)malloc(sizeof(struct userinfo_t));
@@ -1806,26 +1831,32 @@ const userinfo_t* CSnmpxUnpack::generate_agent_user_info(const userinfo_t *t_use
 			CUserProccess user_proc;
 
 			//生成认证信息
-			if (user_proc.snmpx_user_init(user_info) == SNMPX_noError)
+			if (SNMPX_noError == user_proc.snmpx_user_init(user_info))
 			{
-				authinfo_cache->second->lock();
-				authinfo_cache->first->insert(std::make_pair(agent_ip, user_info));
-				authinfo_cache->second->unlock();
+				userinfo_t *user_info_temp = clone_userinfo_data(user_info);
+
+				if (NULL != user_info_temp)
+				{
+					authinfo_cache->second->lock();
+					authinfo_cache->first->insert(std::make_pair(agent_ip, user_info_temp));
+					authinfo_cache->second->unlock();
+				}
+				else
+				{
+					free_userinfo_data(user_info);
+					user_info = NULL;
+					error = "generate_agent_user_info failed, clone_userinfo_data return NULL.";
+				}
 			}
 			else
 			{
-				free(user_info);
+				free_userinfo_data(user_info);
 				user_info = NULL;
 				error = "generate_agent_user_info failed: " + user_proc.GetErrorMsg();
 			}
 		}
 		else
 			error = "generate_agent_user_info failed, malloc return NULL: " + get_err_msg(errno, true, true);
-	}
-	else
-	{
-		//复用
-		user_info = agent_iter->second;
 	}
 
 	return user_info;

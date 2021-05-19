@@ -56,7 +56,7 @@ int CBerCode::asn_integer_code(unsigned char tag, unsigned int val_len, unsigned
 	{
 		for (i = 0; i < val_len; i++)
 		{
-			if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+			if (get_byteorder_is_LE())
 				s_buf[val_len - i - 1] = val_buf[i];
 			else
 				s_buf[i] = val_buf[i];
@@ -190,7 +190,7 @@ int CBerCode::asn_unsigned_code(unsigned char tag, unsigned int val_len, unsigne
 	{
 		for (i = 0; i < val_len; i++)
 		{
-			if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+			if (get_byteorder_is_LE())
 				s_buf[val_len - i - 1] = val_buf[i];
 			else
 				s_buf[i] = val_buf[i];
@@ -289,7 +289,7 @@ int CBerCode::asn_oid_code(unsigned char tag , unsigned int val_len , oid* val_b
 			unsigned char s_buf[s_len] = { 0 };
 
 			//统一转成大端
-			if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+			if (get_byteorder_is_LE())
 			{
 				for (unsigned int j = s_len; j > 0; j--)
 				{
@@ -299,23 +299,19 @@ int CBerCode::asn_oid_code(unsigned char tag , unsigned int val_len , oid* val_b
 			else
 				memcpy(s_buf, (unsigned char*)&oid_value, sizeof(s_buf));
 
-			//去掉多余的00，4个字节不用for，提高效率
-			if (0 == s_buf[3])
-			{
-				if (0 == s_buf[2])
-				{
-					if (0 == s_buf[1])
-						m = 1; //不可能全0
-					else
-						m = 2;
-				}
-				else
-					m = 3;
-			}
-			else
-				m = 4;
+			//去掉高位多余的00
+			m = s_len;
 
-			total7 = m * 8 / 7; //算出有多少个七字节组
+			for (unsigned int n = 0; n < s_len; ++n)
+			{
+				if (0x00 != s_buf[n])
+					break;
+				else
+					--m;
+			}
+
+			//算出有多少个七字节组
+			total7 = m * 8 / 7;
 
 			if (m * 8 % 7 != 0)
 			{
@@ -458,7 +454,7 @@ int CBerCode::asn_integer_decode(unsigned char* buf, unsigned int len)
 	//低字节往高字节赋值，因为前面可能有补或去除的字节
 	for (i = 0; i < len && i < (unsigned int)sizeof(t_buf); i++)
 	{
-		if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+		if (get_byteorder_is_LE())
 			t_buf[i] = buf[len - i - 1];
 		else
 			t_buf[sizeof(t_buf) - i - 1] = buf[len - i - 1];
@@ -482,7 +478,7 @@ unsigned int CBerCode::asn_unsigned_decode(unsigned char* buf, unsigned int len)
 	//低字节往高字节赋值，因为前面可能有补或去除的字节
 	for (i = 0; i < len && i < (unsigned int)sizeof(t_buf); i++)
 	{
-		if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+		if (get_byteorder_is_LE())
 			t_buf[i] = buf[len - i - 1];
 		else
 			t_buf[sizeof(t_buf) - i - 1] = buf[len - i - 1];
@@ -510,7 +506,7 @@ long long CBerCode::asn_integer64_decode(unsigned char* buf, unsigned int len)
 	//低字节往高字节赋值，因为前面可能有补或去除的字节
 	for (i = 0; i < len && i < (unsigned int)sizeof(t_buf); i++)
 	{
-		if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+		if (get_byteorder_is_LE())
 			t_buf[i] = buf[len - i - 1];
 		else
 			t_buf[sizeof(t_buf) - i - 1] = buf[len - i - 1];
@@ -535,7 +531,7 @@ unsigned long long CBerCode::asn_unsigned64_decode(unsigned char* buf, unsigned 
 	//低字节往高字节赋值，因为前面可能有补或去除的字节
 	for (i = 0; i < len && i < (unsigned int)sizeof(t_buf); i++)
 	{
-		if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+		if (get_byteorder_is_LE())
 			t_buf[i] = buf[len - i - 1];
 		else
 			t_buf[sizeof(t_buf) - i - 1] = buf[len - i - 1];
@@ -563,7 +559,7 @@ float CBerCode::asn_float_decode(unsigned char* buf, unsigned int len)
 	//低字节往高字节赋值，因为前面可能有补或去除的字节
 	for (i = 0; i < len && i < (unsigned int)sizeof(t_buf); i++)
 	{
-		if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+		if (get_byteorder_is_LE())
 			t_buf[i] = buf[len - i - 1];
 		else
 			t_buf[sizeof(t_buf) - i - 1] = buf[len - i - 1];
@@ -591,7 +587,7 @@ double CBerCode::asn_double_decode(unsigned char* buf, unsigned int len)
 	//低字节往高字节赋值，因为前面可能有补或去除的字节
 	for (i = 0; i < len && i < (unsigned int)sizeof(t_buf); i++)
 	{
-		if (HOST_ENDIAN_TYPE == SNMPX_LITTLE_ENDIAN)
+		if (get_byteorder_is_LE())
 			t_buf[i] = buf[len - i - 1];
 		else
 			t_buf[sizeof(t_buf) - i - 1] = buf[len - i - 1];

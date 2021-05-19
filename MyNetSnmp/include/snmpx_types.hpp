@@ -130,11 +130,9 @@ V3报文：
 #define MAX_MSG_LEN	         (65507) /* snmp抓包数据*/
 #define MAX_USER_INFO_LEN    (128)   /* 用户信息数据最大长度，用户名、认证密码及加密密码*/
 #define MAX_BULK_REPETITIONS (50)    /* table时最大回复条数*/
-#define	SNMPX_LITTLE_ENDIAN  (0)     /* 小端*/
-#define	SNMPX_BIG_ENDIAN     (1)     /* 大端*/
-#define	HOST_ENDIAN_TYPE     SNMPX_LITTLE_ENDIAN  /* 主机大小端类型*/
 
-typedef unsigned long oid;
+//限定使用4个字节
+typedef int32_t oid;
 
 struct tlv_data
 {
@@ -322,6 +320,10 @@ typedef std::map<oid, std::vector<std::pair<oid, SSnmpxValue>>>::iterator TTable
 typedef std::map<oid, std::vector<std::pair<oid, SSnmpxValue>>>::const_iterator TTableResultType_citer;
 
 /*公共方法*/
+struct userinfo_t* clone_userinfo_data(const struct userinfo_t *user_info);
+void free_userinfo_data(struct userinfo_t *user_info);
+void free_userinfo_map_data(std::map<std::string, struct userinfo_t*> &user_info_map);
+
 void free_tlv_data(struct tlv_data *m_tlv_data);
 void free_tlv_glist_data(std::list<struct tlv_data*> &mlist);
 void free_variable_glist_data(std::list<struct variable_bindings*> *variableList);
@@ -335,6 +337,7 @@ int find_str_lac(const unsigned char* src, const unsigned int src_len, const uns
 int parse_ipaddress_string(const std::string &IP); //注意检测IP格式，里面不做检测
 std::string get_ipaddress_string(int ipaddress);
 bool parse_oid_string(const std::string &oidStr, oid *oid_buf, std::string &error);
+bool get_byteorder_is_LE(); //获取本机CPU字节序是否是小端
 std::string get_oid_string(oid* buf, int len);
 std::string get_timeticks_string(unsigned int ticks);
 std::string get_hex_string(unsigned char *data, unsigned int data_len, bool uppercase = true, bool add_space = true);
@@ -347,8 +350,8 @@ unsigned short convert_to_ns(unsigned short s);
 unsigned int convert_to_nl(unsigned int l);
 unsigned long long convert_to_nll(unsigned long long ll);
 
-bool init_win32_socket_env(std::string &szError);
-void free_win32_socket_env();
+bool init_snmpx_global_env(std::string &szError);
+void free_snmpx_global_env();
 void close_socket_fd(int fd);
 
 #endif

@@ -26,7 +26,7 @@ public:
 	CTime &operator=(const CDateTime &DateTime);
 	operator std::string() const;
 
-	void InitCurrTime(time_t lSecond = time_t(0));
+	void InitCurrTime(time_t lSecond = 0);
 
 private:
 	void CopyFromTime(const std::string &szTime);

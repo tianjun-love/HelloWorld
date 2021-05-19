@@ -59,11 +59,12 @@ static void SetSocketNoblocking(int sock_fd)
 功能：	初始化socket句柄及地址服务
 参数：	ip 服务IP
 *		port 服务端口
+*		reuseable 是否端口复用
 *		addr 服务地址
 *		szError 错误信息
 返回：	无
 *********************************************************************/
-static bool InitSocketFd(const std::string &ip, unsigned short port, int& fd, sockaddr_in& addr, string &szError)
+static bool InitSocketFd(const std::string &ip, unsigned short port, bool reuseable, int& fd, sockaddr_in& addr, string &szError)
 {
 	//socket
 	fd = (int)socket(AF_INET, SOCK_DGRAM, 0);
@@ -72,8 +73,13 @@ static bool InitSocketFd(const std::string &ip, unsigned short port, int& fd, so
 		szError = "socket创建失败：" + CErrorStatus::get_err_msg(errno, true, true);
 		return false;
 	}
-	else
-		SetSocketNoblocking(fd); //设置非阻塞
+
+	//设置非阻塞
+	SetSocketNoblocking(fd);
+	
+	//设置地址复用
+	int optval = (reuseable ? 1 : 0);
+	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char*)&optval, sizeof(optval));
 
 	//设置地址信息
 	memset(&addr, 0, sizeof(struct sockaddr_in));
@@ -96,16 +102,19 @@ static bool InitSocketFd(const std::string &ip, unsigned short port, int& fd, so
 	return true;
 }
 
-CSnmpxServer::CSnmpxServer(const string &ip, unsigned short port, bool is_trapd_server) : m_bIsRun(false), m_szIP(ip), 
-	m_nPort(port), m_bIsTrapd(is_trapd_server)
+CSnmpxServer::CSnmpxServer(const string &ip, unsigned short port, bool is_trapd_server, bool port_reuseable) : 
+m_bIsRun(false), m_szIP(ip), m_nPort(port), m_bIsTrapd(is_trapd_server), m_bPortReuseable(port_reuseable)
 {
+	if (ip.empty()) {
+		m_szIP = "0.0.0.0";
+	}
 }
 
 CSnmpxServer::~CSnmpxServer()
 {
 	if (!m_UserTable.empty())
 	{
-		CUserProccess::snmpx_user_map_free(m_UserTable);
+		free_userinfo_map_data(m_UserTable);
 		m_UserTable.clear();
 	}
 }
@@ -122,7 +131,7 @@ bool CSnmpxServer::StartServer(string &szError)
 	sockaddr_in server_addr;
 
 	//初始化socket句柄，绑定地址
-	if (InitSocketFd(m_szIP, m_nPort, server_fd, server_addr, szError))
+	if (InitSocketFd(m_szIP, m_nPort, m_bPortReuseable, server_fd, server_addr, szError))
 	{
 		char *data = NULL; //由处理线程释放
 		char recv_buff[MAX_MSG_LEN + 1];
@@ -522,7 +531,7 @@ bool CSnmpxServer::AddUserAuthorization(short version, const std::string &szUser
 		if (bResult)
 			m_UserTable.insert(std::make_pair(user_id, pUserInfo));
 		else
-			CUserProccess::snmpx_user_free(pUserInfo);
+			free_userinfo_data(pUserInfo);
 	}
 	else
 	{
@@ -544,7 +553,7 @@ bool CSnmpxServer::CheckSocketPortUsed(const string &ip, unsigned short port, bo
 {
 	std::string szError;
 
-	if (!init_win32_socket_env(szError)) {
+	if (!init_snmpx_global_env(szError)) {
 		return false;
 	}
 
@@ -576,7 +585,7 @@ bool CSnmpxServer::CheckSocketPortUsed(const string &ip, unsigned short port, bo
 		close_socket_fd(fd);
 	}
 
-	free_win32_socket_env();
+	free_snmpx_global_env();
 
 	return bRes;
 }

@@ -18,7 +18,8 @@ using std::string;
 class CSnmpxClient
 {
 public:
-	CSnmpxClient(const std::string &ip, unsigned short port, long timeout = 1500, unsigned char retry_times = 3);
+	CSnmpxClient(const std::string &ip, unsigned short port, long timeout = 1500, unsigned char retry_times = 3,
+		bool ping_on_timeout = false);
 	virtual ~CSnmpxClient();
 
 	//设置认证信息，创建对象后必须先调用
@@ -114,11 +115,12 @@ private:
 	static std::mutex                      *m_msgIDLock;    //消息ID锁
 
 protected:
-	std::string       m_szIP;        //agent IP
-	unsigned short    m_nPort;       //agent端口
-	long              m_lTimeout;    //接收超时，毫秒，最小0.5秒，最大30秒
-	unsigned char     m_cRetryTimes; //重试次数
-	struct userinfo_t *m_pUserInfo;  //认证信息对象
+	std::string       m_szIP;           //agent IP
+	unsigned short    m_nPort;          //agent端口
+	long              m_lTimeout;       //接收超时，毫秒，最小0.5秒，最大30秒
+	unsigned char     m_cRetryTimes;    //重试次数
+	bool              m_bPingOnTimeout; //从agent接收失败时，是否使用ping检查
+	struct userinfo_t *m_pUserInfo;     //认证信息对象
 
 };
 

@@ -59,15 +59,30 @@ void CTime::CopyFromTime(const std::string &szTime)
 	if (szTime.length() < 8)
 		return;
 
-	tm DateTime;
+	//检查格式
+	for (int i = 0; i < 8; ++i)
+	{
+		if (i == 2 || i == 5)
+		{
+			if (szTime[i] != ':')
+				return;
+		}
+		else
+		{
+			if (szTime[i] < '0' || szTime[i] > '9')
+				return;
+		}
+	}
 
-	char* pszStr = (char*)szTime.c_str();
+	tm DateTime;
+	const char* pszStr = szTime.c_str();
+
 	DateTime.tm_year = 112;
 	DateTime.tm_mon = 1;
 	DateTime.tm_mday = 15;
-	DateTime.tm_hour = std::atoi(pszStr);
-	DateTime.tm_min = std::atoi(pszStr + 3);
-	DateTime.tm_sec = std::atoi(pszStr + 6);
+	DateTime.tm_hour = atoi(pszStr);
+	DateTime.tm_min = atoi(pszStr + 3);
+	DateTime.tm_sec = atoi(pszStr + 6);
 	DateTime.tm_wday = 0;
 	DateTime.tm_yday = 0;
 

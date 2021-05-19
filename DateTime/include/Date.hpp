@@ -26,7 +26,7 @@ public:
 	CDate &operator=(const CDateTime &DateTime);
 	operator std::string() const;
 
-	void InitCurrDate(time_t lSecond = time_t(0));
+	void InitCurrDate(time_t lSecond = 0);
 
 private:
 	void CopyFromDate(const std::string &szDate);

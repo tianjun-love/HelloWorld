@@ -89,7 +89,9 @@ public:
 	bool UncompressGZIP(const std::string &szGZFileName, const std::string &szDstDir, std::string &szError);
 
 	static std::string GetTimeStr();
-	static bool GetDirFiles(const std::string& szDir, std::list<SDirFiles> &FileList, std::string &szError);
+	static bool GetDirFiles(const std::string& szDir, std::list<SDirFiles> &fileList, std::string &szError);
+	static bool GetDirFiles(const std::string& szDir, std::list<SFileInfo>& infoList, std::string& szError, bool bCheckIsDir = true);
+	static bool GetFileInfo(const std::string& szFile, SFileInfo &info, std::string &szError);
 	static bool RmFile(const std::string &szFileName, bool bChilds, std::string &szError);
 	static bool MkDir(const std::string &szDir, unsigned int iMode, bool bParents, std::string &szError);
 	static bool CheckFileExists(const std::string &szFileName, bool bLinkDereferenced = false);
@@ -112,8 +114,6 @@ private:
 	static std::string GetErrorMsg(int errCode);
 	static bool Chmod(const std::string &szFile, unsigned int iMode, std::string &szError);
 	static bool Chown(const std::string &szFile, const std::string &szUser, std::string &szError);
-	static bool GetFileInfo(const std::string& szFile, SFileInfo &info, std::string &szError);
-	static bool GetDirInfo(const std::string& szDir, std::list<SFileInfo>& infoList, std::string& szError, bool bCheckIsDir = true);
 	static bool GetRealPath(const std::string &szPath, std::string &szResolvedPath, std::string &szError);
 	static bool CPFile(const SFileInfo &srcFile, const std::string &szDstDir, std::string &szError);
 

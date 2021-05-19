@@ -12,7 +12,10 @@ CLogOutObject::~CLogOutObject()
 	{
 		if (m_bIsLastOutputEnd)
 			m_Log.m_bLogendl = true;
-		m_Log.m_LogLock.unlock();
+		
+		if (m_Log.m_bOpen)
+			m_Log.m_LogLock.unlock();
+
 		m_pLogMember = nullptr;
 	}
 }

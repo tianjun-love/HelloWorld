@@ -1,4 +1,9 @@
 ﻿#include "../include/LogFileMember.hpp"
+#include <string.h>
+
+#ifndef _WIN32
+#include <strings.h>
+#endif
 
 CLogFileMember::CLogFileMember() : m_szFileName("log"), m_szDate("20150101"),
 m_eLogLevel(E_LOG_LEVEL_ALL), m_eLogDeco(E_LOG_DECO_DAY), m_bOpen(false), m_bLogendl(true)
@@ -38,4 +43,13 @@ string CLogFileMember::GetLogLevelStr(eLOG_FILE_LEVEL eLevel)
 	}
 
 	return std::move(szTemp);
+}
+
+int CLogFileMember::StrCaseCmp(const char *s1, const char *s2)
+{
+#ifdef _WIN32
+	return _stricmp(s1, s2);
+#else
+	return strcasecmp(s1, s2);
+#endif
 }

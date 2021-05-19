@@ -314,9 +314,34 @@ void CDateTime::CopyFromDateTimeStr(time_t& tSeconds, const std::string& szDateT
 	if (szDateTime.length() < 19)
 		return;
 
-	struct tm DateTime;
+	//检查格式
+	for (int i = 0; i < 19; ++i)
+	{
+		if (i == 4 || i == 7)
+		{
+			if (szDateTime[i] != '-')
+				return;
+		}
+		else if (i == 10)
+		{
+			if (szDateTime[i] != ' ')
+				return;
+		}
+		else if (i == 13 || i == 16)
+		{
+			if (szDateTime[i] != ':')
+				return;
+		}
+		else
+		{
+			if (szDateTime[i] < '0' || szDateTime[i] > '9')
+				return;
+		}
+	}
 
-	char* pszStr = (char*)szDateTime.c_str();
+	struct tm DateTime;
+	const char* pszStr = szDateTime.c_str();
+
 	DateTime.tm_year = std::atoi(pszStr);
 	DateTime.tm_mon = std::atoi(pszStr + 5);
 	DateTime.tm_mday = std::atoi(pszStr + 8);

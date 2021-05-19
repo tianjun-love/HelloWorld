@@ -46,7 +46,7 @@ std::string CCodeConvert::EncodeBase64(const unsigned char* data, uint32_t data_
 	char c;
 	size_t uiLineFeedLength = 0;
 
-	//编码规则为（3*8=6*4）：每3字节共24位 => 6位一分共4段，6位对应一编码表里面一个字符，不够补0，编码后长度一定是4的整数倍
+	//编码规则为（8*3=6*4）：每3字节共24位 => 6位一分共4段，6位对应一编码表里面一个字符，不够补0，编码后长度一定是4的整数倍
 	const size_t uiEncodeLength = (data_len / 3 + 1) * 4;
 
 	if (bLineFeed)

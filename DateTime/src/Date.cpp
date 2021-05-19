@@ -55,22 +55,56 @@ void CDate::InitCurrDate(time_t lSecond)
 
 void CDate::CopyFromDate(const std::string &szDate)
 {
-	//最少10个字节，"2019-03-23"
-	if (szDate.length() < 10)
+	const std::string::size_type strLen = szDate.length();
+
+	//最少8个字节，"20190323"或"2019-03-23"
+	if (szDate.empty() || strLen < 8)
 		return;
 
 	tm DateTime;
 
-	char* pszStr = (char*)szDate.c_str();
-	DateTime.tm_year = std::atoi(pszStr);
-	DateTime.tm_mon = std::atoi(pszStr + 5);
-	DateTime.tm_mday = std::atoi(pszStr + 8);
-	DateTime.tm_hour = 0;
-	DateTime.tm_min = 0;
-	DateTime.tm_sec = 0;
+	if (strLen < 10) //20190323
+	{
+		//检查格式
+		for (int i = 0; i < 8; ++i)
+		{
+			if (szDate[i] < '0' || szDate[i] > '9')
+				return;
+		}
+
+		DateTime.tm_year = atoi(szDate.substr(0, 4).c_str());
+		DateTime.tm_mon = atoi(szDate.substr(4, 2).c_str());
+		DateTime.tm_mday = atoi(szDate.substr(6, 2).c_str());
+	}
+	else //2019-03-23
+	{
+		//检查格式
+		for (int i = 0; i < 10; ++i)
+		{
+			if (i == 4 || i == 7)
+			{
+				if (szDate[i] != '-')
+					return;
+			}
+			else
+			{
+				if (szDate[i] < '0' || szDate[i] > '9')
+					return;
+			}
+		}
+
+		const char* pszStr = szDate.c_str();
+
+		DateTime.tm_year = atoi(pszStr);
+		DateTime.tm_mon = atoi(pszStr + 5);
+		DateTime.tm_mday = atoi(pszStr + 8);
+	}
 
 	DateTime.tm_year -= 1900;
 	DateTime.tm_mon -= 1;
+	DateTime.tm_hour = 0;
+	DateTime.tm_min = 0;
+	DateTime.tm_sec = 0;
 	DateTime.tm_wday = 0;
 	DateTime.tm_yday = 0;
 	DateTime.tm_isdst = 0;

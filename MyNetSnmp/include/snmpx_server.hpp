@@ -17,7 +17,7 @@ using std::string;
 class CSnmpxServer
 {
 public:
-	CSnmpxServer(const string &ip, unsigned short port, bool is_trapd_server);
+	CSnmpxServer(const string &ip, unsigned short port, bool is_trapd_server, bool port_reuseable = true);
 	virtual ~CSnmpxServer();
 	
 	bool StartServer(string &szError);
@@ -55,10 +55,11 @@ private:
 	std::map<string, userinfo_t*>  m_UserTable;  //用户表<用户名+"_"+版本号, 用户信息对象>，如<"public_V2c", obj*>
 
 protected:
-	bool           m_bIsRun;     //服务运行状态
-	std::string    m_szIP;       //服务IP
-	unsigned short m_nPort;      //服务端口
-	bool           m_bIsTrapd;   //true:trapd服务，false:agent服务
+	bool           m_bIsRun;         //服务运行状态
+	std::string    m_szIP;           //服务IP
+	unsigned short m_nPort;          //服务端口
+	bool           m_bIsTrapd;       //true:trapd服务，false:agent服务
+	bool           m_bPortReuseable; //是否端口复用
 };
 
 

@@ -23,10 +23,9 @@ enum eLOG_FILE_LEVEL
 //日志分割方式
 enum eLOGFILE_DECOLLATOR
 {
-	E_LOG_DECO_MINUTE = 0,     //按分钟分割
-	E_LOG_DECO_HOUR   = 1,     //按小时分割
-	E_LOG_DECO_DAY    = 2,     //按天分割
-	E_LOG_DECO_MONTH  = 3      //按月分割
+	E_LOG_DECO_HOUR   = 0,     //按小时分割
+	E_LOG_DECO_DAY    = 1,     //按天分割
+	E_LOG_DECO_MONTH  = 2      //按月分割
 };
 
 class CLogFileMember
@@ -45,6 +44,7 @@ public:
 	CLogFileMember& operator = (const CLogFileMember& Other) = delete;
 
 	static string GetLogLevelStr(eLOG_FILE_LEVEL eLevel); //获取日志等级字符串
+	static int StrCaseCmp(const char *s1, const char *s2); //不区分大小写比较
 
 private:
 	ofstream            m_Ofstream;   //日志输出文件流

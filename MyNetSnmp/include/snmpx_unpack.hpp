@@ -32,7 +32,7 @@ private:
 		unsigned char *out, unsigned int *out_len);
 
 	static bool check_octet_str_printable(unsigned char* str, unsigned int len, bool check_chinese = false);
-	static const userinfo_t* generate_agent_user_info(const userinfo_t *t_user, const struct snmpx_t* r, const void *user_authinfo_cache,
+	static userinfo_t* generate_agent_user_info(const userinfo_t *t_user, const struct snmpx_t* r, const void *user_authinfo_cache,
 		std::string &error);
 
 private:
