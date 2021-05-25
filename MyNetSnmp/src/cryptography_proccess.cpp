@@ -6,6 +6,38 @@
 #include <stdlib.h>
 #include <time.h>
 
+const EVP_MD* get_auth_hash_function(unsigned char authMode)
+{
+	const EVP_MD *hashfn = NULL;
+
+	switch (authMode)
+	{
+	case 0:
+		hashfn = EVP_md5();
+		break;
+	case 1:
+		hashfn = EVP_sha1();
+		break;
+	case 2:
+		hashfn = EVP_sha224();
+		break;
+	case 3:
+		hashfn = EVP_sha256();
+		break;
+	case 4:
+		hashfn = EVP_sha384();
+		break;
+	case 5:
+		hashfn = EVP_sha512();
+		break;
+	default:
+		hashfn = EVP_md5(); //默认MD5
+		break;
+	}
+
+	return hashfn;
+}
+
 CCryptographyProccess::CCryptographyProccess()
 {
 }
@@ -15,63 +47,119 @@ CCryptographyProccess::~CCryptographyProccess()
 }
 
 /********************************************************************
-功能：	aes cfb128加密
+功能：	aes cfb加密
 参数：	buf 待加密数据
 *		buf_len 待加密数据长度
 *		key 密码
 *		iv IV
+*		priv_mode 加密算法
 *		encode_buf 加密后的数据，调用才申请内存
 返回：	加密后的数据长度，<0：失败
 *********************************************************************/
-int CCryptographyProccess::snmpx_aes_encode(const unsigned char* buf , unsigned int buf_len, const unsigned char* key, unsigned char* iv, 
-	unsigned char* encode_buf)
+int CCryptographyProccess::snmpx_aes_encode(const unsigned char* buf , unsigned int buf_len, const unsigned char* key, unsigned char* iv,
+	unsigned char priv_mode, unsigned char* encode_buf)
 {
-	AES_KEY aes;
-	int ret = 0;
+	const EVP_CIPHER *cipher = NULL;
+	EVP_CIPHER_CTX *ctx = NULL;
+	int ret = SNMPX_failure;
 
-	//设置key
-	ret = AES_set_encrypt_key((unsigned char*)key, 128, &aes);
-	if(ret < 0)
+	if (2 == priv_mode)
+		cipher = EVP_aes_192_cfb();
+	else if (3 == priv_mode)
+		cipher = EVP_aes_256_cfb();
+	else
+		cipher = EVP_aes_128_cfb();
+
+	ctx = EVP_CIPHER_CTX_new();
+	if (NULL != ctx)
 	{
-		m_szErrorMsg = "AES_set_encrypt_key failed.";
-		return ret;
+		//成功返回1，失败返回0
+		if (1 == EVP_EncryptInit_ex(ctx, cipher, NULL, key, iv))
+		{
+			int enclen = 0, outl = 0;
+
+			if (1 == EVP_EncryptUpdate(ctx, encode_buf, &outl, buf, (int)buf_len))
+			{
+				enclen = outl;
+
+				if (1 == EVP_EncryptFinal_ex(ctx, encode_buf + outl, &outl))
+				{
+					enclen += outl;
+					ret = enclen;
+				}
+				else
+					m_szErrorMsg = "snmpx_aes_encode failed: EVP_EncryptFinal_ex return 0.";
+			}
+			else
+				m_szErrorMsg = "snmpx_aes_encode failed: EVP_EncryptUpdate return 0.";
+		}
+		else
+			m_szErrorMsg = "snmpx_aes_encode failed: EVP_EncryptInit_ex return 0.";
+
+		EVP_CIPHER_CTX_free(ctx);
 	}
+	else
+		m_szErrorMsg = "snmpx_aes_encode failed: EVP_CIPHER_CTX_new return NULL.";
 
-	//加密  
-	int num = 0; //记录己处理的长度，每处理128位后，内部置0
-	AES_cfb128_encrypt(buf, encode_buf, buf_len, &aes, iv, &num, AES_ENCRYPT);
-
-	return (int)buf_len;
+	return ret;
 }
 
 /********************************************************************
-功能：	aes cfb128解密
+功能：	aes cfb解密
 参数：	buf 待解密数据
 *		buf_len 待解密数据长度
 *		key 密码
 *		iv IV
+*		priv_mode 加密算法
 *		decode_buf 解密后的数据，调用才申请内存
 返回：	解密后的数据长度，<0：失败
 *********************************************************************/
 int CCryptographyProccess::snmpx_aes_decode(const unsigned char* buf, unsigned int buf_len, const unsigned char* key, unsigned char* iv,
-	unsigned char* decode_buf)
+	unsigned char priv_mode, unsigned char* decode_buf)
 {
-	AES_KEY aes;
-	int ret = 0;
+	const EVP_CIPHER *cipher = NULL;
+	EVP_CIPHER_CTX *ctx = NULL;
+	int ret = SNMPX_failure;
 
-	//设置key
-	ret = AES_set_encrypt_key((unsigned char*)key, 128, &aes);
-	if (ret < 0)
+	if (2 == priv_mode)
+		cipher = EVP_aes_192_cfb();
+	else if (3 == priv_mode)
+		cipher = EVP_aes_256_cfb();
+	else
+		cipher = EVP_aes_128_cfb();
+
+	ctx = EVP_CIPHER_CTX_new();
+	if (NULL != ctx)
 	{
-		m_szErrorMsg = "AES_set_decrypt_key failed.";
-		return ret;
-	}
+		//成功返回1，失败返回0
+		if (1 == EVP_DecryptInit_ex(ctx, cipher, NULL, key, iv))
+		{
+			int declen = 0, outl = 0;
 
-	//解密
-	int num = 0; //记录己处理的长度，每处理128位后，内部置0
-	AES_cfb128_encrypt(buf, decode_buf, buf_len, &aes, iv, &num, AES_DECRYPT);
-	
-	return (int)buf_len;
+			if (1 == EVP_DecryptUpdate(ctx, decode_buf, &outl, buf, (int)buf_len))
+			{
+				declen = outl;
+
+				if (1 == EVP_DecryptFinal_ex(ctx, decode_buf + outl, &outl))
+				{
+					declen += outl;
+					ret = declen;
+				}
+				else
+					m_szErrorMsg = "snmpx_aes_decode failed: EVP_EncryptFinal_ex return 0.";
+			}
+			else
+				m_szErrorMsg = "snmpx_aes_decode failed: EVP_EncryptUpdate return 0.";
+		}
+		else
+			m_szErrorMsg = "snmpx_aes_decode failed: EVP_EncryptInit_ex return 0.";
+
+		EVP_CIPHER_CTX_free(ctx);
+	}
+	else
+		m_szErrorMsg = "snmpx_aes_decode failed: EVP_CIPHER_CTX_new return NULL.";
+
+	return ret;
 }
 
 /********************************************************************
@@ -206,7 +294,7 @@ int CCryptographyProccess::gen_msgPrivacyParameters(unsigned char* msgPrivacyPar
 *		authkey_len 认证密码长度
 *		msgAuthoritativeEngineID 对端引擎ID
 *		msgAuthoritativeEngineID_len 对端引擎ID长度
-*		authMode 认证类型，0：MD5，1：SHA1
+*		authMode 认证类型，0：MD5，1：SHA，2:SHA224，3:SHA256，4:SHA384，5:SHA512
 *		message 组好的包数据
 *		msglen 组好的包数据长度
 *		cur_msgAuthenticationParameters 生成的认证参数
@@ -218,27 +306,20 @@ int CCryptographyProccess::gen_msgHMAC(unsigned char* authkey, unsigned int auth
 	unsigned char authMode, const unsigned char* message, const unsigned int msglen,
 	unsigned char *msgAuthenticationParameters, unsigned int* msgAuthenticationParameters_len)
 {
-	/* hash算法取前96位 */
-	if (*msgAuthenticationParameters_len != 12)
+	const unsigned int auth_hash_length = get_auth_para_length(authMode);
+
+	if (*msgAuthenticationParameters_len != auth_hash_length)
 	{
-		m_szErrorMsg = format_err_msg("gen_msgHMAC failed, msgAuthenticationParameters_len must 12, it provide[%u].",
-			*msgAuthenticationParameters_len);
+		m_szErrorMsg = format_err_msg("gen_msgHMAC failed, msgAuthenticationParameters_len must be %u, it provide[%u].",
+			auth_hash_length, *msgAuthenticationParameters_len);
 		return SNMPX_failure;
 	}
 
-	unsigned char buf[512] = { 0 };
-	unsigned int buf_len = 512;
+	unsigned char buf[64] = { 0 };
+	unsigned int buf_len = 64;
 
-	if (0 == authMode)
-		HMAC(EVP_md5(), authkey, authkey_len, message, msglen, buf, &buf_len);
-	else if (1 == authMode)
-		HMAC(EVP_sha1(), authkey, authkey_len, message, msglen, buf, &buf_len);
-	else
-	{
-		m_szErrorMsg = format_err_msg("gen_msgHMAC failed, not support authMode[0x%02X].",
-			authMode);
-		return SNMPX_failure;
-	}
+	//计算
+	HMAC(get_auth_hash_function(authMode), authkey, authkey_len, message, msglen, buf, &buf_len);
 
 	if (*msgAuthenticationParameters_len > buf_len)
 		*msgAuthenticationParameters_len = buf_len;
@@ -254,7 +335,7 @@ int CCryptographyProccess::gen_msgHMAC(unsigned char* authkey, unsigned int auth
 *		authkey_len 认证密码长度
 *		msgAuthoritativeEngineID 对端引擎ID
 *		msgAuthoritativeEngineID_len 对端引擎ID长度
-*		authMode 认证类型，0：MD5，1：SHA1
+*		authMode 认证类型，0：MD5，1：SHA，2:SHA224，3:SHA256，4:SHA384，5:SHA512
 *		message 组好的包数据
 *		msglen 组好的包数据长度
 *		cur_msgAuthenticationParameters 当前认证参数
@@ -300,10 +381,59 @@ int CCryptographyProccess::gen_pkg_HMAC(unsigned char* authkey, unsigned int aut
 }
 
 /********************************************************************
+功能：	生成数据的hash
+参数：	data 数据
+*		data_len 数据长度
+*		hashType hash类型，0：MD5，1：SHA，2:SHA224，3:SHA256，4:SHA384，5:SHA512
+*		hash 生成的hash数据
+*		hash_len 生成的hash数据长度
+返回：	成功返回0
+*********************************************************************/
+int CCryptographyProccess::gen_data_HASH(const unsigned char* data, unsigned int data_len, unsigned char hashType, unsigned char* hash,
+	unsigned int* hash_len)
+{
+	if (NULL == data || 0 == data_len || hashType > 5 || NULL == hash || NULL == hash_len)
+	{
+		m_szErrorMsg = "gen_data_HASH failed: parameter wrong.";
+		return SNMPX_failure;
+	}
+
+	int ret = SNMPX_failure;
+	const EVP_MD *hashfn = get_auth_hash_function(hashType);
+	EVP_MD_CTX *ctx = NULL;
+
+	ctx = EVP_MD_CTX_create();
+	if (NULL != ctx)
+	{
+		//成功返回1，失败返回0
+		if (1 == EVP_DigestInit_ex(ctx, hashfn, NULL))
+		{
+			if (1 == EVP_DigestUpdate(ctx, data, data_len))
+			{
+				if (1 == EVP_DigestFinal_ex(ctx, hash, hash_len))
+					ret = SNMPX_noError;
+				else
+					m_szErrorMsg = "get_user_md5_ku failed: EVP_DigestFinal_ex return 0.";
+			}
+			else
+				m_szErrorMsg = "gen_data_HASH failed: EVP_DigestUpdate return 0.";
+		}
+		else
+			m_szErrorMsg = "gen_data_HASH failed: EVP_DigestInit_ex return 0.";
+
+		EVP_MD_CTX_destroy(ctx);
+	}
+	else
+		m_szErrorMsg = "gen_data_HASH failed: EVP_MD_CTX_create return NULL.";
+
+	return ret;
+}
+
+/********************************************************************
 功能：	对用户的认证密码进行第一次加密，生成hash
 参数：	authPasswd 认证密码
 *		authPasswd_len 认证密码长度
-*		authMode 认证类型，0：MD5，1：SHA
+*		authMode 认证类型，0：MD5，1：SHA，2:SHA224，3:SHA256，4:SHA384，5:SHA512
 *		Ku 加密后数据
 *		Ku_len 加密后数据长度
 返回：	成功返回0
@@ -311,64 +441,64 @@ int CCryptographyProccess::gen_pkg_HMAC(unsigned char* authkey, unsigned int aut
 int CCryptographyProccess::get_user_hash_ku(const unsigned char* authPasswd, unsigned int authPasswd_len, unsigned char authMode, 
 	unsigned char *Ku, unsigned int *Ku_len)
 {
-	int nbytes = 1024 * 1024; //net-snmp源码包里的定义：USM_LENGTH_EXPANDED_PASSPHRASE
-	unsigned int i, pindex = 0;
-	unsigned char buf[64], *bufp; //net-snmp源码包里的定义：USM_LENGTH_KU_HASHBLOCK
-	EVP_MD_CTX *ctx = EVP_MD_CTX_create();
-
+	int ret = SNMPX_failure;
+	const EVP_MD *hashfn = get_auth_hash_function(authMode);
+	EVP_MD_CTX *ctx = NULL;
+	
+	ctx = EVP_MD_CTX_create();
 	if (NULL != ctx)
 	{
 		//成功返回1，失败返回0
-		if (0 == authMode)
+		if (1 == EVP_DigestInit_ex(ctx, hashfn, NULL))
 		{
-			if (0 == EVP_DigestInit(ctx, EVP_md5())) {
-				EVP_MD_CTX_destroy(ctx);
-				m_szErrorMsg = "get_user_md5_ku failed: EVP_DigestInit md5 failed.";
-				return SNMPX_failure;
+			bool updateFlag = true;
+			int nbytes = 1024 * 1024; //net-snmp源码包里的定义：USM_LENGTH_EXPANDED_PASSPHRASE
+			unsigned int i, pindex = 0;
+			unsigned char buf[64], *bufp; //net-snmp源码包里的定义：USM_LENGTH_KU_HASHBLOCK
+
+			//net-snmp源码包里的定义
+			while (nbytes > 0)
+			{
+				bufp = buf;
+
+				for (i = 0; i < 64; i++) {
+					*bufp++ = authPasswd[pindex++ % authPasswd_len];
+				}
+
+				if (1 == EVP_DigestUpdate(ctx, buf, 64))
+					nbytes -= 64;
+				else
+				{
+					updateFlag = false;
+					m_szErrorMsg = "get_user_md5_ku failed: EVP_DigestUpdate return 0.";
+					break;
+				}
+			}
+
+			if (updateFlag)
+			{
+				if (1 == EVP_DigestFinal_ex(ctx, Ku, Ku_len))
+					ret = SNMPX_noError;
+				else
+					m_szErrorMsg = "get_user_md5_ku failed: EVP_DigestFinal_ex return 0.";
 			}
 		}
 		else
-		{
-			if (0 == EVP_DigestInit(ctx, EVP_sha1())) {
-				EVP_MD_CTX_destroy(ctx);
-				m_szErrorMsg = "get_user_md5_ku failed: EVP_DigestInit sha1 failed.";
-				return SNMPX_failure;
-			}
-		}
-
-		//net-snmp源码包里的定义
-		while (nbytes > 0)
-		{
-			bufp = buf;
-
-			for (i = 0; i < 64; i++) {
-				*bufp++ = authPasswd[pindex++ % authPasswd_len];
-			}
-
-			EVP_DigestUpdate(ctx, buf, 64);
-			nbytes -= 64;
-		}
-
-		unsigned int tmp_len = *Ku_len;
-		EVP_DigestFinal(ctx, Ku, &tmp_len);
-		*Ku_len = tmp_len;
+			m_szErrorMsg = "get_user_md5_ku failed: EVP_DigestInit_ex return 0.";
 
 		EVP_MD_CTX_destroy(ctx);
 	}
 	else
-	{
 		m_szErrorMsg = "get_user_md5_ku failed: EVP_MD_CTX_create return NULL.";
-		return SNMPX_failure;
-	}
 
-	return SNMPX_noError;
+	return ret;
 }
 
 /********************************************************************
 功能：	对用户的认证密码进行第二次加密，生成hash
 参数：	engineID 引擎ID
 *		engineID_len 引擎ID长度
-*		authMode 认证类型，0：MD5，1：SHA
+*		authMode 认证类型，0：MD5，1：SHA，2:SHA224，3:SHA256，4:SHA384，5:SHA512
 *		Ku 第一次生成的hash
 *		Ku_len 第一次生成的hash长度
 *		Kul 第二次生成的hash
@@ -378,52 +508,20 @@ int CCryptographyProccess::get_user_hash_ku(const unsigned char* authPasswd, uns
 int CCryptographyProccess::get_user_hash_kul(const unsigned char* engineID, unsigned int engineID_len, unsigned char authMode,
 	const unsigned char* Ku, unsigned int Ku_len, unsigned char* Kul, unsigned int* Kul_len)
 {
-	const unsigned int properlength = (0 == authMode ? 16 : 20); //第一次生成的hash长度，字节
+	int ret = SNMPX_failure;
 	unsigned int nbytes = 0;
-	unsigned char buf[1024];
+	unsigned char buf[256] = { 0 }; //足够使用了
 
-	memcpy(buf, Ku, properlength);
-	nbytes += properlength;
+	//net-snmp源码包里的定义
+	memcpy(buf, Ku, Ku_len);
+	nbytes += Ku_len;
 	memcpy(buf + nbytes, engineID, engineID_len);
 	nbytes += engineID_len;
-	memcpy(buf + nbytes, Ku, properlength);
-	nbytes += properlength;
+	memcpy(buf + nbytes, Ku, Ku_len);
+	nbytes += Ku_len;
 
-	EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+	//计算
+	ret = gen_data_HASH(buf, nbytes, authMode, Kul, Kul_len);
 
-	if (NULL != ctx)
-	{
-		//成功返回1，失败返回0
-		if (0 == authMode)
-		{
-			if (0 == EVP_DigestInit(ctx, EVP_md5())) {
-				EVP_MD_CTX_destroy(ctx);
-				m_szErrorMsg = "get_user_md5_kul failed: EVP_DigestInit md5 failed.";
-				return SNMPX_failure;
-			}
-		}
-		else
-		{
-			if (0 == EVP_DigestInit(ctx, EVP_sha1())) {
-				EVP_MD_CTX_destroy(ctx);
-				m_szErrorMsg = "get_user_md5_kul failed: EVP_DigestInit sha1 failed.";
-				return SNMPX_failure;
-			}
-		}
-
-		EVP_DigestUpdate(ctx, buf, nbytes);
-
-		unsigned int tmp_len = *Kul_len;
-		EVP_DigestFinal(ctx, Kul, &tmp_len);
-		*Kul_len = tmp_len;
-
-		EVP_MD_CTX_destroy(ctx);
-	}
-	else
-	{
-		m_szErrorMsg = "get_user_md5_kul failed: EVP_MD_CTX_create return NULL.";
-		return SNMPX_failure;
-	}
-
-	return SNMPX_noError;
+	return ret;
 }

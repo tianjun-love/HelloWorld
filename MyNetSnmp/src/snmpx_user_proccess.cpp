@@ -76,13 +76,13 @@ int CUserProccess::snmpx_user_init(struct userinfo_t *user_info)
 *********************************************************************/
 int CUserProccess::calc_hash_user_auth(struct userinfo_t *user_info)
 {
-	unsigned char userKey[32] = { 0 }; //net-snmp源码包定义：最小：USM_AUTH_KU_LEN
-	unsigned int userKeyLen = 32;
-	unsigned char privKey[512] = { 0 }; //net-snmp源码包定义：最小：USM_LENGTH_KU_HASHBLOCK，最大：SNMP_MAXBUF_SMALL
-	unsigned int privKeyLen = 512;
+	unsigned char userKey[64] = { 0 }; //最大64
+	unsigned int userKeyLen = 64;
+	unsigned char privKey[64] = { 0 }; //最大不会超过64
+	unsigned int privKeyLen = 64;
 	CCryptographyProccess crypto;
 
-	if (user_info->AuthMode == 0 || user_info->AuthMode == 1)
+	if (user_info->AuthMode <= 5)
 	{
 		if (strlen(user_info->AuthPassword) == 0) {
 			m_szErrorMsg = "calc_hash_user_auth failed: user_info->AuthPassword is NULL.";
@@ -136,46 +136,78 @@ int CUserProccess::calc_hash_user_auth(struct userinfo_t *user_info)
 *********************************************************************/
 int CUserProccess::calc_hash_user_auth_priv(struct userinfo_t *user_info)
 {
-	unsigned char userKey[32] = { 0 }; //net-snmp源码包定义：最小：USM_AUTH_KU_LEN
-	unsigned int userKeyLen = 32;
-	unsigned char privKey[512] = { 0 }; //net-snmp源码包定义：最小：USM_LENGTH_KU_HASHBLOCK，最大：SNMP_MAXBUF_SMALL
-	unsigned int privKeyLen = 512;
+	unsigned char userKey[64] = { 0 }; //最大64
+	unsigned int userKeyLen = 64;
+	unsigned char privKey[64] = { 0 }; //最大不会超过64
+	unsigned int privKeyLen = 64;
 	CCryptographyProccess crypto;
 
-	if (strlen(user_info->AuthPassword) == 0 || strlen(user_info->PrivPassword) == 0) {
-		m_szErrorMsg = "calc_hash_user_auth_priv failed: user_info->AuthPassword or user_info->PrivPassword is NULL.";
+	if (user_info->AuthMode <= 5)
+	{
+		if (strlen(user_info->AuthPassword) == 0 || strlen(user_info->PrivPassword) == 0) {
+			m_szErrorMsg = "calc_hash_user_auth_priv failed: user_info->AuthPassword or user_info->PrivPassword is NULL.";
+			return SNMPX_failure;
+		}
+
+		if (user_info->msgAuthoritativeEngineID == NULL || user_info->msgAuthoritativeEngineID_len == 0) {
+			m_szErrorMsg = "calc_hash_user_auth_priv failed: user_info->msgAuthoritativeEngineID is NULL.";
+			return SNMPX_failure;
+		}
+
+		//不为空先释放
+		if (user_info->privPasswdPrivKey != NULL && user_info->privPasswdPrivKey_len > 0) {
+			free(user_info->privPasswdPrivKey);
+			user_info->privPasswdPrivKey = NULL;
+			user_info->privPasswdPrivKey_len = 0;
+		}
+
+		//计算
+		if (crypto.get_user_hash_ku((const unsigned char *)user_info->PrivPassword,
+			(unsigned int)strlen(user_info->PrivPassword), user_info->AuthMode, userKey, &userKeyLen) != 0) {
+			m_szErrorMsg = "calc_hash_user_auth_priv failed: " + crypto.GetErrorMsg();
+			return SNMPX_failure;
+		}
+
+		//再使用msgAuthoritativeEngineID 进行二次加密
+		if (crypto.get_user_hash_kul(user_info->msgAuthoritativeEngineID, user_info->msgAuthoritativeEngineID_len, user_info->AuthMode,
+			userKey, userKeyLen, privKey, &privKeyLen) != 0) {
+			m_szErrorMsg = "calc_hash_user_auth_priv failed: " + crypto.GetErrorMsg();
+			return SNMPX_failure;
+		}
+
+		//判断密钥长度是否足够
+		const unsigned int priv_key_len = get_priv_key_length(user_info->PrivMode);
+
+		if (priv_key_len > privKeyLen)
+		{
+			unsigned char hash[64] = { 0 }; //最大64
+			unsigned int hash_len = 64;
+
+			//计算
+			if (crypto.gen_data_HASH(privKey, privKeyLen, user_info->AuthMode, hash, &hash_len) != 0) {
+				m_szErrorMsg = "calc_hash_user_auth_priv failed: " + crypto.GetErrorMsg();
+				return SNMPX_failure;
+			}
+
+			user_info->privPasswdPrivKey_len = priv_key_len;
+			user_info->privPasswdPrivKey = (unsigned char*)malloc(user_info->privPasswdPrivKey_len * sizeof(unsigned char));
+			memcpy(user_info->privPasswdPrivKey, privKey, privKeyLen);
+
+			//目前最长密钥(AES256)是32，所以两次hash肯定足够了
+			memcpy(user_info->privPasswdPrivKey + privKeyLen, hash, (user_info->privPasswdPrivKey_len - privKeyLen));
+		}
+		else
+		{
+			user_info->privPasswdPrivKey_len = priv_key_len;
+			user_info->privPasswdPrivKey = (unsigned char*)malloc(user_info->privPasswdPrivKey_len * sizeof(unsigned char));
+			memcpy(user_info->privPasswdPrivKey, privKey, user_info->privPasswdPrivKey_len);
+		}
+	}
+	else {
+		m_szErrorMsg = format_err_msg("calc_hash_user_auth_priv failed: unsupport authMode[0x%02X].",
+			user_info->AuthMode);
 		return SNMPX_failure;
 	}
-
-	if (user_info->msgAuthoritativeEngineID == NULL || user_info->msgAuthoritativeEngineID_len == 0) {
-		m_szErrorMsg = "calc_hash_user_auth_priv failed: user_info->msgAuthoritativeEngineID is NULL.";
-		return SNMPX_failure;
-	}
-
-	//不为空先释放
-	if (user_info->privPasswdPrivKey != NULL && user_info->privPasswdPrivKey_len > 0) {
-		free(user_info->privPasswdPrivKey);
-		user_info->privPasswdPrivKey = NULL;
-		user_info->privPasswdPrivKey_len = 0;
-	}
-
-	//计算
-	if (crypto.get_user_hash_ku((const unsigned char *)user_info->PrivPassword,
-		(unsigned int)strlen(user_info->PrivPassword), user_info->AuthMode, userKey, &userKeyLen) != 0) {
-		m_szErrorMsg = "calc_hash_user_auth_priv failed: " + crypto.GetErrorMsg();
-		return SNMPX_failure;
-	}
-
-	/* 再使用msgAuthoritativeEngineID 进行二次加密 */
-	if (crypto.get_user_hash_kul(user_info->msgAuthoritativeEngineID, user_info->msgAuthoritativeEngineID_len, user_info->AuthMode, 
-		userKey, userKeyLen, privKey, &privKeyLen) != 0) {
-		m_szErrorMsg = "calc_hash_user_auth_priv failed: " + crypto.GetErrorMsg();
-		return SNMPX_failure;
-	}
-
-	user_info->privPasswdPrivKey = (unsigned char*)malloc(privKeyLen * sizeof(unsigned char));
-	memcpy(user_info->privPasswdPrivKey, privKey, privKeyLen);
-	user_info->privPasswdPrivKey_len = privKeyLen;
 
 	return SNMPX_noError;
 }

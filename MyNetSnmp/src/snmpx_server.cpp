@@ -134,7 +134,7 @@ bool CSnmpxServer::StartServer(string &szError)
 	if (InitSocketFd(m_szIP, m_nPort, m_bPortReuseable, server_fd, server_addr, szError))
 	{
 		char *data = NULL; //由处理线程释放
-		char recv_buff[MAX_MSG_LEN + 1];
+		char recv_buff[SNMPX_MAX_MSG_LEN + 1];
 		int recv_len = 0;
 		struct sockaddr_in client_addr;
 		socklen_t client_addr_len = 0;
@@ -171,7 +171,7 @@ bool CSnmpxServer::StartServer(string &szError)
 					client_addr_len = (socklen_t)sizeof(client_addr);
 					memset(&client_addr, 0, client_addr_len);
 
-					recv_len = recvfrom(server_fd, recv_buff, MAX_MSG_LEN, 0, (struct sockaddr*)&client_addr, &client_addr_len);
+					recv_len = recvfrom(server_fd, recv_buff, SNMPX_MAX_MSG_LEN, 0, (struct sockaddr*)&client_addr, &client_addr_len);
 					if (recv_len > 0)
 					{
 						//agent_ip = inet_ntoa(client_addr.sin_addr);
@@ -377,10 +377,10 @@ bool CSnmpxServer::AddUserAuthorization(short version, const std::string &szUser
 			}
 			else
 			{
-				if (szUserName.length() > MAX_USER_INFO_LEN)
+				if (szUserName.length() > SNMPX_MAX_USER_NAME_LEN)
 				{
 					bResult = false;
-					szError = "net-snmp v1/v2c团体名称不能大于：" + std::to_string(MAX_USER_INFO_LEN) + "字节！";
+					szError = "net-snmp v1/v2c团体名称不能大于：" + std::to_string(SNMPX_MAX_USER_NAME_LEN) + "字节！";
 				}
 				else
 				{
@@ -399,10 +399,10 @@ bool CSnmpxServer::AddUserAuthorization(short version, const std::string &szUser
 			}
 			else
 			{
-				if (szUserName.length() > MAX_USER_INFO_LEN)
+				if (szUserName.length() > SNMPX_MAX_USER_NAME_LEN)
 				{
 					bResult = false;
-					szError = "net-snmp v3用户名称不能大于：" + std::to_string(MAX_USER_INFO_LEN) + "字节！";
+					szError = "net-snmp v3用户名称不能大于：" + std::to_string(SNMPX_MAX_USER_NAME_LEN) + "字节！";
 				}
 				else
 				{
@@ -421,7 +421,7 @@ bool CSnmpxServer::AddUserAuthorization(short version, const std::string &szUser
 					pUserInfo->safeMode = safeMode;
 
 					//认证信息
-					if (authMode > 1)
+					if (authMode > 5)
 					{
 						bResult = false;
 						szError = "不支持的认证hash算法：" + std::to_string(authMode) + ".";
@@ -438,10 +438,10 @@ bool CSnmpxServer::AddUserAuthorization(short version, const std::string &szUser
 						}
 						else
 						{
-							if (szAuthPasswd.length() > MAX_USER_INFO_LEN)
+							if (szAuthPasswd.length() > SNMPX_MAX_USM_AUTH_KU_LEN)
 							{
 								bResult = false;
-								szError = "net-snmp v3用户认证密码不能大于：" + std::to_string(MAX_USER_INFO_LEN) + "字节！";
+								szError = "net-snmp v3用户认证密码不能大于：" + std::to_string(SNMPX_MAX_USM_AUTH_KU_LEN) + "字节！";
 							}
 							else
 								memcpy(pUserInfo->AuthPassword, szAuthPasswd.c_str(), szAuthPasswd.length());
@@ -451,7 +451,7 @@ bool CSnmpxServer::AddUserAuthorization(short version, const std::string &szUser
 					//加密信息
 					if (bResult && 2 == safeMode)
 					{
-						if (privMode > 1)
+						if (privMode > 3)
 						{
 							bResult = false;
 							szError = "不支持的加密算法：" + std::to_string(privMode) + ".";
@@ -468,10 +468,10 @@ bool CSnmpxServer::AddUserAuthorization(short version, const std::string &szUser
 							}
 							else
 							{
-								if (szPrivPasswd.length() > MAX_USER_INFO_LEN)
+								if (szPrivPasswd.length() > SNMPX_MAX_USM_PRIV_KU_LEN)
 								{
 									bResult = false;
-									szError = "net-snmp v3用户加密密码不能大于：" + std::to_string(MAX_USER_INFO_LEN) + "字节！";
+									szError = "net-snmp v3用户加密密码不能大于：" + std::to_string(SNMPX_MAX_USM_PRIV_KU_LEN) + "字节！";
 								}
 								else
 									memcpy(pUserInfo->PrivPassword, szPrivPasswd.c_str(), szPrivPasswd.length());

@@ -36,7 +36,7 @@ const char* CErrorStatus::m_error_string[2][19] = {
 		"inconsistentName (That object can not currently be created)."
 	},
 	{
-		"成功！"
+		"成功！",
 		"返回结果集太大！",
 		"在MIB中不存在该变量名！",
 		"数据值损坏，长度或类型错误！",
@@ -52,7 +52,7 @@ const char* CErrorStatus::m_error_string[2][19] = {
 		"agent繁忙，资源紧张！",
 		"提交失败！",
 		"回滚失败！",
-		"授权失败，拒绝访问该对象！",
+		"授权认证失败，拒绝访问该对象！",
 		"该OID无写权限！",
 		"不一致的名称，对象当前未创建！"
 	}

@@ -28,7 +28,7 @@ private:
 	int pack_data(struct snmpx_t *s, unsigned char* tlv_buf);
 	int pack_v1_trap_data(struct snmpx_t* s, unsigned char* tlv_buf);
 	int pack_msgData(struct snmpx_t *s, unsigned char* tlv_buf);
-	int pack_authData(struct snmpx_t *s, unsigned char* tlv_buf);
+	int pack_authData(struct snmpx_t *s, unsigned char* tlv_buf, const struct userinfo_t* user_info);
 	int encrypt_msgData(struct snmpx_t* s, unsigned char* tlv_buf, const struct userinfo_t* user_info);
 	int check_sd_snmpd_data(struct snmpx_t* s, const struct userinfo_t* user_info);
 	int encrypt_pdu(const unsigned char* in, unsigned int in_len, const userinfo_t* user_info, const snmpx_t *s, 

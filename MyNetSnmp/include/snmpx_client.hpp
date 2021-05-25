@@ -63,9 +63,9 @@ private:
 	//用户的USM信息
 	struct SUserUsmInfo
 	{
-		char userName[MAX_USER_INFO_LEN + 1];
-		char userAuthPassword[MAX_USER_INFO_LEN + 1];
-		char userPrivPassword[MAX_USER_INFO_LEN + 1];
+		char userName[SNMPX_MAX_USER_NAME_LEN + 1];
+		char userAuthPassword[SNMPX_MAX_USM_AUTH_KU_LEN + 1];
+		char userPrivPassword[SNMPX_MAX_USM_PRIV_KU_LEN + 1];
 		unsigned char safeMode;
 		unsigned char authMode;
 		unsigned char privMode;

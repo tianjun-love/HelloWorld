@@ -1,5 +1,6 @@
 ﻿#include "../include/snmpx_types.hpp"
 #include <cstdio>
+#include <stdlib.h>
 #include <time.h>
 
 #ifdef _WIN32
@@ -293,7 +294,7 @@ bool parse_oid_string(const std::string &oidStr, oid *oid_buf, std::string &erro
 	//最少是1.3.6
 	if (parmLength < 5)
 	{
-		error = "oid[" + oidStr + "]长度错误，最小：" + std::to_string(MIN_OID_LEN) + "！";
+		error = "oid[" + oidStr + "]长度错误，最小：" + std::to_string(SNMPX_MIN_OID_LEN) + "！";
 		return false;
 	}
 
@@ -325,9 +326,9 @@ bool parse_oid_string(const std::string &oidStr, oid *oid_buf, std::string &erro
 			{
 				oid_len++;
 
-				if (oid_len > MAX_OID_LEN)
+				if (oid_len > SNMPX_MAX_OID_LEN)
 				{
-					error = "oid[" + oidStr + "]长度错误，最大：" + std::to_string(MAX_OID_LEN) + "！";
+					error = "oid[" + oidStr + "]长度错误，最大：" + std::to_string(SNMPX_MAX_OID_LEN) + "！";
 					return false;
 				}
 				else
@@ -351,7 +352,7 @@ bool parse_oid_string(const std::string &oidStr, oid *oid_buf, std::string &erro
 	} while ('\0' != *pb);
 
 	//判断长度及开始值
-	if (oid_len >= MIN_OID_LEN)
+	if (oid_len >= SNMPX_MIN_OID_LEN)
 	{
 		//开头必须是.1.0-.1.3
 		if (1 == oid_buf[1] && oid_buf[2] <= 3)
@@ -364,7 +365,7 @@ bool parse_oid_string(const std::string &oidStr, oid *oid_buf, std::string &erro
 	}
 	else
 	{
-		error = "oid[" + oidStr + "]长度错误，最小：" + std::to_string(MIN_OID_LEN) + "！";
+		error = "oid[" + oidStr + "]长度错误，最小：" + std::to_string(SNMPX_MIN_OID_LEN) + "！";
 		return false;
 	}
 
@@ -374,6 +375,60 @@ bool parse_oid_string(const std::string &oidStr, oid *oid_buf, std::string &erro
 bool get_byteorder_is_LE()
 {
 	return g_bByteOrder_LE;
+}
+
+unsigned int get_auth_para_length(unsigned char authMode)
+{
+	unsigned int ret = 0;
+
+	switch (authMode)
+	{
+	case 0: //MD5
+	case 1: //SHA
+		ret = 12;
+		break;
+	case 2: //SHA224
+		ret = 16;
+		break;
+	case 3: //SHA256
+		ret = 24;
+		break;
+	case 4: //SHA384
+		ret = 32;
+		break;
+	case 5: //SHA512
+		ret = 48;
+		break;
+	default:
+		ret = 12;
+		break;
+	}
+
+	return ret;
+}
+
+unsigned int get_priv_key_length(unsigned char privMode)
+{
+	unsigned int ret = 0;
+
+	switch (privMode)
+	{
+	case 0: //AES
+	case 1: //DES 密钥长度是8，但IV值要使用8-15字节
+		ret = 16;
+		break;
+	case 2: //AES192
+		ret = 24;
+		break;
+	case 3: //AES256
+		ret = 32;
+		break;
+	default:
+		ret = 16;
+		break;
+	}
+
+	return ret;
 }
 
 std::string get_oid_string(oid* buf, int len)
@@ -763,6 +818,9 @@ bool init_snmpx_global_env(std::string &szError)
 		//大端存储为：0x0102
 		g_bByteOrder_LE = false;
 	}
+
+	//初始化随机数种子
+	srand((unsigned int)time(NULL));
 
 	return true;
 }

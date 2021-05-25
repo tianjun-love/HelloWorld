@@ -17,9 +17,9 @@ public:
 
 	//aes
 	int snmpx_aes_encode(const unsigned char* buf, unsigned int buf_len, const unsigned char* key, unsigned char* iv, 
-		unsigned char* encode_buf);
+		unsigned char priv_mode, unsigned char* encode_buf);
 	int snmpx_aes_decode(const unsigned char* buf, unsigned int buf_len, const unsigned char* key, unsigned char* iv, 
-		unsigned char* decode_buf);
+		unsigned char priv_mode, unsigned char* decode_buf);
 
 	//des
 	int snmpx_des_encode(const unsigned char* buf, unsigned int buf_len, const unsigned char* key, unsigned char* iv, 
@@ -43,9 +43,13 @@ public:
 		const unsigned char* cur_msgAuthenticationParameters, const unsigned int cur_msgAuthenticationParameters_len,
 		unsigned char* real_msgAuthenticationParameters, unsigned int real_msgAuthenticationParameters_len);
 
+	//计算数据hash
+	int gen_data_HASH(const unsigned char* data, unsigned int data_len, unsigned char hashType, unsigned char* hash,
+		unsigned int* hash_len);
+
 	//对用户的认证密码进行第一次加密
 	int get_user_hash_ku(const unsigned char* authPasswd, unsigned int authPasswd_len, unsigned char authMode, 
-		unsigned char *Ku, unsigned int *Ku_len);
+		unsigned char* Ku, unsigned int* Ku_len);
 
 	//对用户的认证密码进行第二次加密
 	int get_user_hash_kul(const unsigned char* engineID, unsigned int engineID_len, unsigned char authMode, 

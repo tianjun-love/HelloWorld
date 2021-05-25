@@ -262,7 +262,7 @@ int CBerCode::asn_oid_code(unsigned char tag , unsigned int val_len , oid* val_b
 	unsigned char v;
 	int cnt = 0;
 
-	if (oid_len < MIN_OID_LEN)
+	if (oid_len < SNMPX_MIN_OID_LEN)
 	{
 		m_szErrorMsg = "asn_oid_code length wrong, oid length minimum is: " + std::to_string(oid_len) + " !";
 		return -1;
@@ -358,9 +358,9 @@ int CBerCode::asn_oid_decode(unsigned char* buf, unsigned int len, oid* decode_o
 		return SNMPX_failure;
 	}
 
-	if (len < (MIN_OID_LEN - 1))
+	if (len < (SNMPX_MIN_OID_LEN - 1))
 	{
-		m_szErrorMsg = "asn_oid_decode length wrong, oid value length minimum is: " + std::to_string(MIN_OID_LEN) + " !";
+		m_szErrorMsg = "asn_oid_decode length wrong, oid value length minimum is: " + std::to_string(SNMPX_MIN_OID_LEN) + " !";
 		return SNMPX_failure;
 	}
 

@@ -15,10 +15,10 @@ CSnmpxPack::~CSnmpxPack()
  */
 int CSnmpxPack::tag_len_pack(unsigned int taglen, unsigned char* buf)
 {
-	if (taglen > MAX_MSG_LEN)
+	if (taglen > SNMPX_MAX_MSG_LEN)
 	{
 		m_szErrorMsg = format_err_msg("tag_len_pack wrong, TLV length can not more than %u.",
-			MAX_MSG_LEN);
+			SNMPX_MAX_MSG_LEN);
 		return SNMPX_failure;
 	}
 
@@ -220,9 +220,9 @@ int CSnmpxPack::pack_variable_bindings(struct variable_bindings *tvb, unsigned c
 	if (tvb == NULL) {
 		return SNMPX_noError;
 	}
-	unsigned char pkg_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char pkg_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	unsigned int pkg_cnt = sizeof(pkg_buf);
-	unsigned char t_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char t_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	int rval = SNMPX_noError;
 
 	//逆向组包
@@ -275,9 +275,9 @@ int CSnmpxPack::pack_item(const std::list<variable_bindings*> *variable_bindings
 		return 2;
 	}
 
-	unsigned char pkg_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char pkg_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	unsigned int pkg_cnt = sizeof(pkg_buf);
-	unsigned char t_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char t_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	int rval = SNMPX_noError;
 	std::list<variable_bindings*>::const_reverse_iterator iter;
 
@@ -319,9 +319,9 @@ int CSnmpxPack::pack_item(const std::list<variable_bindings*> *variable_bindings
  */
 int CSnmpxPack::pack_data(struct snmpx_t *s, unsigned char* tlv_buf)
 {
-	unsigned char pkg_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char pkg_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	unsigned int pkg_cnt = sizeof(pkg_buf);
-	unsigned char t_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char t_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	int rval = SNMPX_noError;
 
 	//逆向组包
@@ -385,9 +385,9 @@ int CSnmpxPack::pack_data(struct snmpx_t *s, unsigned char* tlv_buf)
  */
 int CSnmpxPack::pack_v1_trap_data(struct snmpx_t* s, unsigned char* tlv_buf)
 {
-	unsigned char pkg_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char pkg_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	unsigned int pkg_cnt = sizeof(pkg_buf);
-	unsigned char t_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char t_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	int rval = SNMPX_noError;
 
 	//逆向组包
@@ -473,9 +473,9 @@ int CSnmpxPack::pack_v1_trap_data(struct snmpx_t* s, unsigned char* tlv_buf)
  */
 int CSnmpxPack::pack_msgData(struct snmpx_t *s, unsigned char* tlv_buf)
 {
-	unsigned char pkg_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char pkg_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	unsigned int pkg_cnt = sizeof(pkg_buf);
-	unsigned char t_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char t_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	int rval = SNMPX_noError;
 
 	if ((rval = pack_data(s, t_buf)) < 0)
@@ -531,11 +531,11 @@ int CSnmpxPack::pack_msgData(struct snmpx_t *s, unsigned char* tlv_buf)
  * msgPrivacyParameters , 结构进行组包
  * 组包认证段
  */
-int CSnmpxPack::pack_authData(struct snmpx_t *s, unsigned char* tlv_buf)
+int CSnmpxPack::pack_authData(struct snmpx_t *s, unsigned char* tlv_buf, const struct userinfo_t* user_info)
 {
-	unsigned char pkg_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char pkg_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	unsigned int pkg_cnt = sizeof(pkg_buf);
-	unsigned char t_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char t_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	int rval = SNMPX_noError;
 
 	//msgPrivacyParameters
@@ -548,10 +548,10 @@ int CSnmpxPack::pack_authData(struct snmpx_t *s, unsigned char* tlv_buf)
 	pkg_cnt = pkg_cnt - rval;
 	memcpy(pkg_buf + pkg_cnt, t_buf, rval);
 
-	/* 判断是否需要验证，需要验证 ,先赋值12个0x00,组后包后,再重新赋值 */
+	/* 判断是否需要验证，需要验证 ,先赋值n个0x00,组后包后,再重新赋值 */
 	if ((s->msgFlags & 0x01) == 0x01)
 	{
-		s->msgAuthenticationParameters_len = 12;
+		s->msgAuthenticationParameters_len = get_auth_para_length(user_info->AuthMode);
 		if (s->msgAuthenticationParameters != NULL) {
 			free(s->msgAuthenticationParameters);
 		}
@@ -642,7 +642,7 @@ int CSnmpxPack::pack_authData(struct snmpx_t *s, unsigned char* tlv_buf)
  */
 int CSnmpxPack::encrypt_msgData(struct snmpx_t* s, unsigned char* tlv_buf, const struct userinfo_t* user_info)
 {
-	unsigned char t_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char t_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	int rval = SNMPX_noError;
 	unsigned char* encrypt_buf = NULL;
 
@@ -878,9 +878,9 @@ int CSnmpxPack::encrypt_pdu(const unsigned char* in, unsigned int in_len, const 
 {
 	int rval = SNMPX_noError;
 	CCryptographyProccess crypto;
-	unsigned char iv[32] = { 0 }; /* 计算iv偏移量的值 */
+	unsigned char iv[16] = { 0 }; /* 计算iv偏移量的值 */
 
-	if (user_info->PrivMode == 0) //AES
+	if (user_info->PrivMode == 0 || user_info->PrivMode == 2 || user_info->PrivMode == 3) //AES
 	{
 		unsigned int msgAuthoritativeEngineBootsHl = convert_to_nl(s->msgAuthoritativeEngineBoots);
 		unsigned int msgAuthoritativeEngineTimeHl = convert_to_nl(s->msgAuthoritativeEngineTime);
@@ -888,7 +888,7 @@ int CSnmpxPack::encrypt_pdu(const unsigned char* in, unsigned int in_len, const 
 		memcpy(iv + 4, &msgAuthoritativeEngineTimeHl, 4);
 		memcpy(iv + 8, s->msgPrivacyParameters, s->msgPrivacyParameters_len);
 
-		rval = crypto.snmpx_aes_encode(in, in_len, user_info->privPasswdPrivKey, iv, out);
+		rval = crypto.snmpx_aes_encode(in, in_len, user_info->privPasswdPrivKey, iv, user_info->PrivMode, out);
 
 		if (rval < 0)
 			m_szErrorMsg = "encrypt_pdu aes failed: " + crypto.GetErrorMsg();
@@ -1007,9 +1007,9 @@ int CSnmpxPack::snmpx_pack(unsigned char*buf, struct snmpx_t* rc, struct snmpx_t
  */
 int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const struct userinfo_t* user_info)
 {
-	unsigned char pkg_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char pkg_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	int pkg_cnt = (int)sizeof(pkg_buf);
-	unsigned char t_buf[MAX_MSG_LEN] = { 0 };
+	unsigned char t_buf[SNMPX_MAX_MSG_LEN] = { 0 };
 	int rval = SNMPX_noError;
 
 	if (check_sd_snmpd_data(s, user_info) < 0) {
@@ -1043,14 +1043,14 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 		if (pkg_cnt < 0)
 		{
 			m_szErrorMsg = CErrorStatus::format_err_msg("snmpx_group_pack failed: MAX_MSG_LEN is %u Bytes.",
-				MAX_MSG_LEN);
+				SNMPX_MAX_MSG_LEN);
 			return SNMPX_failure;
 		}
 		else
 			memcpy(pkg_buf + pkg_cnt, t_buf, rval);
 
 		//组认证段包
-		if ((rval = pack_authData(s, t_buf)) < 0) {
+		if ((rval = pack_authData(s, t_buf, user_info)) < 0) {
 			m_szErrorMsg = "snmpx_group_pack authData failed: " + m_szErrorMsg;
 			return SNMPX_failure;
 		}
@@ -1059,7 +1059,7 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 		if (pkg_cnt < 0)
 		{
 			m_szErrorMsg = CErrorStatus::format_err_msg("snmpx_group_pack failed: MAX_MSG_LEN is %u Bytes.",
-				MAX_MSG_LEN);
+				SNMPX_MAX_MSG_LEN);
 			return SNMPX_failure;
 		}
 		else
@@ -1076,7 +1076,7 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 		if (pkg_cnt < 0)
 		{
 			m_szErrorMsg = CErrorStatus::format_err_msg("snmpx_group_pack failed: MAX_MSG_LEN is %u Bytes.",
-				MAX_MSG_LEN);
+				SNMPX_MAX_MSG_LEN);
 			return SNMPX_failure;
 		}
 		else
@@ -1093,7 +1093,7 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 		if (pkg_cnt < 0)
 		{
 			m_szErrorMsg = CErrorStatus::format_err_msg("snmpx_group_pack failed: MAX_MSG_LEN is %u Bytes.",
-				MAX_MSG_LEN);
+				SNMPX_MAX_MSG_LEN);
 			return SNMPX_failure;
 		}
 		else
@@ -1172,7 +1172,7 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 		if (pkg_cnt < 0)
 		{
 			m_szErrorMsg = CErrorStatus::format_err_msg("snmpx_group_pack failed: MAX_MSG_LEN is %u Bytes.",
-				MAX_MSG_LEN);
+				SNMPX_MAX_MSG_LEN);
 			return SNMPX_failure;
 		}
 		else
@@ -1190,7 +1190,7 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 		if (pkg_cnt < 0)
 		{
 			m_szErrorMsg = CErrorStatus::format_err_msg("snmpx_group_pack failed: MAX_MSG_LEN is %u Bytes.",
-				MAX_MSG_LEN);
+				SNMPX_MAX_MSG_LEN);
 			return SNMPX_failure;
 		}
 		else
@@ -1208,7 +1208,7 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 		if (pkg_cnt < 0)
 		{
 			m_szErrorMsg = CErrorStatus::format_err_msg("snmpx_group_pack failed: MAX_MSG_LEN is %u Bytes.",
-				MAX_MSG_LEN);
+				SNMPX_MAX_MSG_LEN);
 			return SNMPX_failure;
 		}
 		else
@@ -1222,10 +1222,10 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 			return SNMPX_failure;
 		}
 
-		if (rval > MAX_MSG_LEN)
+		if (rval > SNMPX_MAX_MSG_LEN)
 		{
 			m_szErrorMsg = CErrorStatus::format_err_msg("snmpx_group_pack failed: max msg length is %d Bytes, it packed %d.",
-				MAX_MSG_LEN, rval);
+				SNMPX_MAX_MSG_LEN, rval);
 			return SNMPX_failure;
 		}
 		else

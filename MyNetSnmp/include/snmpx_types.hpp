@@ -115,21 +115,23 @@ V3报文：
 #define ASN_NO_SUCHOBJECT1  ((unsigned char)0x81) //oid不存在，抓包发现
 #define ASN_NO_SUCHOBJECT2  ((unsigned char)0x82) //oid不存在，抓包发现
 
-#define	SNMPX_MSG_GET       ((unsigned char)0xA0) /* a0=160 */
-#define	SNMPX_MSG_GETNEXT   ((unsigned char)0xA1) /* a1=161 */
-#define	SNMPX_MSG_RESPONSE  ((unsigned char)0xA2) /* a2=162 */
-#define	SNMPX_MSG_SET       ((unsigned char)0xA3) /* a3=163 */
-#define SNMPX_MSG_TRAP      ((unsigned char)0xA4) /* a4=164  v1 trap，不建议使用*/ 
-#define	SNMPX_MSG_GETBULK   ((unsigned char)0xA5) /* a5=165 v2增加*/
-#define	SNMPX_MSG_INFORM    ((unsigned char)0xA6) /* a6=166 v2增加*/
-#define	SNMPX_MSG_TRAP2     ((unsigned char)0xA7) /* a7=167 v2,v3*/
-#define SNMPX_MSG_REPORT    ((unsigned char)0xA8) /* a8=168 v3增加，获取agent引擎ID或消息的PDU部分不能解密时，发起报告*/
+#define	SNMPX_MSG_GET             ((unsigned char)0xA0) /* a0=160 */
+#define	SNMPX_MSG_GETNEXT         ((unsigned char)0xA1) /* a1=161 */
+#define	SNMPX_MSG_RESPONSE        ((unsigned char)0xA2) /* a2=162 */
+#define	SNMPX_MSG_SET             ((unsigned char)0xA3) /* a3=163 */
+#define SNMPX_MSG_TRAP            ((unsigned char)0xA4) /* a4=164  v1 trap，不建议使用*/ 
+#define	SNMPX_MSG_GETBULK         ((unsigned char)0xA5) /* a5=165 v2增加*/
+#define	SNMPX_MSG_INFORM          ((unsigned char)0xA6) /* a6=166 v2增加*/
+#define	SNMPX_MSG_TRAP2           ((unsigned char)0xA7) /* a7=167 v2,v3*/
+#define SNMPX_MSG_REPORT          ((unsigned char)0xA8) /* a8=168 v3增加，获取agent引擎ID或消息的PDU部分不能解密时，发起报告*/
 
-#define MIN_OID_LEN	         (0x03)
-#define MAX_OID_LEN	         (0x80)
-#define MAX_MSG_LEN	         (65507) /* snmp抓包数据*/
-#define MAX_USER_INFO_LEN    (128)   /* 用户信息数据最大长度，用户名、认证密码及加密密码*/
-#define MAX_BULK_REPETITIONS (50)    /* table时最大回复条数*/
+#define SNMPX_MIN_OID_LEN	       (3)
+#define SNMPX_MAX_OID_LEN	       (128)
+#define SNMPX_MAX_MSG_LEN	       (65507) /* snmp抓包数据最大长度*/
+#define SNMPX_MAX_USER_NAME_LEN    (64)    /* 团体名称或用户名称最大长度*/
+#define SNMPX_MAX_USM_AUTH_KU_LEN  (64)    /* 认证信息最大长度*/
+#define SNMPX_MAX_USM_PRIV_KU_LEN  (64)    /* 加密信息最大长度*/
+#define SNMPX_MAX_BULK_REPETITIONS (50)    /* table时最大回复行数，注意：ITEMS条数为该行数乘以实际列数*/
 
 //限定使用4个字节
 typedef int32_t oid;
@@ -143,14 +145,14 @@ struct tlv_data
 
 struct userinfo_t
 {
-	int msgID;                                //消息ID
-	unsigned char version;                    //版本号 //0:v1，1:v2c，2:v2u/v2，3:v3
-	char userName[MAX_USER_INFO_LEN + 1];     //用户名，在v1和v2c时表示团体名
-	unsigned char safeMode;                   //认证级别 0:noAuthNoPriv|1:authNoPriv|2:authPriv
-	unsigned char AuthMode;                   //认证方式 0:MD5|1:SHA
-	char AuthPassword[MAX_USER_INFO_LEN + 1]; //认证密码
-	unsigned char PrivMode;                   //加密方式 0:AES|1:DES
-	char PrivPassword[MAX_USER_INFO_LEN + 1]; //加密密码
+	int msgID;                                        //消息ID
+	unsigned char version;                            //版本号 //0:v1，1:v2c，2:v2u/v2，3:v3
+	char userName[SNMPX_MAX_USER_NAME_LEN + 1];       //用户名，在v1和v2c时表示团体名
+	unsigned char safeMode;                           //认证级别 0:noAuthNoPriv|1:authNoPriv|2:authPriv
+	unsigned char AuthMode;                           //认证方式 0:MD5|1:SHA|2:SHA224|3:SHA256|4:SHA384|5:SHA512
+	char AuthPassword[SNMPX_MAX_USM_AUTH_KU_LEN + 1]; //认证密码
+	unsigned char PrivMode;                           //加密方式 0:AES|1:DES|2:AES192|3:AES256
+	char PrivPassword[SNMPX_MAX_USM_PRIV_KU_LEN + 1]; //加密密码
 
 	int agentMaxMsg_len; //agent支持的最大消息长度
 
@@ -197,10 +199,10 @@ struct snmpx_t
 	int            msgAuthoritativeEngineTime;
 	unsigned char* msgUserName; //用户名
 	unsigned int   msgUserName_len;
-	unsigned char* msgAuthenticationParameters; //鉴别码(HMAC)，只比较前96位
-	unsigned int   msgAuthenticationParameters_len; //12字节
+	unsigned char* msgAuthenticationParameters; //鉴别码(HMAC)
+	unsigned int   msgAuthenticationParameters_len; //MD5|SHA:12字节,SHA224:16字节,SHA256:24字节,SHA384:32字节,SHA512:48字节
 	unsigned char* msgPrivacyParameters; //加/解密参数，随机数，用于生成初始向量IV
-	unsigned int   msgPrivacyParameters_len; //8字节
+	unsigned int   msgPrivacyParameters_len; //固定8字节
 
 	//msgData->plaintext v3
 	unsigned char* contextEngineID;
@@ -293,21 +295,21 @@ struct SOidVal
 //用户使用oid值对象信息
 struct SSnmpxValue
 {
-	std::string   szOid;                   //字符串OID
-	oid           OidBuf[MAX_OID_LEN + 1]; //数组OID，接收告警或get时有值，set时要自己设置，第一个位置放oid长度
-	unsigned char cValType;                //数据类型	
-	unsigned int  iValLen;                 //数据长度，字符串即字节数，整形为agent上报时的有效字节数，下发时可不做处理
-	SOidVal       Val;                     //数据
+	std::string   szOid;                         //字符串OID
+	oid           OidBuf[SNMPX_MAX_OID_LEN + 1]; //数组OID，接收告警或get时有值，set时要自己设置，第一个位置放oid长度
+	unsigned char cValType;                      //数据类型	
+	unsigned int  iValLen;                       //数据长度，字符串即字节数，整形为agent上报时的有效字节数，下发时可不做处理
+	SOidVal       Val;                           //数据
 
 	SSnmpxValue() : cValType(SNMPX_ASN_UNSUPPORT), iValLen(0)
 	{
-		memset(OidBuf, 0, MAX_OID_LEN + 1);
+		memset(OidBuf, 0, SNMPX_MAX_OID_LEN + 1);
 	}
 	~SSnmpxValue() { }
 	void Clear()
 	{
 		szOid.clear();
-		memset(OidBuf, 0, MAX_OID_LEN + 1);
+		memset(OidBuf, 0, SNMPX_MAX_OID_LEN + 1);
 		cValType = SNMPX_ASN_UNSUPPORT;
 		iValLen = 0;
 		Val.Clear();
@@ -338,6 +340,8 @@ int parse_ipaddress_string(const std::string &IP); //注意检测IP格式，里�
 std::string get_ipaddress_string(int ipaddress);
 bool parse_oid_string(const std::string &oidStr, oid *oid_buf, std::string &error);
 bool get_byteorder_is_LE(); //获取本机CPU字节序是否是小端
+unsigned int get_auth_para_length(unsigned char authMode); //获取认证hash串长度
+unsigned int get_priv_key_length(unsigned char privMode); //获取加密key长度
 std::string get_oid_string(oid* buf, int len);
 std::string get_timeticks_string(unsigned int ticks);
 std::string get_hex_string(unsigned char *data, unsigned int data_len, bool uppercase = true, bool add_space = true);

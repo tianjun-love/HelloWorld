@@ -151,7 +151,7 @@ int CSnmpxUnpack::unpack_oid_value( unsigned char* buf, unsigned int buf_len, st
 		}
 		else
 		{
-			oid t_buf[MAX_OID_LEN] = { 0 };
+			oid t_buf[SNMPX_MAX_OID_LEN] = { 0 };
 			struct variable_bindings* vb = (struct variable_bindings*)malloc(sizeof(struct variable_bindings));
 			memset(vb, 0x00, sizeof(struct variable_bindings));
 
@@ -359,7 +359,7 @@ int CSnmpxUnpack::unpack_trap_v1_cmd(unsigned char* buf , unsigned int buf_len ,
 
 		if (tlv->tag == ASN_OBJECT_ID)
 		{
-			oid t_buf[MAX_OID_LEN] = { 0 };
+			oid t_buf[SNMPX_MAX_OID_LEN] = { 0 };
 			int t_len = m_BerCode.asn_oid_decode(tlv->value, tlv->value_len, t_buf);
 
 			if (t_len <= 0)
@@ -927,7 +927,7 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 				unsigned char* real_msgAuthenticationParameters = (unsigned char*)malloc(real_msgAuthenticationParameters_len * sizeof(unsigned char));
 
 				memcpy(count_md5_buf, buf, buf_len);
-				memset(count_md5_buf + lac, 0x00, r->msgAuthenticationParameters_len); //置12个0x00
+				memset(count_md5_buf + lac, 0x00, r->msgAuthenticationParameters_len); //置0x00
 
 				//计算HMAC
 				if (crypto.gen_msgHMAC(t_user->authPasswordPrivKey, t_user->authPasswordPrivKey_len, r->msgAuthoritativeEngineID, 
@@ -1057,10 +1057,10 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 		m_szErrorMsg = "snmpx_group_unpack input data wrong, at least need 2 Bytes !";
 		return SNMPX_failure;
 	}
-	else if (buf_len > MAX_MSG_LEN)
+	else if (buf_len > SNMPX_MAX_MSG_LEN)
 	{
 		m_szErrorMsg = CErrorStatus::format_err_msg("snmpx_group_unpack input data wrong, MAX_MSG_LEN[%u] Bytes, it provide[%u] !",
-			MAX_MSG_LEN, buf_len);
+			SNMPX_MAX_MSG_LEN, buf_len);
 		return SNMPX_failure;
 	}
 
@@ -1418,7 +1418,7 @@ int CSnmpxUnpack::decrypt_pdu(const unsigned char* in, unsigned int in_len, cons
 	unsigned char iv[32] = { 0 }; /* 计算iv偏移量的值 */
 	CCryptographyProccess crypto;
 	
-	if (u->PrivMode == 0) //aes 解密方式
+	if (u->PrivMode == 0 || u->PrivMode == 2 || u->PrivMode == 3) //aes 解密方式
 	{
 		unsigned int msgAuthoritativeEngineBootsHl = convert_to_nl(r->msgAuthoritativeEngineBoots);
 		unsigned int msgAuthoritativeEngineTimeHl = convert_to_nl(r->msgAuthoritativeEngineTime);
@@ -1427,7 +1427,7 @@ int CSnmpxUnpack::decrypt_pdu(const unsigned char* in, unsigned int in_len, cons
 		memcpy(iv + 8, r->msgPrivacyParameters, r->msgPrivacyParameters_len);
 
 		/* 调用AES算法解密 */
-		rval = crypto.snmpx_aes_decode(in, in_len, u->privPasswdPrivKey, iv, out);
+		rval = crypto.snmpx_aes_decode(in, in_len, u->privPasswdPrivKey, iv, u->PrivMode, out);
 		if (rval >= 0)
 		{
 			if (out[0] != ASN_SEQ)
@@ -1633,7 +1633,7 @@ void CSnmpxUnpack::snmpx_get_vb_value(const variable_bindings* variable_binding,
 		}
 
 		//value
-		oid oidValue[MAX_OID_LEN] = { 0 };
+		oid oidValue[SNMPX_MAX_OID_LEN] = { 0 };
 		int oidLen = 0;
 		value->iValLen = variable_binding->val_len;
 		std::string szHex;
@@ -1818,9 +1818,9 @@ userinfo_t* CSnmpxUnpack::generate_agent_user_info(const userinfo_t *t_user, con
 			memset(user_info, 0x00, sizeof(struct userinfo_t));
 
 			user_info->version = 3;
-			memcpy(user_info->userName, t_user->userName, MAX_USER_INFO_LEN);
-			memcpy(user_info->AuthPassword, t_user->AuthPassword, MAX_USER_INFO_LEN);
-			memcpy(user_info->PrivPassword, t_user->PrivPassword, MAX_USER_INFO_LEN);
+			memcpy(user_info->userName, t_user->userName, SNMPX_MAX_USER_NAME_LEN);
+			memcpy(user_info->AuthPassword, t_user->AuthPassword, SNMPX_MAX_USM_AUTH_KU_LEN);
+			memcpy(user_info->PrivPassword, t_user->PrivPassword, SNMPX_MAX_USM_PRIV_KU_LEN);
 			user_info->safeMode = t_user->safeMode;
 			user_info->AuthMode = t_user->AuthMode;
 			user_info->PrivMode = t_user->PrivMode;

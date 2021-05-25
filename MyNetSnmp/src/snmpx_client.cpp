@@ -98,9 +98,9 @@ CSnmpxClient::SUserUsmInfo::SUserUsmInfo(const userinfo_t* us) :
 	msgAuthoritativeEngineID(NULL), msgAuthoritativeEngineID_len(0), authPasswordPrivKey(NULL), 
 	authPasswordPrivKey_len(0), privPasswdPrivKey(NULL), privPasswdPrivKey_len(0)
 {
-	memcpy(userName, us->userName, MAX_USER_INFO_LEN);
-	memcpy(userAuthPassword, us->AuthPassword, MAX_USER_INFO_LEN);
-	memcpy(userPrivPassword, us->PrivPassword, MAX_USER_INFO_LEN);
+	memcpy(userName, us->userName, SNMPX_MAX_USER_NAME_LEN);
+	memcpy(userAuthPassword, us->AuthPassword, SNMPX_MAX_USM_AUTH_KU_LEN);
+	memcpy(userPrivPassword, us->PrivPassword, SNMPX_MAX_USM_PRIV_KU_LEN);
 	safeMode = us->safeMode;
 	authMode = us->AuthMode;
 	privMode = us->PrivMode;
@@ -158,9 +158,9 @@ void CSnmpxClient::SUserUsmInfo::Clear()
 
 bool CSnmpxClient::SUserUsmInfo::operator == (const userinfo_t& us) const
 {
-	if (0 == memcmp(userName, us.userName, MAX_USER_INFO_LEN)
-		&& 0 == memcmp(userAuthPassword, us.AuthPassword, MAX_USER_INFO_LEN)
-		&& 0 == memcmp(userPrivPassword, us.PrivPassword, MAX_USER_INFO_LEN)
+	if (0 == memcmp(userName, us.userName, SNMPX_MAX_USER_NAME_LEN)
+		&& 0 == memcmp(userAuthPassword, us.AuthPassword, SNMPX_MAX_USM_AUTH_KU_LEN)
+		&& 0 == memcmp(userPrivPassword, us.PrivPassword, SNMPX_MAX_USM_PRIV_KU_LEN)
 		&& safeMode == us.safeMode
 		&& authMode == us.AuthMode
 		&& privMode == us.PrivMode
@@ -229,10 +229,10 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 		}
 		else
 		{
-			if (szUserName.length() > MAX_USER_INFO_LEN)
+			if (szUserName.length() > SNMPX_MAX_USER_NAME_LEN)
 			{
 				bResult = false;
-				szError = "net-snmp v1/v2c团体名称不能大于：" + std::to_string(MAX_USER_INFO_LEN) + "字节！";
+				szError = "net-snmp v1/v2c团体名称不能大于：" + std::to_string(SNMPX_MAX_USER_NAME_LEN) + "字节！";
 			}
 			else
 			{
@@ -268,10 +268,10 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 		}
 		else
 		{
-			if (szUserName.length() > MAX_USER_INFO_LEN)
+			if (szUserName.length() > SNMPX_MAX_USER_NAME_LEN)
 			{
 				bResult = false;
-				szError = "net-snmp v3用户名称不能大于：" + std::to_string(MAX_USER_INFO_LEN) + "字节！";
+				szError = "net-snmp v3用户名称不能大于：" + std::to_string(SNMPX_MAX_USER_NAME_LEN) + "字节！";
 			}
 			else
 			{
@@ -307,7 +307,7 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 				m_pUserInfo->safeMode = safeMode;
 
 				//认证信息
-				if (authMode > 1)
+				if (authMode > 5)
 				{
 					bResult = false;
 					szError = "不支持的认证hash算法：" + std::to_string(authMode) + ".";
@@ -324,10 +324,10 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 					}
 					else
 					{
-						if (szAuthPasswd.length() > MAX_USER_INFO_LEN)
+						if (szAuthPasswd.length() > SNMPX_MAX_USM_AUTH_KU_LEN)
 						{
 							bResult = false;
-							szError = "net-snmp v3用户认证密码不能大于：" + std::to_string(MAX_USER_INFO_LEN) + "字节！";
+							szError = "net-snmp v3用户认证密码不能大于：" + std::to_string(SNMPX_MAX_USM_AUTH_KU_LEN) + "字节！";
 						}
 						else
 							memcpy(m_pUserInfo->AuthPassword, szAuthPasswd.c_str(), szAuthPasswd.length());
@@ -337,7 +337,7 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 				//加密信息
 				if (bResult && 2 == safeMode)
 				{
-					if (privMode > 1)
+					if (privMode > 3)
 					{
 						bResult = false;
 						szError = "不支持的加密算法：" + std::to_string(privMode) + ".";
@@ -354,10 +354,10 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 						}
 						else
 						{
-							if (szPrivPasswd.length() > MAX_USER_INFO_LEN)
+							if (szPrivPasswd.length() > SNMPX_MAX_USM_PRIV_KU_LEN)
 							{
 								bResult = false;
-								szError = "net-snmp v3用户加密密码不能大于：" + std::to_string(MAX_USER_INFO_LEN) + "字节！";
+								szError = "net-snmp v3用户加密密码不能大于：" + std::to_string(SNMPX_MAX_USM_PRIV_KU_LEN) + "字节！";
 							}
 							else
 								memcpy(m_pUserInfo->PrivPassword, szPrivPasswd.c_str(), szPrivPasswd.length());
@@ -878,16 +878,16 @@ int CSnmpxClient::SnmpxTableHandle(EOidType oidType, const void* pTableOid, TTab
 		return SNMPX_failure;
 	}
 
-	if (iReplications < 1 || iReplications > MAX_BULK_REPETITIONS)
+	if (iReplications < 1 || iReplications > SNMPX_MAX_BULK_REPETITIONS)
 	{
-		szError = "最大回复条数设置错误，不能小于1条且不能大于" + std::to_string(MAX_BULK_REPETITIONS) + "条！" ;
+		szError = "最大回复条数设置错误，不能小于1条且不能大于" + std::to_string(SNMPX_MAX_BULK_REPETITIONS) + "条！" ;
 		return SNMPX_failure;
 	}
 
 	int irval = SNMPX_noError;
 	bool bExit = false;
 	oid* pCurrTableOid = NULL;
-	oid tableOidBuf[MAX_OID_LEN + 1] = { 0 };
+	oid tableOidBuf[SNMPX_MAX_OID_LEN + 1] = { 0 };
 
 	//将oid都转为oid*类型，方便处理
 	if (E_OID_STRING == oidType)
@@ -1065,7 +1065,7 @@ int CSnmpxClient::SnmpxWalkHandle(EOidType oidType, const void* pWalkOid, list<S
 	bool bExit = false;
 	bool bGetOrGetnext = true; //true:getnext, false:get
 	oid* pCurrTableOid = NULL;
-	oid tableOidBuf[MAX_OID_LEN + 1] = { 0 };
+	oid tableOidBuf[SNMPX_MAX_OID_LEN + 1] = { 0 };
 
 	//将oid都转为oid*类型，方便处理
 	if (E_OID_STRING == oidType)
@@ -1325,7 +1325,7 @@ void CSnmpxClient::EraseAllUsmUser()
 void CSnmpxClient::InitPublicAttr(snmpx_t& snmpx, bool is_second_frame)
 {
 	snmpx.msgVersion = m_pUserInfo->version;
-	snmpx.msgMaxSize = MAX_MSG_LEN; //固定值便可
+	snmpx.msgMaxSize = SNMPX_MAX_MSG_LEN; //固定值便可
 
 	/*版本号  0x00:v1 , 0x01:v2c , 0x03:v3 */
 	if (3 == snmpx.msgVersion)
@@ -1547,7 +1547,7 @@ bool CSnmpxClient::FillSnmpxEngineAndPrivacy(const snmpx_t& snmpxSrc, snmpx_t& s
 bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* pOidList, snmpx_t& snmpx, string& szError)
 {
 	bool bResult = true;
-	oid oidTemp[MAX_OID_LEN + 1] = { 0 };
+	oid oidTemp[SNMPX_MAX_OID_LEN + 1] = { 0 };
 	int rval = 0;
 	unsigned char tag, *data = NULL;
 	CSnmpxPack pack;
@@ -1958,8 +1958,8 @@ int CSnmpxClient::RequestSnmpx(snmpx_t& snmpx_sd, snmpx_t& snmpx_rc, bool bIsGet
 	std::vector<SSnmpxValue>* pValueVec, string& szError, bool bIsGetEngineID)
 {
 	int fd = 0, sento_result = 0, recvbuf_len = 0, retryTimes = 0, iErrnoTemp = 0;
-	unsigned char sendbuf[MAX_MSG_LEN] = { 0 }; /* upd包最大只可以是65535 */
-	unsigned char recvbuf[MAX_MSG_LEN] = { 0 };
+	unsigned char sendbuf[SNMPX_MAX_MSG_LEN] = { 0 }; /* upd包最大只可以是65535 */
+	unsigned char recvbuf[SNMPX_MAX_MSG_LEN] = { 0 };
 	const int iRetryEngineTime = 2;
 	CSnmpxPack pack;
 	CSnmpxUnpack unpack;
