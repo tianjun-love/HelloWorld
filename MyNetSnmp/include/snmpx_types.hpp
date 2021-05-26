@@ -90,9 +90,9 @@ V3报文：
  */
 
 //版本、算法及类型定义
-#define SNMPX_VERSION_v1   ((unsigned char)0)
-#define SNMPX_VERSION_v2c  ((unsigned char)1)
-#define SNMPX_VERSION_v3   ((unsigned char)3)
+#define SNMPX_VERSION_v1           ((unsigned char)0)
+#define SNMPX_VERSION_v2c          ((unsigned char)1)
+#define SNMPX_VERSION_v3           ((unsigned char)3)
 
 #define SNMPX_SEC_MODEL_ANY        ((unsigned char)0)
 #define SNMPX_SEC_MODEL_SNMPv1     ((unsigned char)1)
@@ -104,17 +104,21 @@ V3报文：
 #define SNMPX_SEC_LEVEL_authNoPriv ((unsigned char)2)
 #define SNMPX_SEC_LEVEL_authPriv   ((unsigned char)3)
 
-#define SNMPX_AUTH_MD5     ((unsigned char)0)
-#define SNMPX_AUTH_SHA     ((unsigned char)1)
-#define SNMPX_AUTH_SHA224  ((unsigned char)2)
-#define SNMPX_AUTH_SHA256  ((unsigned char)3)
-#define SNMPX_AUTH_SHA384  ((unsigned char)4)
-#define SNMPX_AUTH_SHA512  ((unsigned char)5)
+#define SNMPX_MSG_FLAG_AUTH_BIT    ((unsigned char)0x01) //认证标识
+#define SNMPX_MSG_FLAG_PRIV_BIT    ((unsigned char)0x02) //加密标识
+#define SNMPX_MSG_FLAG_RPRT_BIT    ((unsigned char)0x04) //report标识
 
-#define SNMPX_PRIV_DES     ((unsigned char)0)
-#define SNMPX_PRIV_AES     ((unsigned char)1)
-#define SNMPX_PRIV_AES192  ((unsigned char)2)
-#define SNMPX_PRIV_AES256  ((unsigned char)3)
+#define SNMPX_AUTH_MD5      ((unsigned char)0)
+#define SNMPX_AUTH_SHA      ((unsigned char)1)
+#define SNMPX_AUTH_SHA224   ((unsigned char)2)
+#define SNMPX_AUTH_SHA256   ((unsigned char)3)
+#define SNMPX_AUTH_SHA384   ((unsigned char)4)
+#define SNMPX_AUTH_SHA512   ((unsigned char)5)
+						    
+#define SNMPX_PRIV_DES      ((unsigned char)0)
+#define SNMPX_PRIV_AES      ((unsigned char)1)
+#define SNMPX_PRIV_AES192   ((unsigned char)2)
+#define SNMPX_PRIV_AES256   ((unsigned char)3)
 
 #define ASN_BOOLEAN	        ((unsigned char)0x01)
 #define	ASN_INTEGER	        ((unsigned char)0x02)

@@ -1344,18 +1344,18 @@ void CSnmpxClient::InitPublicAttr(snmpx_t& snmpx, bool is_second_frame)
 			snmpx.request_id = 2;
 
 			if (SNMPX_SEC_LEVEL_noAuth == m_pUserInfo->safeMode)
-				snmpx.msgFlags = 0x04;
+				snmpx.msgFlags = SNMPX_MSG_FLAG_RPRT_BIT;
 			else if (SNMPX_SEC_LEVEL_authNoPriv == m_pUserInfo->safeMode)
-				snmpx.msgFlags = 0x05;
+				snmpx.msgFlags = SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_RPRT_BIT;
 			else
-				snmpx.msgFlags = 0x07;
+				snmpx.msgFlags = SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_PRIV_BIT | SNMPX_MSG_FLAG_RPRT_BIT;
 		}
 		else
 		{
 			m_pUserInfo->msgID = GetSnmpxMsgID();
 			snmpx.msgID = m_pUserInfo->msgID;
 			snmpx.request_id = 1;
-			snmpx.msgFlags = 0x04;
+			snmpx.msgFlags = SNMPX_MSG_FLAG_RPRT_BIT;
 		}
 	}
 	else
@@ -1489,7 +1489,7 @@ bool CSnmpxClient::FillSnmpxEngineAndPrivacy(const snmpx_t& snmpxSrc, snmpx_t& s
 		snmpxDst.msgPrivacyParameters_len = 0;
 	}
 
-	if ((snmpxDst.msgFlags & 0x02) == 0x02)
+	if ((snmpxDst.msgFlags & SNMPX_MSG_FLAG_PRIV_BIT) == SNMPX_MSG_FLAG_PRIV_BIT)
 	{
 		CCryptographyProccess crypto;
 

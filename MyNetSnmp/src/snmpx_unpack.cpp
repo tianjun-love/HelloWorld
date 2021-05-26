@@ -826,7 +826,7 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 			if (t_user->safeMode == SNMPX_SEC_LEVEL_noAuth)
 			{
 				//noAuthNoPriv
-				if ((r->msgFlags & 0x03) != 0x00) 
+				if ((r->msgFlags & (SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_PRIV_BIT)) != 0x00) 
 				{
 					//当用户名错误，md5码错误时,组包时将msgFlags设置为0x00
 					if (r->msgFlags != 0x00)
@@ -840,7 +840,7 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 			else if (t_user->safeMode == SNMPX_SEC_LEVEL_authNoPriv)
 			{
 				//authNoPriv
-				if ((r->msgFlags & 0x03) != 0x01)
+				if ((r->msgFlags & (SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_PRIV_BIT)) != SNMPX_MSG_FLAG_AUTH_BIT)
 				{
 					//当用户名错误，md5码错误时,组包时将msgFlags设置为0x00
 					if (r->msgFlags != 0x00)
@@ -855,7 +855,7 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 			else
 			{
 				//authPriv
-				if ((r->msgFlags & 0x03) != 0x03)
+				if ((r->msgFlags & (SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_PRIV_BIT)) != (SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_PRIV_BIT))
 				{
 					//当用户名错误，md5码错误时,组包时将msgFlags设置为0x00
 					if (r->msgFlags != 0x00)
@@ -891,8 +891,8 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 				return SNMPX_failure;
 			}
 
-			//判断用户是否需要验证，加密
-			if ((r->msgFlags & 0x01) == 0x01)
+			//判断用户是否需要验证
+			if ((r->msgFlags & SNMPX_MSG_FLAG_AUTH_BIT) == SNMPX_MSG_FLAG_AUTH_BIT)
 			{
 				//通过查找两次判断准确性,不可能出现在开头位置
 				if (r->msgAuthenticationParameters == NULL || r->msgAuthenticationParameters_len == 0) {
@@ -1265,7 +1265,7 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 							//在agent trap中或其它消息，如果不使用网管限定的引擎ID（自己的），则要在此处生成解密需要的信息
 							//在trap服务端配置用户的时候，引擎ID置空，且不调用snmpx_user_init
 							//有加密才处理
-							if (t_user->msgAuthoritativeEngineID == NULL && (r->msgFlags & 0x03) != 0x00)
+							if (t_user->msgAuthoritativeEngineID == NULL && (r->msgFlags & (SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_PRIV_BIT)) != 0x00)
 							{
 								std::string error;
 
@@ -1304,7 +1304,7 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 		++iter;
 		tlv = *iter; //处理msgData段
 
-		if ((r->msgFlags & 0x02) == 0x02) //判断数据段是否是加密类型
+		if ((r->msgFlags & SNMPX_MSG_FLAG_PRIV_BIT) == SNMPX_MSG_FLAG_PRIV_BIT) //判断数据段是否是加密类型
 		{
 			if (tlv->tag != ASN_OCTET_STR)
 			{

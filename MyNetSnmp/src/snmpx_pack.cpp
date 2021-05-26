@@ -549,7 +549,7 @@ int CSnmpxPack::pack_authData(struct snmpx_t *s, unsigned char* tlv_buf, const s
 	memcpy(pkg_buf + pkg_cnt, t_buf, rval);
 
 	/* 判断是否需要验证，需要验证 ,先赋值n个0x00,组后包后,再重新赋值 */
-	if ((s->msgFlags & 0x01) == 0x01)
+	if ((s->msgFlags & SNMPX_MSG_FLAG_AUTH_BIT) == SNMPX_MSG_FLAG_AUTH_BIT)
 	{
 		s->msgAuthenticationParameters_len = get_auth_para_length(user_info->AuthMode);
 		if (s->msgAuthenticationParameters != NULL) {
@@ -748,21 +748,21 @@ int CSnmpxPack::check_sd_snmpd_data(struct snmpx_t* s, const struct userinfo_t* 
 			}
 
 			if (user_info->safeMode == SNMPX_SEC_LEVEL_noAuth) {
-				if ((s->msgFlags & 0x03) != 0x00) {
+				if ((s->msgFlags & (SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_PRIV_BIT)) != 0x00) {
 					m_szErrorMsg = format_err_msg("check_sd_snmpd_data failed, msgFlags set wrong, user_info->safeMode[0x%02X] s->msgFlags[0x%02X].",
 						user_info->safeMode, s->msgFlags);
 					return SNMPX_failure;
 				}
 			}
 			else if (user_info->safeMode == SNMPX_SEC_LEVEL_authNoPriv) {
-				if ((s->msgFlags & 0x03) != 0x01) {
+				if ((s->msgFlags & (SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_PRIV_BIT)) != SNMPX_MSG_FLAG_AUTH_BIT) {
 					m_szErrorMsg = format_err_msg("check_sd_snmpd_data failed, msgFlags set wrong, user_info->safeMode[0x%02X] s->msgFlags[0x%02X].",
 						user_info->safeMode, s->msgFlags);
 					return SNMPX_failure;
 				}
 			}
 			else {
-				if ((s->msgFlags & 0x03) != 0x03) {
+				if ((s->msgFlags & (SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_PRIV_BIT)) != (SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_PRIV_BIT)) {
 					m_szErrorMsg = format_err_msg("check_sd_snmpd_data failed, msgFlags set wrong, user_info->safeMode[0x%02X] s->msgFlags[0x%02X].",
 						user_info->safeMode, s->msgFlags);
 					return SNMPX_failure;
@@ -957,7 +957,7 @@ int CSnmpxPack::snmpx_pack(unsigned char*buf, struct snmpx_t* rc, struct snmpx_t
 			sd->msgFlags = 0x00;
 		}
 		else {
-			sd->msgFlags = (rc->msgFlags & 0x03); //去掉Reportable标志位
+			sd->msgFlags = (rc->msgFlags & (SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_PRIV_BIT)); //去掉Reportable标志位
 		}
 		if (sd->msgSecurityModel == SNMPX_SEC_MODEL_ANY) {
 			sd->msgSecurityModel = rc->msgSecurityModel;
@@ -968,7 +968,7 @@ int CSnmpxPack::snmpx_pack(unsigned char*buf, struct snmpx_t* rc, struct snmpx_t
 			memcpy(sd->msgAuthoritativeEngineID, rc->msgAuthoritativeEngineID, rc->msgAuthoritativeEngineID_len);
 		}
 
-		if ((sd->msgFlags & 0x02) == 0x02) { //判断是否需要加密
+		if ((sd->msgFlags & SNMPX_MSG_FLAG_PRIV_BIT) == SNMPX_MSG_FLAG_PRIV_BIT) { //判断是否需要加密
 			if (sd->msgUserName == NULL) {
 				m_szErrorMsg = "snmpx_pack failed, msgUserName is NULL.";
 				return SNMPX_failure;
@@ -1029,7 +1029,7 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 	if (s->msgVersion == SNMPX_VERSION_v3) //v3
 	{
 		//msgData段，判断是否需要加密
-		if (((s->msgFlags & 0x02) == 0x02) && (s->errcode != 2) && (s->errcode != 3)) {
+		if (((s->msgFlags & SNMPX_MSG_FLAG_PRIV_BIT) == SNMPX_MSG_FLAG_PRIV_BIT) && (s->errcode != 2) && (s->errcode != 3)) {
 			if ((rval = encrypt_msgData(s, t_buf, user_info)) < 0) {
 				m_szErrorMsg = "snmpx_group_pack failed: " + m_szErrorMsg;
 				return SNMPX_failure;
@@ -1111,7 +1111,7 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 		}
 
 		//验回填验证信息
-		if (((s->msgFlags & 0x01) == 0x01) && (s->errcode != 2) && (s->errcode != 3))
+		if (((s->msgFlags & SNMPX_MSG_FLAG_AUTH_BIT) == SNMPX_MSG_FLAG_AUTH_BIT) && (s->errcode != 2) && (s->errcode != 3))
 		{
 			if (user_info->authPasswordPrivKey == NULL || user_info->authPasswordPrivKey_len == 0) {
 				m_szErrorMsg = "snmpx_group_pack failed: user_info->authPasswordPrivKey is NULL.";
