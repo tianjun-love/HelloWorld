@@ -345,7 +345,7 @@ void CSnmpxServer::StopServer()
 
 /********************************************************************
 功能：	设置认证信息
-参数：	version snmp版本，1：v1，2：v2c，3：v3
+参数：	version snmp版本
 *		szUserName 用户或团体名
 *		szError 错误信息
 *		safeMode 安全模式，V3有效
@@ -357,7 +357,7 @@ void CSnmpxServer::StopServer()
 *		engineIdLen 引擎ID长度，V3有效
 返回：	成功返回true
 *********************************************************************/
-bool CSnmpxServer::AddUserAuthorization(short version, const std::string &szUserName, std::string &szError, unsigned char safeMode, 
+bool CSnmpxServer::AddUserAuthorization(unsigned char version, const std::string &szUserName, std::string &szError, unsigned char safeMode, 
 	unsigned char authMode, const std::string &szAuthPasswd, unsigned char privMode, const std::string &szPrivPasswd, 
 	const unsigned char *engineID, unsigned int engineIdLen)
 {
@@ -368,7 +368,7 @@ bool CSnmpxServer::AddUserAuthorization(short version, const std::string &szUser
 	
 	if (pUserInfo != nullptr)
 	{
-		if (1 == version || 2 == version) //v1，v2c
+		if (SNMPX_VERSION_v1 == version || SNMPX_VERSION_v2c == version) //v1，v2c
 		{
 			if (szUserName.empty())
 			{
@@ -384,13 +384,13 @@ bool CSnmpxServer::AddUserAuthorization(short version, const std::string &szUser
 				}
 				else
 				{
-					user_id = szUserName + (1 == version ? "_V1" : "_V2c");
-					pUserInfo->version = version - 1;
+					user_id = szUserName + (SNMPX_VERSION_v1 == version ? "_V1" : "_V2c");
+					pUserInfo->version = version;
 					memcpy(pUserInfo->userName, szUserName.c_str(), szUserName.length());
 				}
 			}
 		}
-		else if (3 == version) //v3
+		else if (SNMPX_VERSION_v3 == version) //v3
 		{
 			if (szUserName.empty())
 			{
@@ -407,21 +407,21 @@ bool CSnmpxServer::AddUserAuthorization(short version, const std::string &szUser
 				else
 				{
 					user_id = szUserName + "_V3";
-					pUserInfo->version = 0x03;
+					pUserInfo->version = version;
 					memcpy(pUserInfo->userName, szUserName.c_str(), szUserName.length());
 				}
 			}
 
 			if (bResult)
 			{
-				if (0 == safeMode)
+				if (SNMPX_SEC_LEVEL_noAuth == safeMode)
 					pUserInfo->safeMode = safeMode;
-				else if (1 == safeMode || 2 == safeMode)
+				else if (SNMPX_SEC_LEVEL_authNoPriv == safeMode || SNMPX_SEC_LEVEL_authPriv == safeMode)
 				{
 					pUserInfo->safeMode = safeMode;
 
 					//认证信息
-					if (authMode > 5)
+					if (authMode > SNMPX_AUTH_SHA512)
 					{
 						bResult = false;
 						szError = "不支持的认证hash算法：" + std::to_string(authMode) + ".";
@@ -449,9 +449,9 @@ bool CSnmpxServer::AddUserAuthorization(short version, const std::string &szUser
 					}
 
 					//加密信息
-					if (bResult && 2 == safeMode)
+					if (bResult && SNMPX_SEC_LEVEL_authPriv == safeMode)
 					{
-						if (privMode > 3)
+						if (privMode > SNMPX_PRIV_AES256)
 						{
 							bResult = false;
 							szError = "不支持的加密算法：" + std::to_string(privMode) + ".";
@@ -601,8 +601,8 @@ bool CSnmpxServer::CheckSocketPortUsed(const string &ip, unsigned short port, bo
 string CSnmpxServer::GetItemsPrintString(unsigned int *sysuptime, const string *enterprise_id, const list<SSnmpxValue*> &vb_list,
 	size_t max_oid_string_len)
 {
-	if (max_oid_string_len > 128)
-		max_oid_string_len = 128;
+	if (max_oid_string_len > SNMPX_MAX_OID_LEN)
+		max_oid_string_len = SNMPX_MAX_OID_LEN;
 
 	string szResult;
 	const string oid_format = "%-" + std::to_string(max_oid_string_len) + "s";

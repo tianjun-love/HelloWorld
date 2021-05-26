@@ -220,7 +220,7 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 {
 	bool bResult = true;
 
-	if (0 == version || 1 == version) //v1，v2c
+	if (SNMPX_VERSION_v1 == version || SNMPX_VERSION_v2c == version) //v1，v2c
 	{
 		if (szUserName.empty())
 		{
@@ -259,7 +259,7 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 			}
 		}
 	}
-	else if (3 == version) //v3
+	else if (SNMPX_VERSION_v3 == version) //v3
 	{
 		if (szUserName.empty())
 		{
@@ -300,14 +300,14 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 
 		if (bResult)
 		{
-			if (0 == safeMode)
+			if (SNMPX_SEC_LEVEL_noAuth == safeMode)
 				m_pUserInfo->safeMode = safeMode;
-			else if (1 == safeMode || 2 == safeMode)
+			else if (SNMPX_SEC_LEVEL_authNoPriv == safeMode || SNMPX_SEC_LEVEL_authPriv == safeMode)
 			{
 				m_pUserInfo->safeMode = safeMode;
 
 				//认证信息
-				if (authMode > 5)
+				if (authMode > SNMPX_AUTH_SHA512)
 				{
 					bResult = false;
 					szError = "不支持的认证hash算法：" + std::to_string(authMode) + ".";
@@ -335,9 +335,9 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 				}
 
 				//加密信息
-				if (bResult && 2 == safeMode)
+				if (bResult && SNMPX_SEC_LEVEL_authPriv == safeMode)
 				{
-					if (privMode > 3)
+					if (privMode > SNMPX_PRIV_AES256)
 					{
 						bResult = false;
 						szError = "不支持的加密算法：" + std::to_string(privMode) + ".";
@@ -499,7 +499,7 @@ int CSnmpxClient::SnmpxGetHandle(EOidType oidType, const void* pOid, std::vector
 	InitPublicAttr(snmpx_sd1);
 	snmpx_sd1.tag = SNMPX_MSG_GET;
 
-	if (3 != m_pUserInfo->version) //V2版本
+	if (SNMPX_VERSION_v3 != m_pUserInfo->version) //V2版本
 	{
 		//请求
 		irval = RequestSnmpx(snmpx_sd1, snmpx_rc1, true, oidType, pOid, &valueVec, szError);
@@ -640,7 +640,7 @@ int CSnmpxClient::SnmpxGetnextHandle(EOidType oidType, const void* pOid, std::ve
 
 	InitPublicAttr(snmpx_sd1);
 
-	if (3 != m_pUserInfo->version) //V2版本
+	if (SNMPX_VERSION_v3 != m_pUserInfo->version) //V2版本
 	{
 		snmpx_sd1.tag = SNMPX_MSG_GETNEXT;
 
@@ -772,7 +772,7 @@ int CSnmpxClient::SnmpxSetHandle(EOidType oidType, const void* pValue, string& s
 	InitPublicAttr(snmpx_sd1);
 	snmpx_sd1.tag = SNMPX_MSG_SET;
 
-	if (3 != m_pUserInfo->version) //V2版本
+	if (SNMPX_VERSION_v3 != m_pUserInfo->version) //V2版本
 	{
 		//请求
 		irval = RequestSnmpx(snmpx_sd1, snmpx_rc1, false, oidType, pValue, NULL, szError);
@@ -872,7 +872,7 @@ int CSnmpxClient::SnmpxTableHandle(EOidType oidType, const void* pTableOid, TTab
 		return SNMPX_failure;
 	}
 
-	if (0 == m_pUserInfo->version)
+	if (SNMPX_VERSION_v1 == m_pUserInfo->version)
 	{
 		szError = "snmp V1版本不支持get-bulk操作！";
 		return SNMPX_failure;
@@ -930,7 +930,7 @@ int CSnmpxClient::SnmpxTableHandle(EOidType oidType, const void* pTableOid, TTab
 	//初始化公用属性
 	InitPublicAttr(snmpx_sd1);
 
-	if (3 != m_pUserInfo->version) //V2版本
+	if (SNMPX_VERSION_v3 != m_pUserInfo->version) //V2版本
 	{
 		snmpx_sd1.tag = SNMPX_MSG_GETBULK;
 		snmpx_sd1.error_index = iReplications; //赋值请求返回最大的行数，复用
@@ -1108,7 +1108,7 @@ int CSnmpxClient::SnmpxWalkHandle(EOidType oidType, const void* pWalkOid, list<S
 	//初始化公用属性
 	InitPublicAttr(snmpx_sd1);
 
-	if (3 != m_pUserInfo->version) //V2版本
+	if (SNMPX_VERSION_v3 != m_pUserInfo->version) //V2版本
 	{
 		//walk处理
 		do
@@ -1328,10 +1328,10 @@ void CSnmpxClient::InitPublicAttr(snmpx_t& snmpx, bool is_second_frame)
 	snmpx.msgMaxSize = SNMPX_MAX_MSG_LEN; //固定值便可
 
 	/*版本号  0x00:v1 , 0x01:v2c , 0x03:v3 */
-	if (3 == snmpx.msgVersion)
+	if (SNMPX_VERSION_v3 == snmpx.msgVersion)
 	{
 		snmpx.msgID = m_pUserInfo->msgID;
-		snmpx.msgSecurityModel = 0x03; /* 固定 usm模式 */
+		snmpx.msgSecurityModel = SNMPX_SEC_MODEL_USM; /* 固定 usm模式 */
 		snmpx.msgUserName_len = (unsigned int)strlen(m_pUserInfo->userName);
 		snmpx.msgUserName = (unsigned char*)malloc(snmpx.msgUserName_len + 1); //需要多加一个字节'\0'
 		memset(snmpx.msgUserName, 0x00, snmpx.msgUserName_len + 1); //一定要初始化
@@ -1343,9 +1343,9 @@ void CSnmpxClient::InitPublicAttr(snmpx_t& snmpx, bool is_second_frame)
 			snmpx.msgID = m_pUserInfo->msgID;
 			snmpx.request_id = 2;
 
-			if (0 == m_pUserInfo->safeMode)
+			if (SNMPX_SEC_LEVEL_noAuth == m_pUserInfo->safeMode)
 				snmpx.msgFlags = 0x04;
-			else if (1 == m_pUserInfo->safeMode)
+			else if (SNMPX_SEC_LEVEL_authNoPriv == m_pUserInfo->safeMode)
 				snmpx.msgFlags = 0x05;
 			else
 				snmpx.msgFlags = 0x07;
@@ -1376,13 +1376,8 @@ void CSnmpxClient::InitPublicAttr(snmpx_t& snmpx, bool is_second_frame)
 void CSnmpxClient::InitUserPriv(const snmpx_t& snmpx)
 {
 	//V3才处理，snmpx内部也是这么处理的
-	if (3 != m_pUserInfo->version)
+	if (SNMPX_VERSION_v3 != m_pUserInfo->version || SNMPX_SEC_LEVEL_noAuth == m_pUserInfo->safeMode)
 		return;
-
-	if (0 == m_pUserInfo->safeMode)
-	{
-		return;
-	}
 
 	//agent能支持的最大消息长度
 	m_pUserInfo->agentMaxMsg_len = snmpx.msgMaxSize;
@@ -1422,7 +1417,7 @@ void CSnmpxClient::InitUserPriv(const snmpx_t& snmpx)
 			}
 
 			//加密密码
-			if (2 == m_pUserInfo->safeMode)
+			if (SNMPX_SEC_LEVEL_authPriv == m_pUserInfo->safeMode)
 			{
 				if (NULL == m_pUserInfo->privPasswdPrivKey)
 				{
@@ -1498,7 +1493,7 @@ bool CSnmpxClient::FillSnmpxEngineAndPrivacy(const snmpx_t& snmpxSrc, snmpx_t& s
 	{
 		CCryptographyProccess crypto;
 
-		snmpxDst.msgPrivacyParameters_len = 8; //固定值
+		snmpxDst.msgPrivacyParameters_len = SNMPX_PRIVACY_PARAM_LEN; //固定值
 		snmpxDst.msgPrivacyParameters = (unsigned char*)malloc(snmpxDst.msgPrivacyParameters_len);
 		if (crypto.gen_msgPrivacyParameters(snmpxDst.msgPrivacyParameters, snmpxDst.msgPrivacyParameters_len) < 0)
 		{

@@ -270,7 +270,7 @@ int CSnmpxPack::pack_variable_bindings(struct variable_bindings *tvb, unsigned c
 int CSnmpxPack::pack_item(const std::list<variable_bindings*> *variable_bindings_list, unsigned char* tlv_buf)
 {
 	if (variable_bindings_list->empty()) { //如果队列为空,需填充0x30 , 0x00 
-		*tlv_buf = 0x30;
+		*tlv_buf = ASN_SEQ;
 		*(tlv_buf + 1) = 0x00;
 		return 2;
 	}
@@ -713,7 +713,7 @@ int CSnmpxPack::encrypt_msgData(struct snmpx_t* s, unsigned char* tlv_buf, const
  */
 int CSnmpxPack::check_sd_snmpd_data(struct snmpx_t* s, const struct userinfo_t* user_info)
 {
-	if (s->msgVersion == 0x03)
+	if (s->msgVersion == SNMPX_VERSION_v3)
 	{
 		if (s->tag == SNMPX_MSG_GET && s->msgAuthoritativeEngineID == NULL) {
 
@@ -741,20 +741,20 @@ int CSnmpxPack::check_sd_snmpd_data(struct snmpx_t* s, const struct userinfo_t* 
 				return SNMPX_failure;
 			}
 
-			if (user_info->version != 3) {
+			if (user_info->version != SNMPX_VERSION_v3) {
 				m_szErrorMsg = format_err_msg("check_sd_snmpd_data failed, user_info->version[0x%02X] is not v3.",
 					user_info->version);
 				return SNMPX_failure;
 			}
 
-			if (user_info->safeMode == 0) {
+			if (user_info->safeMode == SNMPX_SEC_LEVEL_noAuth) {
 				if ((s->msgFlags & 0x03) != 0x00) {
 					m_szErrorMsg = format_err_msg("check_sd_snmpd_data failed, msgFlags set wrong, user_info->safeMode[0x%02X] s->msgFlags[0x%02X].",
 						user_info->safeMode, s->msgFlags);
 					return SNMPX_failure;
 				}
 			}
-			else if (user_info->safeMode == 1) {
+			else if (user_info->safeMode == SNMPX_SEC_LEVEL_authNoPriv) {
 				if ((s->msgFlags & 0x03) != 0x01) {
 					m_szErrorMsg = format_err_msg("check_sd_snmpd_data failed, msgFlags set wrong, user_info->safeMode[0x%02X] s->msgFlags[0x%02X].",
 						user_info->safeMode, s->msgFlags);
@@ -811,9 +811,9 @@ int CSnmpxPack::check_sd_snmpd_data(struct snmpx_t* s, const struct userinfo_t* 
 			return SNMPX_failure;
 		}
 
-		if (s->msgSecurityModel != 0x03) { //usm
-			m_szErrorMsg = format_err_msg("check_sd_snmpd_data failed: s->msgSecurityModel[0x%02X] is not 0x03.",
-				s->msgSecurityModel);
+		if (s->msgSecurityModel != SNMPX_SEC_MODEL_USM) { //usm
+			m_szErrorMsg = format_err_msg("check_sd_snmpd_data failed: s->msgSecurityModel[0x%02X] is not 0x%02X.",
+				s->msgSecurityModel, SNMPX_SEC_MODEL_USM);
 			return SNMPX_failure;
 		}
 
@@ -822,7 +822,7 @@ int CSnmpxPack::check_sd_snmpd_data(struct snmpx_t* s, const struct userinfo_t* 
 			return SNMPX_failure;
 		}
 	}
-	else if (s->msgVersion == 0x01 || s->msgVersion == 0x00) //v1 v2c
+	else if (s->msgVersion == SNMPX_VERSION_v1 || s->msgVersion == SNMPX_VERSION_v2c) //v1 v2c
 	{
 		if (s->community == NULL || s->community_len == 0) {
 			m_szErrorMsg = "check_sd_snmpd_data failed: s->community is NULL.";
@@ -846,7 +846,7 @@ int CSnmpxPack::check_sd_snmpd_data(struct snmpx_t* s, const struct userinfo_t* 
 			return SNMPX_failure;
 		}
 
-		if (s->msgVersion == 0x00 && s->tag == SNMPX_MSG_TRAP) { //v1 trap特有的字段
+		if (s->msgVersion == SNMPX_VERSION_v1 && s->tag == SNMPX_MSG_TRAP) { //v1 trap特有的字段
 
 		}
 		else {
@@ -880,22 +880,7 @@ int CSnmpxPack::encrypt_pdu(const unsigned char* in, unsigned int in_len, const 
 	CCryptographyProccess crypto;
 	unsigned char iv[16] = { 0 }; /* 计算iv偏移量的值 */
 
-	if (user_info->PrivMode == 0 || user_info->PrivMode == 2 || user_info->PrivMode == 3) //AES
-	{
-		unsigned int msgAuthoritativeEngineBootsHl = convert_to_nl(s->msgAuthoritativeEngineBoots);
-		unsigned int msgAuthoritativeEngineTimeHl = convert_to_nl(s->msgAuthoritativeEngineTime);
-		memcpy(iv, &msgAuthoritativeEngineBootsHl, 4);
-		memcpy(iv + 4, &msgAuthoritativeEngineTimeHl, 4);
-		memcpy(iv + 8, s->msgPrivacyParameters, s->msgPrivacyParameters_len);
-
-		rval = crypto.snmpx_aes_encode(in, in_len, user_info->privPasswdPrivKey, iv, user_info->PrivMode, out);
-
-		if (rval < 0)
-			m_szErrorMsg = "encrypt_pdu aes failed: " + crypto.GetErrorMsg();
-		else
-			*out_len = (unsigned int)rval;
-	}
-	else if (user_info->PrivMode == 1) //DES
+	if (user_info->PrivMode == SNMPX_PRIV_DES) //DES
 	{
 		const unsigned int ivLen = 8;
 
@@ -907,6 +892,23 @@ int CSnmpxPack::encrypt_pdu(const unsigned char* in, unsigned int in_len, const 
 
 		if (rval < 0)
 			m_szErrorMsg = "encrypt_pdu des failed: " + crypto.GetErrorMsg();
+		else
+			*out_len = (unsigned int)rval;
+	}
+	else if (user_info->PrivMode == SNMPX_PRIV_AES 
+		|| user_info->PrivMode == SNMPX_PRIV_AES192 
+		|| user_info->PrivMode == SNMPX_PRIV_AES256) //AES
+	{
+		unsigned int msgAuthoritativeEngineBootsHl = convert_to_nl(s->msgAuthoritativeEngineBoots);
+		unsigned int msgAuthoritativeEngineTimeHl = convert_to_nl(s->msgAuthoritativeEngineTime);
+		memcpy(iv, &msgAuthoritativeEngineBootsHl, 4);
+		memcpy(iv + 4, &msgAuthoritativeEngineTimeHl, 4);
+		memcpy(iv + 8, s->msgPrivacyParameters, s->msgPrivacyParameters_len);
+
+		rval = crypto.snmpx_aes_encode(in, in_len, user_info->privPasswdPrivKey, iv, user_info->PrivMode, out);
+
+		if (rval < 0)
+			m_szErrorMsg = "encrypt_pdu aes failed: " + crypto.GetErrorMsg();
 		else
 			*out_len = (unsigned int)rval;
 	}
@@ -925,10 +927,11 @@ int CSnmpxPack::encrypt_pdu(const unsigned char* in, unsigned int in_len, const 
 */
 int CSnmpxPack::snmpx_pack(unsigned char*buf, struct snmpx_t* rc, struct snmpx_t* sd, const struct userinfo_t* user_info)
 {
-	if (sd->msgVersion == 0) {
+	if (sd->msgVersion == SNMPX_VERSION_v1) {
 		sd->msgVersion = rc->msgVersion;
 	}
-	if (sd->msgVersion == 0x01 || sd->msgVersion == 0x00) { // v1 v2c
+
+	if (sd->msgVersion == SNMPX_VERSION_v1 || sd->msgVersion == SNMPX_VERSION_v2c) { // v1 v2c
 		if (rc->community == NULL) {
 			m_szErrorMsg = "snmpx_pack failed, community is NULL.";
 			return SNMPX_failure;
@@ -937,7 +940,8 @@ int CSnmpxPack::snmpx_pack(unsigned char*buf, struct snmpx_t* rc, struct snmpx_t
 		sd->community = (unsigned char*)malloc(rc->community_len * sizeof(unsigned char));
 		memcpy(sd->community, rc->community, rc->community_len);
 	}
-	if (sd->msgVersion == 0x03) { //v3
+
+	if (sd->msgVersion == SNMPX_VERSION_v3) { //v3
 		if (sd->msgUserName == NULL && rc->msgUserName != NULL) {
 			sd->msgUserName_len = rc->msgUserName_len;
 			sd->msgUserName = (unsigned char*)malloc(rc->msgUserName_len * sizeof(unsigned char));
@@ -955,7 +959,7 @@ int CSnmpxPack::snmpx_pack(unsigned char*buf, struct snmpx_t* rc, struct snmpx_t
 		else {
 			sd->msgFlags = (rc->msgFlags & 0x03); //去掉Reportable标志位
 		}
-		if (sd->msgSecurityModel == 0) {
+		if (sd->msgSecurityModel == SNMPX_SEC_MODEL_ANY) {
 			sd->msgSecurityModel = rc->msgSecurityModel;
 		}
 		if (sd->msgAuthoritativeEngineID == NULL && rc->msgAuthoritativeEngineID != NULL) {
@@ -971,7 +975,7 @@ int CSnmpxPack::snmpx_pack(unsigned char*buf, struct snmpx_t* rc, struct snmpx_t
 			}
 			//加密需生成随机数
 			CCryptographyProccess crypto;
-			sd->msgPrivacyParameters_len = 8;
+			sd->msgPrivacyParameters_len = SNMPX_PRIVACY_PARAM_LEN;
 			sd->msgPrivacyParameters = (unsigned char*)malloc(sd->msgPrivacyParameters_len * sizeof(unsigned char));
 			crypto.gen_msgPrivacyParameters(sd->msgPrivacyParameters, sd->msgPrivacyParameters_len);
 		}
@@ -992,7 +996,7 @@ int CSnmpxPack::snmpx_pack(unsigned char*buf, struct snmpx_t* rc, struct snmpx_t
 	}
 
 	//v3情况下 若请求引擎ID,不能直接回复SNMP_MSG_RESPONSE
-	if (sd->msgVersion == 0x03 && rc->msgUserName == NULL) {
+	if (sd->msgVersion == SNMPX_VERSION_v3 && rc->msgUserName == NULL) {
 		sd->tag = SNMPX_MSG_REPORT;
 	}
 	else {
@@ -1022,7 +1026,7 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 		}
 	}
 
-	if (s->msgVersion == 0x03) //v3
+	if (s->msgVersion == SNMPX_VERSION_v3) //v3
 	{
 		//msgData段，判断是否需要加密
 		if (((s->msgFlags & 0x02) == 0x02) && (s->errcode != 2) && (s->errcode != 3)) {
@@ -1153,9 +1157,9 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 
 		return rval;
 	}
-	else if (s->msgVersion == 0x01 || s->msgVersion == 0x00) //v1 v2c
+	else if (s->msgVersion == SNMPX_VERSION_v1 || s->msgVersion == SNMPX_VERSION_v2c) //v1 v2c
 	{
-		if (s->msgVersion == 0x00 && s->tag == SNMPX_MSG_TRAP) { //v1 trap 特有的字段
+		if (s->msgVersion == SNMPX_VERSION_v1 && s->tag == SNMPX_MSG_TRAP) { //v1 trap 特有的字段
 			if ((rval = pack_v1_trap_data(s, t_buf)) < 0) {
 				m_szErrorMsg = "snmpx_group_pack v1-trap failed: " + m_szErrorMsg;
 				return SNMPX_failure;
@@ -1216,7 +1220,7 @@ int CSnmpxPack::snmpx_group_pack(unsigned char *buf, struct snmpx_t* s, const st
 
 		//组一次30
 		memset(t_buf, 0x00, sizeof(t_buf));
-		if ((rval = tlv_pack(0x30, sizeof(pkg_buf) - pkg_cnt, pkg_buf + pkg_cnt, t_buf)) < 0)
+		if ((rval = tlv_pack(ASN_SEQ, sizeof(pkg_buf) - pkg_cnt, pkg_buf + pkg_cnt, t_buf)) < 0)
 		{
 			m_szErrorMsg = "snmpx_group_pack tag failed: " + m_szErrorMsg;
 			return SNMPX_failure;

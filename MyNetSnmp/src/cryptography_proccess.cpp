@@ -6,28 +6,28 @@
 #include <stdlib.h>
 #include <time.h>
 
-const EVP_MD* get_auth_hash_function(unsigned char authMode)
+static const EVP_MD* get_auth_hash_function(unsigned char authMode)
 {
 	const EVP_MD *hashfn = NULL;
 
 	switch (authMode)
 	{
-	case 0:
+	case SNMPX_AUTH_MD5:
 		hashfn = EVP_md5();
 		break;
-	case 1:
+	case SNMPX_AUTH_SHA:
 		hashfn = EVP_sha1();
 		break;
-	case 2:
+	case SNMPX_AUTH_SHA224:
 		hashfn = EVP_sha224();
 		break;
-	case 3:
+	case SNMPX_AUTH_SHA256:
 		hashfn = EVP_sha256();
 		break;
-	case 4:
+	case SNMPX_AUTH_SHA384:
 		hashfn = EVP_sha384();
 		break;
-	case 5:
+	case SNMPX_AUTH_SHA512:
 		hashfn = EVP_sha512();
 		break;
 	default:
@@ -36,6 +36,32 @@ const EVP_MD* get_auth_hash_function(unsigned char authMode)
 	}
 
 	return hashfn;
+}
+
+static const EVP_CIPHER* get_priv_cipher(unsigned char privMode)
+{
+	const EVP_CIPHER *cipher = NULL;
+
+	switch (privMode)
+	{
+	case SNMPX_PRIV_DES:
+		cipher = EVP_des_cbc();
+		break;
+	case SNMPX_PRIV_AES:
+		cipher = EVP_aes_128_cfb();
+		break;
+	case SNMPX_PRIV_AES192:
+		cipher = EVP_aes_192_cfb();
+		break;
+	case SNMPX_PRIV_AES256:
+		cipher = EVP_aes_256_cfb();
+		break;
+	default:
+		cipher = EVP_aes_128_cfb(); //默认AES
+		break;
+	}
+
+	return cipher;
 }
 
 CCryptographyProccess::CCryptographyProccess()
@@ -59,16 +85,9 @@ CCryptographyProccess::~CCryptographyProccess()
 int CCryptographyProccess::snmpx_aes_encode(const unsigned char* buf , unsigned int buf_len, const unsigned char* key, unsigned char* iv,
 	unsigned char priv_mode, unsigned char* encode_buf)
 {
-	const EVP_CIPHER *cipher = NULL;
-	EVP_CIPHER_CTX *ctx = NULL;
 	int ret = SNMPX_failure;
-
-	if (2 == priv_mode)
-		cipher = EVP_aes_192_cfb();
-	else if (3 == priv_mode)
-		cipher = EVP_aes_256_cfb();
-	else
-		cipher = EVP_aes_128_cfb();
+	const EVP_CIPHER *cipher = get_priv_cipher(priv_mode);
+	EVP_CIPHER_CTX *ctx = NULL;
 
 	ctx = EVP_CIPHER_CTX_new();
 	if (NULL != ctx)
@@ -117,16 +136,9 @@ int CCryptographyProccess::snmpx_aes_encode(const unsigned char* buf , unsigned 
 int CCryptographyProccess::snmpx_aes_decode(const unsigned char* buf, unsigned int buf_len, const unsigned char* key, unsigned char* iv,
 	unsigned char priv_mode, unsigned char* decode_buf)
 {
-	const EVP_CIPHER *cipher = NULL;
-	EVP_CIPHER_CTX *ctx = NULL;
 	int ret = SNMPX_failure;
-
-	if (2 == priv_mode)
-		cipher = EVP_aes_192_cfb();
-	else if (3 == priv_mode)
-		cipher = EVP_aes_256_cfb();
-	else
-		cipher = EVP_aes_128_cfb();
+	const EVP_CIPHER *cipher = get_priv_cipher(priv_mode);
+	EVP_CIPHER_CTX *ctx = NULL;
 
 	ctx = EVP_CIPHER_CTX_new();
 	if (NULL != ctx)
@@ -274,8 +286,8 @@ int CCryptographyProccess::gen_msgPrivacyParameters(unsigned char* msgPrivacyPar
 		return SNMPX_failure;
 	}
 
-	if (msgPrivacyParameters_len != 8) {
-		m_szErrorMsg = "msgPrivacyParameters_len must be 8.";
+	if (msgPrivacyParameters_len != SNMPX_PRIVACY_PARAM_LEN) {
+		m_szErrorMsg = format_err_msg("msgPrivacyParameters_len must be %d.", SNMPX_PRIVACY_PARAM_LEN);
 		return SNMPX_failure;
 	}
 
@@ -392,7 +404,7 @@ int CCryptographyProccess::gen_pkg_HMAC(unsigned char* authkey, unsigned int aut
 int CCryptographyProccess::gen_data_HASH(const unsigned char* data, unsigned int data_len, unsigned char hashType, unsigned char* hash,
 	unsigned int* hash_len)
 {
-	if (NULL == data || 0 == data_len || hashType > 5 || NULL == hash || NULL == hash_len)
+	if (NULL == data || 0 == data_len || hashType > SNMPX_AUTH_SHA512 || NULL == hash || NULL == hash_len)
 	{
 		m_szErrorMsg = "gen_data_HASH failed: parameter wrong.";
 		return SNMPX_failure;

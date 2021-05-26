@@ -22,8 +22,9 @@ public:
 	
 	bool StartServer(string &szError);
 	void StopServer();
-	bool AddUserAuthorization(short version, const std::string &szUserName, std::string &szError, unsigned char safeMode = 2, 
-		unsigned char authMode = 0, const std::string &szAuthPasswd = "", unsigned char privMode = 0,
+	bool AddUserAuthorization(unsigned char version, const std::string &szUserName, std::string &szError, 
+		unsigned char safeMode = SNMPX_SEC_LEVEL_authPriv, unsigned char authMode = SNMPX_AUTH_MD5, 
+		const std::string &szAuthPasswd = "", unsigned char privMode = SNMPX_PRIV_AES,
 		const std::string &szPrivPasswd = "", const unsigned char *engineID = NULL, unsigned int engineIdLen = 0);
 
 	//检查端口是否被占用

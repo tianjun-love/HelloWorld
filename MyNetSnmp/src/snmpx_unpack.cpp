@@ -797,7 +797,7 @@ g_end:
 int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_user, unsigned char* buf, unsigned int buf_len,
 	bool is_get_v3_engineID)
 {
-	if (r->msgVersion == 0x03)
+	if (r->msgVersion == SNMPX_VERSION_v3)
 	{
 		if (r->tag == SNMPX_MSG_GET && (r->msgAuthoritativeEngineID == NULL || r->msgAuthoritativeEngineID_len == 0)) {
 			//请求引擎ID的时候不需要检查
@@ -823,7 +823,7 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 				return SNMPX_failure;
 			}
 
-			if (t_user->safeMode == 0)
+			if (t_user->safeMode == SNMPX_SEC_LEVEL_noAuth)
 			{
 				//noAuthNoPriv
 				if ((r->msgFlags & 0x03) != 0x00) 
@@ -837,7 +837,7 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 					}
 				}
 			}
-			else if (t_user->safeMode == 1)
+			else if (t_user->safeMode == SNMPX_SEC_LEVEL_authNoPriv)
 			{
 				//authNoPriv
 				if ((r->msgFlags & 0x03) != 0x01)
@@ -984,10 +984,10 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 		}
 
 		//usm
-		if (r->msgSecurityModel != 0x03)
+		if (r->msgSecurityModel != SNMPX_SEC_MODEL_USM)
 		{
-			m_szErrorMsg = format_err_msg("check_rc_snmpx_data failed, USM type is not 0x03, it provide[0x%02X].",
-				r->msgSecurityModel);
+			m_szErrorMsg = format_err_msg("check_rc_snmpx_data failed, USM type is not 0x%02X, it provide[0x%02X].",
+				SNMPX_SEC_MODEL_USM, r->msgSecurityModel);
 			return SNMPX_failure;
 		}
 
@@ -999,9 +999,9 @@ int CSnmpxUnpack::check_rc_snmpx_data(struct snmpx_t* r, const userinfo_t* t_use
 			return SNMPX_failure;
 		}
 	}
-	else if (r->msgVersion == 0x01 || r->msgVersion == 0x00) //v1,v2c
+	else if (r->msgVersion == SNMPX_VERSION_v1 || r->msgVersion == SNMPX_VERSION_v2c) //v1,v2c
 	{
-		if (r->msgVersion == 0x00 && r->tag == SNMPX_MSG_TRAP) { //检查v1数据合法性
+		if (r->msgVersion == SNMPX_VERSION_v1 && r->tag == SNMPX_MSG_TRAP) { //检查v1数据合法性
 
 		}
 		else
@@ -1120,7 +1120,7 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 		goto g_end;
 	}
 
-	if (r->msgVersion == 0x01 || r->msgVersion == 0x00) //v2c v1
+	if (r->msgVersion == SNMPX_VERSION_v1 || r->msgVersion == SNMPX_VERSION_v2c) //v2c v1
 	{
 		if (mlist.size() < 4)
 		{
@@ -1155,7 +1155,8 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 					{
 						const std::map<std::string, userinfo_t*> *user_table = (const std::map<std::string, userinfo_t*>*)user_info;
 						std::map<std::string, userinfo_t*>::const_iterator user_iter;
-						const std::string user_id = (const char*)r->community + std::string("_") + (r->msgVersion == 0x01 ? "v1" : "v2c");
+						const std::string user_id = (const char*)r->community + std::string("_") 
+							+ (r->msgVersion == SNMPX_VERSION_v1 ? "v1" : "v2c");
 
 						user_iter = user_table->find(user_id);
 
@@ -1195,7 +1196,7 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 
 		r->tag = tlv->tag;
 
-		if (r->msgVersion == 0x00 && r->tag == SNMPX_MSG_TRAP)
+		if (r->msgVersion == SNMPX_VERSION_v1 && r->tag == SNMPX_MSG_TRAP)
 			rval = unpack_trap_v1_cmd(tlv->value, tlv->value_len, r);
 		else
 			rval = unpack_cmd(tlv->value, tlv->value_len, r);
@@ -1203,7 +1204,7 @@ int CSnmpxUnpack::snmpx_group_unpack(unsigned char* buf, unsigned int buf_len, s
 		if (rval < 0)
 			m_szErrorMsg = "snmpx_group_unpack failed: " + m_szErrorMsg;
 	}
-	else if (r->msgVersion == 0x03) //v3
+	else if (r->msgVersion == SNMPX_VERSION_v3) //v3
 	{
 		if (mlist.size() < 5)
 		{
@@ -1418,31 +1419,7 @@ int CSnmpxUnpack::decrypt_pdu(const unsigned char* in, unsigned int in_len, cons
 	unsigned char iv[32] = { 0 }; /* 计算iv偏移量的值 */
 	CCryptographyProccess crypto;
 	
-	if (u->PrivMode == 0 || u->PrivMode == 2 || u->PrivMode == 3) //aes 解密方式
-	{
-		unsigned int msgAuthoritativeEngineBootsHl = convert_to_nl(r->msgAuthoritativeEngineBoots);
-		unsigned int msgAuthoritativeEngineTimeHl = convert_to_nl(r->msgAuthoritativeEngineTime);
-		memcpy(iv, &msgAuthoritativeEngineBootsHl, 4);
-		memcpy(iv + 4, &msgAuthoritativeEngineTimeHl, 4);
-		memcpy(iv + 8, r->msgPrivacyParameters, r->msgPrivacyParameters_len);
-
-		/* 调用AES算法解密 */
-		rval = crypto.snmpx_aes_decode(in, in_len, u->privPasswdPrivKey, iv, u->PrivMode, out);
-		if (rval >= 0)
-		{
-			if (out[0] != ASN_SEQ)
-			{
-				rval = SNMPX_failure;
-				m_szErrorMsg = format_err_msg("decode_msgData tag wrong: first Bytes must be[0x%02X], it decode[0x%02X], maybe it decrypted failed.",
-					ASN_SEQ, out[0]);
-			}
-			else
-				*out_len = rval;
-		}
-		else
-			m_szErrorMsg = "decode_msgData call aes-decrypt failed: " + crypto.GetErrorMsg();
-	}
-	else if (u->PrivMode == 1) //des解密方式
+	if (u->PrivMode == SNMPX_PRIV_DES) //des解密方式
 	{
 		unsigned int ivLen = 8;
 
@@ -1537,6 +1514,32 @@ int CSnmpxUnpack::decrypt_pdu(const unsigned char* in, unsigned int in_len, cons
 		}
 		else
 			m_szErrorMsg = "decode_msgData call des-decrypt failed: " + crypto.GetErrorMsg();
+	}
+	else if (u->PrivMode == SNMPX_PRIV_AES
+		|| u->PrivMode == SNMPX_PRIV_AES192
+		|| u->PrivMode == SNMPX_PRIV_AES256) //aes 解密方式
+	{
+		unsigned int msgAuthoritativeEngineBootsHl = convert_to_nl(r->msgAuthoritativeEngineBoots);
+		unsigned int msgAuthoritativeEngineTimeHl = convert_to_nl(r->msgAuthoritativeEngineTime);
+		memcpy(iv, &msgAuthoritativeEngineBootsHl, 4);
+		memcpy(iv + 4, &msgAuthoritativeEngineTimeHl, 4);
+		memcpy(iv + 8, r->msgPrivacyParameters, r->msgPrivacyParameters_len);
+
+		/* 调用AES算法解密 */
+		rval = crypto.snmpx_aes_decode(in, in_len, u->privPasswdPrivKey, iv, u->PrivMode, out);
+		if (rval >= 0)
+		{
+			if (out[0] != ASN_SEQ)
+			{
+				rval = SNMPX_failure;
+				m_szErrorMsg = format_err_msg("decode_msgData tag wrong: first Bytes must be[0x%02X], it decode[0x%02X], maybe it decrypted failed.",
+					ASN_SEQ, out[0]);
+			}
+			else
+				*out_len = rval;
+		}
+		else
+			m_szErrorMsg = "decode_msgData call aes-decrypt failed: " + crypto.GetErrorMsg();
 	}
 	else
 	{
@@ -1817,7 +1820,7 @@ userinfo_t* CSnmpxUnpack::generate_agent_user_info(const userinfo_t *t_user, con
 		{
 			memset(user_info, 0x00, sizeof(struct userinfo_t));
 
-			user_info->version = 3;
+			user_info->version = SNMPX_VERSION_v3;
 			memcpy(user_info->userName, t_user->userName, SNMPX_MAX_USER_NAME_LEN);
 			memcpy(user_info->AuthPassword, t_user->AuthPassword, SNMPX_MAX_USM_AUTH_KU_LEN);
 			memcpy(user_info->PrivPassword, t_user->PrivPassword, SNMPX_MAX_USM_PRIV_KU_LEN);
