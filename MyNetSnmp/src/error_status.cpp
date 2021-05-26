@@ -231,7 +231,7 @@ void CErrorStatus::set_usm_error_status(oid* oid_buf, unsigned int oid_buf_len, 
 	if ((unsigned int)sizeof(usmStatsUnsupportedSecLevelsOid) == oid_buf_len)
 	{
 		//在返回模式下,解包需要判断一下,根据返回的oid判断是否存在错误
-		if ((s->msgFlags & 0x04) == 0x00 && s->tag == SNMPX_MSG_REPORT) //0x04表示获取agent引擎ID
+		if ((s->msgFlags & SNMPX_MSG_FLAG_RPRT_BIT) == 0x00 && s->tag == SNMPX_MSG_REPORT) //0x04表示获取agent引擎ID
 		{
 			if (s->error_status == 0)
 			{
