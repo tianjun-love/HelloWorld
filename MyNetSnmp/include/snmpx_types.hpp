@@ -183,7 +183,7 @@ V3报文：
 #define SNMPX_ASN_NO_SUCHOBJECT      ASN_NO_SUCHOBJECT //该OID项不存在
 
 //限定使用4个字节
-typedef int32_t oid;
+typedef uint32_t oid;
 
 struct tlv_data
 {

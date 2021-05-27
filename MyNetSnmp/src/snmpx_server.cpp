@@ -263,7 +263,7 @@ bool CSnmpxServer::StartServer(string &szError)
 								client_addr_len = (socklen_t)sizeof(client_addr);
 								memset(&client_addr, 0, client_addr_len);
 
-								recv_len = recvfrom(server_fd, recv_buff, MAX_MSG_LEN, 0, (struct sockaddr*)&client_addr, 
+								recv_len = recvfrom(server_fd, recv_buff, SNMPX_MAX_MSG_LEN, 0, (struct sockaddr*)&client_addr, 
 									&client_addr_len);
 								if (recv_len > 0)
 								{

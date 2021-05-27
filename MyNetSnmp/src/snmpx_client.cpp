@@ -2251,7 +2251,7 @@ int CSnmpxClient::GetSetOidValueBytes(const SSnmpxValue& value, unsigned char* t
 *********************************************************************/
 int CSnmpxClient::CompareOidBuf(const oid* pSrcBuf, const oid* pCompareBuf, unsigned int iCompareBufLen, bool bIsWalkEnd)
 {
-	if (pSrcBuf[0] <= (iCompareBufLen / sizeof(oid)))
+	if (pSrcBuf[0] <= (iCompareBufLen / (oid)sizeof(oid)))
 	{
 		oid iLen = (bIsWalkEnd ? pSrcBuf[0] : (pSrcBuf[0] - 1));
 
