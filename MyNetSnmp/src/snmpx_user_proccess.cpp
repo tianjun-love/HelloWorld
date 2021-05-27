@@ -184,6 +184,8 @@ int CUserProccess::calc_hash_user_auth_priv(struct userinfo_t *user_info)
 			unsigned int hash_len = 64;
 
 			//计算
+			//注意：如果要支持5.9里面Cisio的AES192C和AES256C,则此处要对privKey调用ku和kul方法
+			//源码在：net-snmp-5.9/snmplib/keytools.c中的_kul_extend_reeder方法，常规是调用_kul_extend_blumenthal方法
 			if (crypto.gen_data_HASH(privKey, privKeyLen, user_info->AuthMode, hash, &hash_len) != 0) {
 				m_szErrorMsg = "calc_hash_user_auth_priv failed: " + crypto.GetErrorMsg();
 				return SNMPX_failure;

@@ -318,7 +318,7 @@ int CCryptographyProccess::gen_msgHMAC(unsigned char* authkey, unsigned int auth
 	unsigned char authMode, const unsigned char* message, const unsigned int msglen,
 	unsigned char *msgAuthenticationParameters, unsigned int* msgAuthenticationParameters_len)
 {
-	const unsigned int auth_hash_length = get_auth_para_length(authMode);
+	const unsigned int auth_hash_length = get_auth_hmac_length(authMode);
 
 	if (*msgAuthenticationParameters_len != auth_hash_length)
 	{

@@ -377,7 +377,7 @@ bool get_byteorder_is_LE()
 	return g_bByteOrder_LE;
 }
 
-unsigned int get_auth_para_length(unsigned char authMode)
+unsigned int get_auth_hmac_length(unsigned char authMode)
 {
 	unsigned int ret = 0;
 

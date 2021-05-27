@@ -551,7 +551,7 @@ int CSnmpxPack::pack_authData(struct snmpx_t *s, unsigned char* tlv_buf, const s
 	/* 判断是否需要验证，需要验证 ,先赋值n个0x00,组后包后,再重新赋值 */
 	if ((s->msgFlags & SNMPX_MSG_FLAG_AUTH_BIT) == SNMPX_MSG_FLAG_AUTH_BIT)
 	{
-		s->msgAuthenticationParameters_len = get_auth_para_length(user_info->AuthMode);
+		s->msgAuthenticationParameters_len = get_auth_hmac_length(user_info->AuthMode);
 		if (s->msgAuthenticationParameters != NULL) {
 			free(s->msgAuthenticationParameters);
 		}

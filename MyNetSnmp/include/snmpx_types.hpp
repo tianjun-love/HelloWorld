@@ -376,7 +376,7 @@ int parse_ipaddress_string(const std::string &IP); //注意检测IP格式，里�
 std::string get_ipaddress_string(int ipaddress);
 bool parse_oid_string(const std::string &oidStr, oid *oid_buf, std::string &error);
 bool get_byteorder_is_LE(); //获取本机CPU字节序是否是小端
-unsigned int get_auth_para_length(unsigned char authMode); //获取认证hash串长度
+unsigned int get_auth_hmac_length(unsigned char authMode); //获取认证hash串长度
 unsigned int get_priv_key_length(unsigned char privMode); //获取加密key长度
 std::string get_oid_string(oid* buf, int len);
 std::string get_timeticks_string(unsigned int ticks);
