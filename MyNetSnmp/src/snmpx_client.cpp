@@ -1603,7 +1603,7 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 				else
 				{
 					bResult = false;
-					szError = "获取下发的oid绑定数据字节失败：" + szError;
+					szError = "获取下发的OID绑定数据字节失败：" + szError;
 				}
 
 				if (data != NULL)
@@ -1621,53 +1621,14 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 		{
 			const list<string>* pOid = (const list<string>*)pOidList;
 
-			for (const auto& szOid : *pOid)
+			if (!pOid->empty())
 			{
-				//防止OID格式错误
-				if (parse_oid_string(szOid, oidTemp, szError))
-				{
-					if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, oidTemp + 1, sizeof(oid) * oidTemp[0], ASN_NULL, NULL, 0) < 0)
-					{
-						bResult = false;
-						szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
-					}
-				}
-				else
-				{
-					bResult = false;
-					szError = "解析OID失败：" + szError;
-				}
-
-				if (!bResult)
-					break;
-			}
-		}
-		else
-		{
-			const list<SSnmpxValue>* valueSet = (const list<SSnmpxValue>*)pOidList;
-
-			for (const auto& value : *valueSet)
-			{
-				if (0 == value.OidBuf[0]) //第一个位置存放OID长度
+				for (const auto& szOid : *pOid)
 				{
 					//防止OID格式错误
-					if (!parse_oid_string(value.szOid, oidTemp, szError))
+					if (parse_oid_string(szOid, oidTemp, szError))
 					{
-						bResult = false;
-						szError = "解析OID失败：" + szError;
-						break;
-					}
-				}
-				else
-					memcpy(oidTemp, value.OidBuf, (value.OidBuf[0] + 1) * sizeof(oid));
-
-				if (bResult)
-				{
-					rval = GetSetOidValueBytes(value, &tag, &data, szError);
-
-					if (rval >= 0)
-					{
-						if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, oidTemp + 1, sizeof(oid) * oidTemp[0], tag, data, rval) < 0)
+						if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, oidTemp + 1, sizeof(oid) * oidTemp[0], ASN_NULL, NULL, 0) < 0)
 						{
 							bResult = false;
 							szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
@@ -1676,18 +1637,73 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 					else
 					{
 						bResult = false;
-						szError = "获取下发的oid绑定数据字节失败：" + szError;
-					}
-
-					if (data != NULL)
-					{
-						free(data);
-						data = NULL;
+						szError = "解析OID失败：" + szError;
 					}
 
 					if (!bResult)
 						break;
 				}
+			}
+			else
+			{
+				bResult = false;
+				szError = "绑定的OID列表不能为空！";
+			}
+		}
+		else
+		{
+			const list<SSnmpxValue>* valueSet = (const list<SSnmpxValue>*)pOidList;
+
+			if (!valueSet->empty())
+			{
+				for (const auto& value : *valueSet)
+				{
+					if (0 == value.OidBuf[0]) //第一个位置存放OID长度
+					{
+						//防止OID格式错误
+						if (!parse_oid_string(value.szOid, oidTemp, szError))
+						{
+							bResult = false;
+							szError = "解析OID失败：" + szError;
+							break;
+						}
+					}
+					else
+						memcpy(oidTemp, value.OidBuf, (value.OidBuf[0] + 1) * sizeof(oid));
+
+					if (bResult)
+					{
+						rval = GetSetOidValueBytes(value, &tag, &data, szError);
+
+						if (rval >= 0)
+						{
+							if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, oidTemp + 1, sizeof(oid) * oidTemp[0], tag, data, rval) < 0)
+							{
+								bResult = false;
+								szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
+							}
+						}
+						else
+						{
+							bResult = false;
+							szError = "获取下发的OID绑定数据字节失败：" + szError;
+						}
+
+						if (data != NULL)
+						{
+							free(data);
+							data = NULL;
+						}
+
+						if (!bResult)
+							break;
+					}
+				}
+			}
+			else
+			{
+				bResult = false;
+				szError = "绑定的OID及值列表不能为空！";
 			}
 		}
 	}
@@ -1698,21 +1714,9 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 		{
 			const oid* pOid = (const oid*)pOidList;
 
-			if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, pOid + 1, sizeof(oid) * pOid[0], ASN_NULL, NULL, 0) < 0)
+			if (pOid != NULL)
 			{
-				bResult = false;
-				szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
-			}
-		}
-		else
-		{
-			const std::pair<const oid*, SSnmpxValue>* value = (const std::pair<const oid*, SSnmpxValue>*)pOidList;
-
-			rval = GetSetOidValueBytes(value->second, &tag, &data, szError);
-
-			if (rval >= 0)
-			{
-				if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, value->first + 1, sizeof(oid) * value->first[0], tag, data, rval) < 0)
+				if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, pOid + 1, sizeof(oid) * pOid[0], ASN_NULL, NULL, 0) < 0)
 				{
 					bResult = false;
 					szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
@@ -1721,13 +1725,41 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 			else
 			{
 				bResult = false;
-				szError = "获取下发的oid绑定数据字节失败：" + szError;
+				szError = "绑定的OID不能为NULL！";
 			}
+		}
+		else
+		{
+			const std::pair<const oid*, SSnmpxValue>* value = (const std::pair<const oid*, SSnmpxValue>*)pOidList;
 
-			if (data != NULL)
+			if (value->first != NULL)
 			{
-				free(data);
-				data = NULL;
+				rval = GetSetOidValueBytes(value->second, &tag, &data, szError);
+
+				if (rval >= 0)
+				{
+					if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, value->first + 1, sizeof(oid) * value->first[0], tag, data, rval) < 0)
+					{
+						bResult = false;
+						szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
+					}
+				}
+				else
+				{
+					bResult = false;
+					szError = "获取下发的OID绑定数据字节失败：" + szError;
+				}
+
+				if (data != NULL)
+				{
+					free(data);
+					data = NULL;
+				}
+			}
+			else
+			{
+				bResult = false;
+				szError = "绑定的OID不能为NULL！";
 			}
 		}
 	}
@@ -1738,46 +1770,80 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 		{
 			const list<const oid*>* pOidSet = (const list<const oid*>*)pOidList;
 
-			for (const auto& pOid : *pOidSet)
+			if (!pOidSet->empty())
 			{
-				if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, pOid + 1, sizeof(oid) * pOid[0], ASN_NULL, NULL, 0) < 0)
+				for (const auto& pOid : *pOidSet)
 				{
-					bResult = false;
-					szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
-					break;
+					if (pOid != NULL)
+					{
+						if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, pOid + 1, sizeof(oid) * pOid[0], ASN_NULL, NULL, 0) < 0)
+						{
+							bResult = false;
+							szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
+							break;
+						}
+					}
+					else
+					{
+						bResult = false;
+						szError = "绑定的OID不能为NULL！";
+						break;
+					}
 				}
+			}
+			else
+			{
+				bResult = false;
+				szError = "绑定的OID列表不能为空！";
 			}
 		}
 		else
 		{
 			const list<std::pair<const oid*, SSnmpxValue>>* valueSet = (const list<std::pair<const oid*, SSnmpxValue>>*)pOidList;
 
-			for (const auto& value : *valueSet)
+			if (!valueSet->empty())
 			{
-				rval = GetSetOidValueBytes(value.second, &tag, &data, szError);
-
-				if (rval >= 0)
+				for (const auto& value : *valueSet)
 				{
-					if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, value.first + 1, sizeof(oid) * value.first[0], tag, data, rval) < 0)
+					if (value.first != NULL)
+					{
+						rval = GetSetOidValueBytes(value.second, &tag, &data, szError);
+
+						if (rval >= 0)
+						{
+							if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, value.first + 1, sizeof(oid) * value.first[0], tag, data, rval) < 0)
+							{
+								bResult = false;
+								szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
+							}
+						}
+						else
+						{
+							bResult = false;
+							szError = "获取下发的OID绑定数据字节失败：" + szError;
+						}
+
+						if (data != NULL)
+						{
+							free(data);
+							data = NULL;
+						}
+
+						if (!bResult)
+							break;
+					}
+					else
 					{
 						bResult = false;
-						szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
+						szError = "绑定的OID不能为NULL！";
+						break;
 					}
 				}
-				else
-				{
-					bResult = false;
-					szError = "获取下发的oid绑定数据字节失败：" + szError;
-				}
-
-				if (data != NULL)
-				{
-					free(data);
-					data = NULL;
-				}
-
-				if (!bResult)
-					break;
+			}
+			else
+			{
+				bResult = false;
+				szError = "绑定的OID及值列表不能为空！";
 			}
 		}
 	}
