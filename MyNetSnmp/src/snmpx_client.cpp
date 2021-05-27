@@ -1759,7 +1759,7 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 			else
 			{
 				bResult = false;
-				szError = "绑定的OID不能为NULL！";
+				szError = "绑定的OID及值不能为NULL！";
 			}
 		}
 	}
