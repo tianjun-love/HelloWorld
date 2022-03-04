@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 	x.m_szLike2 = "basket";
 	x.m_szOther = "eat something.";
 
-	if (x.SaveFile("tj.txt", szError))
+	if (x.SaveToFile("tj.txt", szError))
 		cout << "save success." << endl;
 	else
 		cout << "save failed:" << szError << endl;

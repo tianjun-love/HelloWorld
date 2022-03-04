@@ -10,14 +10,13 @@ CXmlTest::~CXmlTest()
 {
 }
 
-bool CXmlTest::XmlToObject(const TiXmlDocument &XmlDocument, string &strError)
+bool CXmlTest::XmlToObject(tinyxml2::XMLHandle &XmlHandle, string &strError)
 {
 	bool bResult = true;
-	TiXmlHandle Handle((TiXmlNode*)&XmlDocument);
-	const TiXmlElement *pElement, *pSonElement, *pElementNode;
+	const tinyxml2::XMLElement *pElement, *pSonElement, *pElementNode;
 	string szTemp;
 
-	pElement = Handle.FirstChild("Person").ToElement();
+	pElement = XmlHandle.FirstChildElement("Person").ToElement();
 	if (NULL != pElement)
 	{
 		string szTemp;
@@ -50,7 +49,7 @@ bool CXmlTest::XmlToObject(const TiXmlDocument &XmlDocument, string &strError)
 
 	if (bResult)
 	{
-		pElement = Handle.FirstChild("Other").ToElement();
+		pElement = XmlHandle.FirstChildElement("Other").ToElement();
 		if (NULL != pElement)
 		{
 			ToString(m_szOther, pElement->Attribute("other"));
@@ -80,31 +79,31 @@ bool CXmlTest::XmlToObject(const TiXmlDocument &XmlDocument, string &strError)
 	return bResult;
 }
 
-bool CXmlTest::ObjectToXml(TiXmlDocument &XmlDocument, string &strError) const
+bool CXmlTest::ObjectToXml(tinyxml2::XMLDocument &XmlDocument, string &strError) const
 {
 	bool bResult = true;
 	vector<string>::const_iterator Iter;
-	TiXmlElement *pElement, *pSonElement, *pTemp;
-	TiXmlText *pText;
+	tinyxml2::XMLElement *pElement, *pSonElement, *pTemp;
+	tinyxml2::XMLText *pText;
 
-	pElement = new TiXmlElement("Person");
+	pElement = XmlDocument.NewElement("Person");
 	if (NULL != pElement)
 	{
 		pElement->SetAttribute("Type", "XmlTest");
-		pElement->SetAttribute("Name", m_szName);
+		pElement->SetAttribute("Name", m_szName.c_str());
 		pElement->SetAttribute("Age", m_iAge);
-		pElement->SetAttribute("Gender", m_szGender);
-		pElement->SetAttribute("TestStr", m_szTestStr);
+		pElement->SetAttribute("Gender", m_szGender.c_str());
+		pElement->SetAttribute("TestStr", m_szTestStr.c_str());
 
-		pSonElement = new TiXmlElement("Friend");
+		pSonElement = XmlDocument.NewElement("Friend");
 		if (NULL != pSonElement)
 		{
 			for (Iter = m_FriendVec.begin(); Iter != m_FriendVec.end(); ++Iter)
 			{
-				pTemp = new TiXmlElement("friend");
+				pTemp = XmlDocument.NewElement("friend");
 				if (NULL != pTemp)
 				{
-					pText = new TiXmlText(*Iter);
+					pText = XmlDocument.NewText(Iter->c_str());
 					pTemp->LinkEndChild(pText);
 					pText = NULL;
 					pSonElement->LinkEndChild(pTemp);
@@ -132,28 +131,28 @@ bool CXmlTest::ObjectToXml(TiXmlDocument &XmlDocument, string &strError) const
 
 	if (bResult)
 	{
-		pElement = new TiXmlElement("Other");
+		pElement = XmlDocument.NewElement("Other");
 		if (NULL != pElement)
 		{
-			pElement->SetAttribute("other", m_szOther);
+			pElement->SetAttribute("other", m_szOther.c_str());
 
-			pSonElement = new TiXmlElement("Like");
+			pSonElement = XmlDocument.NewElement("Like");
 			if (NULL != pSonElement)
 			{
-				pTemp = new TiXmlElement("like1");
+				pTemp = XmlDocument.NewElement("like1");
 				if (NULL != pTemp)
 				{
-					pText = new TiXmlText(m_szLike1);
+					pText = XmlDocument.NewText(m_szLike1.c_str());
 					pTemp->LinkEndChild(pText);
 					pText = NULL;
 					pSonElement->LinkEndChild(pTemp);
 					pTemp = NULL;
 				}
 
-				pTemp = new TiXmlElement("like2");
+				pTemp = XmlDocument.NewElement("like2");
 				if (NULL != pTemp)
 				{
-					pText = new TiXmlText(m_szLike2);
+					pText = XmlDocument.NewText(m_szLike2.c_str());
 					pTemp->LinkEndChild(pText);
 					pText = NULL;
 					pSonElement->LinkEndChild(pTemp);
@@ -175,24 +174,12 @@ bool CXmlTest::ObjectToXml(TiXmlDocument &XmlDocument, string &strError) const
 	return bResult;
 }
 
+bool CXmlTest::CheckData(string &strError) const
+{
+	return true;
+}
+
 string CXmlTest::ObjectType() const
 {
 	return string("XmlTest");
-}
-
-void CXmlTest::DealXml(TiXmlDocument& RecvXml, const TiXmlDocument& SendXml)
-{
-	//Ω” ’
-	string szRecv = "Xml¥Æ";
-	RecvXml.Clear();
-	RecvXml.Parse(szRecv.c_str());
-
-	//...
-
-	//∑¢ÀÕ
-	TiXmlPrinter Printer;
-	SendXml.Accept(&Printer);
-	string szSend = Printer.CStr();
-
-	//...
 }

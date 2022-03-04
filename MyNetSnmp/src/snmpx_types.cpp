@@ -607,7 +607,7 @@ std::string get_current_time_string(bool add_millseconds)
 	char strDateTime[32] = { '\0' };
 	struct tm tmTimeTemp;
 	time_t timeTemp = time(NULL);
-	long milliseconds = 0;
+	int milliseconds = 0;
 
 	//localtime函数不可重入，即不是线程安全的，所以用下面的版本
 #ifdef _WIN32
@@ -632,7 +632,7 @@ std::string get_current_time_string(bool add_millseconds)
 
 	if (add_millseconds)
 	{
-		snprintf(strDateTime, sizeof(strDateTime), "%02d:%02d:%02d.%03ld", tmTimeTemp.tm_hour,
+		snprintf(strDateTime, sizeof(strDateTime), "%02d:%02d:%02d.%03d", tmTimeTemp.tm_hour,
 			tmTimeTemp.tm_min, tmTimeTemp.tm_sec, milliseconds);
 	}
 	else
@@ -663,10 +663,18 @@ std::string get_vb_item_print_string(const SSnmpxValue &vb, size_t max_oid_strin
 		snprintf(buff, buff_len, (oid_format + " => %10s : %u").c_str(), vb.szOid.c_str(), "unsigned", vb.Val.num.u);
 		break;
 	case SNMPX_ASN_INTEGER64:
+#ifdef _WIN32
 		snprintf(buff, buff_len, (oid_format + " => %10s : %lld").c_str(), vb.szOid.c_str(), "ingeter64", vb.Val.num.ll);
+#else
+		snprintf(buff, buff_len, (oid_format + " => %10s : %ld").c_str(), vb.szOid.c_str(), "ingeter64", vb.Val.num.ll);
+#endif
 		break;
 	case SNMPX_ASN_UNSIGNED64:
+#ifdef _WIN32
 		snprintf(buff, buff_len, (oid_format + " => %10s : %llu").c_str(), vb.szOid.c_str(), "unsigned64", vb.Val.num.ull);
+#else
+		snprintf(buff, buff_len, (oid_format + " => %10s : %lu").c_str(), vb.szOid.c_str(), "unsigned64", vb.Val.num.ull);
+#endif
 		break;
 	case SNMPX_ASN_FLOAT:
 		snprintf(buff, buff_len, (oid_format + " => %10s : %0.3f").c_str(), vb.szOid.c_str(), "float", vb.Val.num.f);
@@ -759,7 +767,7 @@ unsigned int convert_to_nl(unsigned int l)
 	return l;
 }
 
-unsigned long long convert_to_nll(unsigned long long ll)
+uint64_t convert_to_nll(uint64_t ll)
 {
 	if (get_byteorder_is_LE())
 	{

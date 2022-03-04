@@ -103,7 +103,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>MySQL;PostgreSQL;OCI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>MySQL;PostgreSQL;OCI;DM_DPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -133,7 +133,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>MySQL;PostgreSQL;OCI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>MySQL;PostgreSQL;OCI;DM_DPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -143,7 +143,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="DM_DPI\DPI.h" />
+    <ClInclude Include="DM_DPI\DPIext.h" />
+    <ClInclude Include="DM_DPI\DPItypes.h" />
     <ClInclude Include="include\DBBaseInterface.hpp" />
+    <ClInclude Include="include\DMDPIInterface.hpp" />
     <ClInclude Include="include\MemLeakCheck.hpp" />
     <ClInclude Include="include\MySQLInterface.hpp" />
     <ClInclude Include="include\OCIInterface.hpp" />
@@ -223,6 +227,7 @@
     <ClCompile Include="src\DBBindRefCursorcpp.cpp" />
     <ClCompile Include="src\DBBindString.cpp" />
     <ClCompile Include="src\DBResultSet.cpp" />
+    <ClCompile Include="src\DMDPIInterface.cpp" />
     <ClCompile Include="src\MySQLInterface.cpp" />
     <ClCompile Include="src\OCIInterface.cpp" />
     <ClCompile Include="src\PostgreSQLInterface.cpp" />

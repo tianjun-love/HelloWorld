@@ -41,14 +41,14 @@
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -131,12 +131,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\OS.hpp" />
     <ClInclude Include="include\Ping.hpp" />
     <ClInclude Include="include\Semophore.hpp" />
     <ClInclude Include="include\SharedMemory.hpp" />
     <ClInclude Include="include\SynQueue.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\OS.cpp" />
     <ClCompile Include="src\Ping.cpp" />
     <ClCompile Include="src\Semophore.cpp" />
     <ClCompile Include="src\SharedMemory.cpp" />

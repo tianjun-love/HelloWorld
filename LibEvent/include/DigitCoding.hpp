@@ -21,8 +21,8 @@
 #define my_uint16_ unsigned short
 #define my_int32_  int
 #define my_uint32_ unsigned int
-#define my_int64_  long long
-#define my_uint64_ unsigned long long
+#define my_int64_  int64_t
+#define my_uint64_ uint64_t
 
 class CDigitCoding
 {

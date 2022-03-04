@@ -492,11 +492,11 @@ unsigned int CBerCode::asn_unsigned_decode(unsigned char* buf, unsigned int len)
 /*
 * ber long long 解码
 */
-long long CBerCode::asn_integer64_decode(unsigned char* buf, unsigned int len)
+int64_t CBerCode::asn_integer64_decode(unsigned char* buf, unsigned int len)
 {
-	unsigned char t_buf[sizeof(long long)];
+	unsigned char t_buf[sizeof(int64_t)];
 	unsigned int i = 0;
-	long long rval = 0;
+	int64_t rval = 0;
 
 	if ((buf[0] & 0x80) == 0x80) //负数
 		memset(t_buf, 0xFF, sizeof(t_buf));
@@ -520,10 +520,10 @@ long long CBerCode::asn_integer64_decode(unsigned char* buf, unsigned int len)
 /*
 * ber unsigned long long 解码
 */
-unsigned long long CBerCode::asn_unsigned64_decode(unsigned char* buf, unsigned int len)
+uint64_t CBerCode::asn_unsigned64_decode(unsigned char* buf, unsigned int len)
 {
-	unsigned char t_buf[sizeof(unsigned long long)];
-	unsigned long long rval = 0;
+	unsigned char t_buf[sizeof(uint64_t)];
+	uint64_t rval = 0;
 	unsigned int i = 0;
 
 	memset(t_buf, 0x00, sizeof(t_buf));

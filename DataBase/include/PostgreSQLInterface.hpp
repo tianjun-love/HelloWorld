@@ -15,7 +15,7 @@ class CPostgreSQLInterface : public CDBBaseInterface
 public:
 	CPostgreSQLInterface();
 	CPostgreSQLInterface(const std::string& szIP, unsigned int iPort, const std::string& szDBName, const std::string& szUserName, 
-		const std::string& szPassWord, const std::string& szCharSet = "UTF8", unsigned int iTimeOut = 10U);
+		const std::string& szPassWord, bool bAutoCommit, EDB_CHARACTER_SET eCharSet = E_CHARACTER_UTF8, unsigned int iConnTimeOut = 10U);
 	CPostgreSQLInterface(const CPostgreSQLInterface& Other) = delete;
 	~CPostgreSQLInterface();
 
@@ -23,7 +23,7 @@ public:
 
 	bool InitEnv() override; //初始化环境
 	void FreeEnv() override; //释放资源
-	bool Connect(bool bAutoCommit) override; //连接数据库
+	bool Connect() override; //连接数据库
 	bool ReConnect() override; //重新连接
 	void Disconnect() override; //断开连接
 	bool Prepare(const std::string& szSQL, bool bIsStmt = false) override; //发送SQL
@@ -32,14 +32,14 @@ public:
 	bool BindParm(unsigned int iIndex, char& value, short& indp, bool bUnsigned = false) override;
 	bool BindParm(unsigned int iIndex, short& value, short& indp, bool bUnsigned = false) override;
 	bool BindParm(unsigned int iIndex, int& value, short& indp, bool bUnsigned = false) override;
-	bool BindParm(unsigned int iIndex, long long& value, short& indp, bool bUnsigned = false) override;
+	bool BindParm(unsigned int iIndex, int64_t& value, short& indp, bool bUnsigned = false) override;
 	bool BindParm(unsigned int iIndex, char* value, unsigned long& value_len, unsigned long buffer_len, short& indp) override;
 	bool Execute(CDBResultSet* pResultSet, bool bIsStmt = false) override; //执行SQL
 	bool Execute(CDBResultSet* pResultSet, const std::string& szStmtName, int nParams, const char* const *paramValues,
 		const int *paramLengths, const int *paramFormats, int resultFormat); //执行SQL
 	bool ExecuteNoParam(const std::string& szSQL, CDBResultSet* pResultSet) override; //执行SQL，没有绑定参数
 	bool ExecuteDirect(const std::string& szSQL) override; //执行SQL，没有返回结果的
-	long long AffectedRows(bool bIsStmt = false); //受影响行数,-1:失败
+	int64_t AffectedRows(bool bIsStmt = false) override; //受影响行数,-1:失败
 	bool BeginTrans(); //开启事务
 	bool EndTrans(); //关闭事务
 	bool Commit() override; //提交
@@ -56,7 +56,6 @@ private:
 	bool BindResultInfo(CDBResultSet* pResultSet, bool bIsStmt = false) override; //获取结果信息，列名，长度，类型等
 	bool Fetch(CDBRowValue* &pRowValue, bool bIsStmt = false) override; //获取下一行
 	bool GetNextResult(CDBResultSet* pResultSet, bool bIsStmt = false) override; //获取另一个结果集
-	bool SetSqlState(bool bIsStmt = false) override; //设置SQL执行状态
 	bool SetErrorInfo(const char* pAddInfo = nullptr, bool bIsStmt = false) override; //从错误句柄获取错误信息
 	void ClearData(bool bClearAll = false) override; //清除中间临时数据
 	void Clear() override; //清除所有中间数据，包括临时打开的句柄

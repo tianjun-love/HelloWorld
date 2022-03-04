@@ -60,10 +60,10 @@ public:
 	//½âÂë
 	static int asn_integer_decode(unsigned char* buf, unsigned int len);
 	static unsigned int asn_unsigned_decode(unsigned char* buf, unsigned int len);
-	static long long asn_integer64_decode(unsigned char* buf, unsigned int len);
+	static int64_t asn_integer64_decode(unsigned char* buf, unsigned int len);
 	static float asn_float_decode(unsigned char* buf, unsigned int len);
 	static double asn_double_decode(unsigned char* buf, unsigned int len);
-	static unsigned long long asn_unsigned64_decode(unsigned char* buf, unsigned int len);
+	static uint64_t asn_unsigned64_decode(unsigned char* buf, unsigned int len);
 	static int asn_ipaddress_decode(unsigned char* buf, unsigned int len);
 	static std::string asn_ipaddress_decode_string(unsigned char* buf, unsigned int len);
 

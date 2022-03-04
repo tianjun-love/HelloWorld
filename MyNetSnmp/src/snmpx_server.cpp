@@ -606,7 +606,7 @@ string CSnmpxServer::GetItemsPrintString(unsigned int *sysuptime, const string *
 
 	string szResult;
 	const string oid_format = "%-" + std::to_string(max_oid_string_len) + "s";
-	const unsigned int buff_len = 512;
+	const unsigned int buff_len = 1024;
 	char buff[buff_len] = { '\0' };
 
 	if (nullptr != sysuptime)
@@ -642,10 +642,18 @@ string CSnmpxServer::GetItemsPrintString(unsigned int *sysuptime, const string *
 			snprintf(buff, buff_len, (oid_format + " => %10s : %u\n").c_str(), p->szOid.c_str(), "unsigned", p->Val.num.u);
 			break;
 		case SNMPX_ASN_INTEGER64:
+#ifdef _WIN32
 			snprintf(buff, buff_len, (oid_format + " => %10s : %lld\n").c_str(), p->szOid.c_str(), "ingeter64", p->Val.num.ll);
+#else
+			snprintf(buff, buff_len, (oid_format + " => %10s : %ld\n").c_str(), p->szOid.c_str(), "ingeter64", p->Val.num.ll);
+#endif
 			break;
 		case SNMPX_ASN_UNSIGNED64:
+#ifdef _WIN32
 			snprintf(buff, buff_len, (oid_format + " => %10s : %llu\n").c_str(), p->szOid.c_str(), "unsigned64", p->Val.num.ull);
+#else
+			snprintf(buff, buff_len, (oid_format + " => %10s : %lu\n").c_str(), p->szOid.c_str(), "unsigned64", p->Val.num.ull);
+#endif
 			break;
 		case SNMPX_ASN_FLOAT:
 			snprintf(buff, buff_len, (oid_format + " => %10s : %0.3f\n").c_str(), p->szOid.c_str(), "float", p->Val.num.f);
@@ -667,10 +675,10 @@ string CSnmpxServer::GetItemsPrintString(unsigned int *sysuptime, const string *
 			snprintf(buff, buff_len, (oid_format + " => %10s : %s\n").c_str(), p->szOid.c_str(), "unsupport", p->Val.str.c_str());
 			break;
 		case SNMPX_ASN_NO_SUCHOBJECT:
-			snprintf(buff, buff_len, (oid_format + " => invalid : no such object.\n").c_str(), p->szOid.c_str());
+			snprintf(buff, buff_len, (oid_format + " => %10s : no such object.\n").c_str(), p->szOid.c_str(), "invalid");
 			break;
 		default:
-			snprintf(buff, buff_len, (oid_format + " => tag 0x%02X : unknow print.\n").c_str(), p->szOid.c_str(), p->cValType);
+			snprintf(buff, buff_len, (oid_format + " => %10s : val tag 0x%02X.\n").c_str(), p->szOid.c_str(), "unknow", p->cValType);
 			break;
 		}
 

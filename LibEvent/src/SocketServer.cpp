@@ -351,7 +351,7 @@ void CSocketServer::DealThreadClientCount(ev_uint64_t ullThreadNO, bool bIsAdd)
 unsigned int CSocketServer::GetDealThreadNO()
 {
 	unsigned int uiIndex = 0;
-	unsigned long long ullWeight = 0;
+	uint64_t ullWeight = 0;
 	std::map<ev_uint64_t, SClientThreadInfo*>::const_iterator iter;
 
 	m_ThreadClientCountLock.lock();

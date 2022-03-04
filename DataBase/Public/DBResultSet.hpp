@@ -17,7 +17,7 @@ class CDBResultSet
 {
 public:
 	CDBResultSet();
-	CDBResultSet(unsigned long long iRowCount, unsigned int iColumnCount);
+	CDBResultSet(uint64_t iRowCount, unsigned int iColumnCount);
 	~CDBResultSet();
 
 	//设置数据库访问接口
@@ -27,10 +27,10 @@ public:
 	unsigned int GetColumnCount() const;
 
 	//获取行数，mysql有效
-	unsigned long long GetRowCount() const;
+	uint64_t GetRowCount() const;
 
 	//设置行数，mysql有效
-	void SetRowCount(unsigned long long llRowCount);
+	void SetRowCount(uint64_t llRowCount);
 
 	//获取列名
 	const char *GetColumnAttrName(unsigned int iPosition) const;
@@ -66,7 +66,7 @@ private:
 	CDBColumAttribute    **m_pColumnAttribute;   //列属性
 	unsigned int         m_iColumnCount;         //列数
 	CDBRowValue          *m_lpRowValue;          //行数据
-	unsigned long long   m_llRowCount;           //行数，MySQL有效
+	uint64_t             m_llRowCount;           //行数，MySQL有效
 	bool                 m_bIsOutParamResult;    //是否是存储过程out参数的返回结果
 	CDBBaseInterface*    m_pDBInterface;         //数据库接口
 

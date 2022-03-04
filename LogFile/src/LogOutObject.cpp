@@ -173,6 +173,7 @@ CLogOutObject& CLogOutObject::operator << (const unsigned int& uiNumber)
 	return *this;
 }
 
+#ifdef _WIN32
 CLogOutObject& CLogOutObject::operator << (const long& lNumber)
 {
 	if (!m_bLost)
@@ -206,6 +207,7 @@ CLogOutObject& CLogOutObject::operator << (const unsigned long& ulNumber)
 
 	return *this;
 }
+#endif
 
 CLogOutObject& CLogOutObject::operator << (const float& fNumber)
 {
@@ -241,7 +243,7 @@ CLogOutObject& CLogOutObject::operator << (const double& dNumber)
 	return *this;
 }
 
-CLogOutObject& CLogOutObject::operator << (const long long& NNumber)
+CLogOutObject& CLogOutObject::operator << (const int64_t& NNumber)
 {
 	if (!m_bLost)
 	{
@@ -258,7 +260,7 @@ CLogOutObject& CLogOutObject::operator << (const long long& NNumber)
 	return *this;
 }
 
-CLogOutObject& CLogOutObject::operator << (const unsigned long long& uNNumber)
+CLogOutObject& CLogOutObject::operator << (const uint64_t& uNNumber)
 {
 	if (!m_bLost)
 	{

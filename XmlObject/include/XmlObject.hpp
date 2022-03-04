@@ -1,126 +1,51 @@
-/********************************************************************
-created:	2014/10/24
-file base:	XmlObject
-file ext:	hpp
-author:		tianjun
-purpose:	use tinyxml
-Modify:
-*********************************************************************/
-
+/***********************************************************
+*功能:	xml功能类
+*作者：	田俊
+*时间：	2022-03-04
+*修改：	
+***********************************************************/
 #ifndef __XML_OBJECT_HPP__
 #define __XML_OBJECT_HPP__
 
-//use STL
-#ifndef TIXML_USE_STL
-#define TIXML_USE_STL
-#endif //TIXML_USE_STL
-
-#include "tinyxml.h"
 #include <string>
+#include "tinyXML2/tinyxml2.h"
 
-class TiXmlDocument;
-
-class XmlObject
+class CXmlObject
 {
 public:
-	XmlObject();
-	virtual ~XmlObject();
+	CXmlObject();
+	virtual ~CXmlObject();
 
-	/********************************************************************
-	name    :	LoadFile
-	function:	load from file
-	parm    : 	FileName        file name
-			    strError        error desc
-				XmlDocument		xml parser
-	return  :   success return true else return false
-	*********************************************************************/
-	bool LoadFile(const std::string &FileName, std::string &strError = *((std::string*)NULL), TiXmlDocument *XmlDocument = NULL);
+	bool LoadFromFile(const std::string &szFileName, std::string &strError);
+	bool SaveToFile(const std::string &szFileName, std::string &strError, bool bAddDeclaration = false) const;
+	bool LoadFromString(const std::string &szXml, std::string &strError);
+	bool LoadFromString(const char* pszXml, size_t ullLength, std::string &strError);
+	bool SaveToString(std::string &szXml, std::string &strError, bool bAddDeclaration = false) const;
+	bool SaveToString(char** pszXml, size_t *ullLength, std::string &strError, bool bAddDeclaration = false) const;
 
-	/********************************************************************
-	name    :	SaveFile
-	function:	save to file
-	parm    : 	FileName        file name
-				strError        error desc
-				XmlDocument		xml parser
-	return  :   success return true else return false
-	*********************************************************************/
-	bool SaveFile(const std::string &FileName, std::string &strError = *((std::string*)NULL), TiXmlDocument *XmlDocument = NULL) const;
-
-	/********************************************************************
-	name    :	LoadStr
-	function:	load from string
-	parm    : 	StrXml          string name
-				strError        error desc
-				XmlDocument		xml parser
-	return  :   success return true else return false
-	*********************************************************************/
-	bool LoadStr(const std::string &StrXml, std::string &strError = *((std::string*)NULL), TiXmlDocument *XmlDocument = NULL);
-	bool LoadStr(const char* StrXml, std::string &strError = *((std::string*)NULL), TiXmlDocument *XmlDocument = NULL);
-
-	/********************************************************************
-	name    :	SaveStr
-	function:	save to string
-	parm    : 	StrXml          string name
-				strError        error desc
-				XmlDocument		xml parser
-	return  :   success return true else return false
-	*********************************************************************/
-	bool SaveStr(std::string &StrXml, std::string &strError = *((std::string*)NULL), TiXmlDocument *XmlDocument = NULL) const;
-
-	/********************************************************************
-	name    :	SaveStr
-	function:	save to string
-	parm    : 	StrXml          string name, need delete
-				DataLength      data length
-				strError        error desc
-				XmlDocument		xml parser
-	return  :   success return true else return false
-	*********************************************************************/
-	bool SaveStr(char* StrXml, int& DataLength, std::string &strError = *((std::string*)NULL), TiXmlDocument *XmlDocument = NULL) const;
-
-	/********************************************************************
-	name    :	XmlToObject
-	function:   xml to object
-	parm    : 	XmlDocument		xml parser
-				strError		error desc
-	return  :	success return true else return false
-	*********************************************************************/
-	virtual bool XmlToObject(const TiXmlDocument &XmlDocument, std::string &strError) = 0;
-
-	/********************************************************************
-	name    :	ObjectToXml
-	function:	object to xml
-	parm    : 	XmlDocument		xml parser
-			    strError		error desc
-	return  :	success return true else return false
-	*********************************************************************/
-	virtual bool ObjectToXml(TiXmlDocument &XmlDocument, std::string &strError) const = 0;
-
-	/********************************************************************
-	name    :   CheckData
-	function:	check data
-	parm    : 	strError error info
-	return  :	all data right to return true
-	*********************************************************************/
-	virtual bool CheckData(std::string &strError) const = 0;
-
-    /********************************************************************
-	name    :   GetObjectType
-	function:	get object type
-	parm    : 	none
-	return  :	object type string sr
-	*********************************************************************/
 	virtual std::string GetObjectType() const;
 
-	bool ToString(std::string &Out, const char *pszStr);
-	bool ToInt(int &Out, const char *pszStr);
-	bool ToUint(unsigned int &Out, const char *pszStr);
-	bool ToShort(short &Out, const char *pszStr);
-	bool ToUshort(unsigned short &Out, const char *pszStr);
-	bool ToDouble(double &Out, const char *pszStr);
-	bool ToBool(bool& Out, const char *pszStr);
-	bool ToLong(long &Out, const char *pszStr);
-	bool ToLongLong(long long &Out, const char *pszStr);
+protected:
+	virtual bool XmlToObject(tinyxml2::XMLHandle &XmlHandle, std::string &strError) = 0;
+	virtual bool ObjectToXml(tinyxml2::XMLDocument &XmlDocument, std::string &strError) const = 0;
+	virtual bool CheckData(std::string &strError) const = 0;
+
+	static bool ToString(std::string &szOut, const char *pszStr);
+	static bool ToBool(bool& bOut, const char *pszStr);
+	static bool ToShort(int16_t &nOut, const char *pszStr);
+	static bool ToUshort(uint16_t &unOut, const char *pszStr);
+	static bool ToInt(int32_t &iOut, const char *pszStr);
+	static bool ToUint(uint32_t &uiOut, const char *pszStr);
+	static bool ToFloat(float &fOut, const char *pszStr);
+	static bool ToDouble(double &dOut, const char *pszStr);
+	static bool ToInt64(int64_t &llOut, const char *pszStr);
+	static bool ToUint64(uint64_t &ullOut, const char *pszStr);
+
+#ifndef _WIN32
+	static bool ToLongLong(long long &llOut, const char *pszStr);
+	static bool ToUlongLong(unsigned long long &ullOut, const char *pszStr);
+#endif
+
 };
 
 #endif //__XML_OBJECT_HPP__

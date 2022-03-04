@@ -384,6 +384,7 @@ CLogOutObject CLogFile::operator << (const unsigned int& uiNumber)
 	return CLogOutObject((void*)&m_LogMember);
 }
 
+#ifdef _WIN32
 CLogOutObject CLogFile::operator << (const long& lNumber)
 {
 	CheckLogFile();
@@ -423,6 +424,7 @@ CLogOutObject CLogFile::operator << (const unsigned long& ulNumber)
 
 	return CLogOutObject((void*)&m_LogMember);
 }
+#endif
 
 CLogOutObject CLogFile::operator << (const float& fNumber)
 {
@@ -464,7 +466,7 @@ CLogOutObject CLogFile::operator << (const double& dNumber)
 	return CLogOutObject((void*)&m_LogMember);
 }
 
-CLogOutObject CLogFile::operator << (const long long& NNumber)
+CLogOutObject CLogFile::operator << (const int64_t& NNumber)
 {
 	CheckLogFile();
 
@@ -484,7 +486,7 @@ CLogOutObject CLogFile::operator << (const long long& NNumber)
 	return CLogOutObject((void*)&m_LogMember);
 }
 
-CLogOutObject CLogFile::operator << (const unsigned long long& uNNumber)
+CLogOutObject CLogFile::operator << (const uint64_t& uNNumber)
 {
 	CheckLogFile();
 

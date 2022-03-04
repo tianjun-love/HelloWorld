@@ -13,36 +13,27 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="头文件\tinyxml2">
+      <UniqueIdentifier>{addcf5b5-7970-4ea3-a763-750091d29110}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\tinyxml.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
+    <Text Include="CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="include\XmlObject.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="include\XmlOperator.hpp">
-      <Filter>头文件</Filter>
+    <ClInclude Include="include\tinyXML2\tinyxml2.h">
+      <Filter>头文件\tinyxml2</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\tinyxml.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="src\tinyxmlerror.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="src\tinyxmlparser.cpp">
+    <ClCompile Include="src\tinyxml2.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="src\XmlObject.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="src\XmlOperator.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="CMakeLists.txt" />
   </ItemGroup>
 </Project>

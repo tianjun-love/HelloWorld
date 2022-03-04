@@ -34,9 +34,11 @@ CMySQLInterface::CMySQLInterface() : m_pResult(nullptr), m_pStmtHandle(nullptr),
 }
 
 CMySQLInterface::CMySQLInterface(const std::string& szServerIP, unsigned int iServerPort, const std::string& szDBName,
-	const std::string& szUserName, const std::string& szPassWord, const std::string& szCharSet, unsigned int iTimeOut) : 
+	const std::string& szUserName, const std::string& szPassWord, bool bAutoCommit, EDB_CHARACTER_SET eCharSet, 
+	unsigned int iConnTimeOut) : 
+CDBBaseInterface("", szServerIP, iServerPort, szDBName, szUserName, szPassWord, bAutoCommit, eCharSet, iConnTimeOut),
 m_pResult(nullptr), m_lStmtParamCount(0), m_pStmtBindParm(nullptr), m_pStmtHandle(nullptr), m_pStmtParams(nullptr), 
-m_pStmtResult(nullptr), CDBBaseInterface("", szServerIP, iServerPort, szDBName, szUserName, szPassWord, szCharSet, iTimeOut)
+m_pStmtResult(nullptr)
 {
 }
 
@@ -81,7 +83,7 @@ bool CMySQLInterface::InitEnv() //初始化环境
 	m_pInitLock->unlock();
 
 	//连接超时
-	mysql_options(&m_Handle, MYSQL_OPT_CONNECT_TIMEOUT, &m_iTimeOut);
+	mysql_options(&m_Handle, MYSQL_OPT_CONNECT_TIMEOUT, &m_iConnTimeOut);
 
 	//读超时
 	int iTimeOut = 30;
@@ -121,29 +123,63 @@ void CMySQLInterface::FreeEnv() //释放资源
 	m_pInitLock->unlock();
 }
 
-bool CMySQLInterface::Connect(bool bAutoCommit) //连接数据库
+bool CMySQLInterface::Connect() //连接数据库
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
-		m_bIsAutoCommit = bAutoCommit;
-
 		if (!mysql_real_connect(&m_Handle, m_szServerIP.c_str(), m_szUserName.c_str(), m_szPassWord.c_str(), m_szDBName.c_str(),
 			m_iServerPort, nullptr, CLIENT_BASIC_FLAGS))
 		{
 			SetErrorInfo();
 			return false;
 		}
-
-		m_bIsConnect = true;
-
-		//设置自动提交
-		if (!m_bIsAutoCommit) //MySQL默认是自动提交
+		else
 		{
-			mysql_autocommit(&m_Handle, 0);
-		}
+			//设置自动提交
+			if (0 != mysql_autocommit(&m_Handle, (m_bIsAutoCommit ? 1 : 0)))
+			{
+				SetErrorInfo();
+				return false;
+			}
+			else
+			{
+				//设置字符集
+				int rt = 0;
 
-		//字符集
-		mysql_set_character_set(&m_Handle, m_szCharSet.c_str());
+				switch (m_eCharSet)
+				{
+				case E_CHARACTER_UTF8:
+					rt = mysql_set_character_set(&m_Handle, "utf8mb4");
+					break;
+				case E_CHARACTER_GBK:
+					rt = mysql_set_character_set(&m_Handle, "gbk");
+					break;
+				case E_CHARACTER_GK18030:
+					rt = mysql_set_character_set(&m_Handle, "gb2312");
+					break;
+				case E_CHARACTER_BIG5:
+					rt = mysql_set_character_set(&m_Handle, "big5");
+					break;
+				case E_CHARACTER_ASCII:
+					rt = mysql_set_character_set(&m_Handle, "ascii");
+					break;
+				case E_CHARACTER_LATIN1:
+					rt = mysql_set_character_set(&m_Handle, "latin1");
+					break;
+				default:
+					rt = mysql_set_character_set(&m_Handle, "utf8mb4");
+					break;
+				}
+
+				if (0 != rt)
+				{
+					SetErrorInfo();
+					return false;
+				}
+				else
+					m_bConnectState = true;
+			}
+		}
 	}
 
 	return true;
@@ -152,23 +188,23 @@ bool CMySQLInterface::Connect(bool bAutoCommit) //连接数据库
 bool CMySQLInterface::ReConnect() //重新连接
 {
 	Disconnect();
-	return Connect(m_bIsAutoCommit);
+	return Connect();
 }
 
 void CMySQLInterface::Disconnect() //断开连接
 {
-	if (m_bIsConnect)
+	if (m_bConnectState)
 	{
 		Clear();
 		mysql_close(&m_Handle);
 		mysql_thread_end();
-		m_bIsConnect = false;
+		m_bConnectState = false;
 	}
 }
 
 bool CMySQLInterface::Prepare(const std::string& szSQL, bool bIsStmt) //发送SQL
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -361,7 +397,7 @@ bool CMySQLInterface::BindParm(unsigned int iIndex, int& value, short& indp, boo
 	return true;
 }
 
-bool CMySQLInterface::BindParm(unsigned int iIndex, long long& value, short& indp, bool bUnsigned)
+bool CMySQLInterface::BindParm(unsigned int iIndex, int64_t& value, short& indp, bool bUnsigned)
 {
 	if (!CheckPrepareInfo(iIndex))
 	{
@@ -692,7 +728,7 @@ bool CMySQLInterface::BindLob(unsigned int iIndex, EDBDataType eLobType, CDBBind
 
 bool CMySQLInterface::Execute(CDBResultSet* pResultSet, bool bIsStmt) //执行SQL
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -744,7 +780,7 @@ bool CMySQLInterface::Execute(CDBResultSet* pResultSet, bool bIsStmt) //执行SQ
 			if (pResultSet)
 			{
 				//有结果才处理
-				unsigned long long llRowCount = mysql_stmt_num_rows(m_pStmtHandle);
+				uint64_t llRowCount = mysql_stmt_num_rows(m_pStmtHandle);
 				if (llRowCount > 0)
 				{
 					pResultSet->SetIsOutParamResult((m_Handle.server_status & SERVER_PS_OUT_PARAMS) > 0);
@@ -805,7 +841,7 @@ bool CMySQLInterface::Execute(CDBResultSet* pResultSet, bool bIsStmt) //执行SQ
 				if (pResultSet)
 				{
 					//获取结果行数
-					unsigned long long llRouCount = mysql_num_rows(m_pResult);
+					uint64_t llRouCount = mysql_num_rows(m_pResult);
 
 					//设置结果行数
 					if (llRouCount > 0)
@@ -829,7 +865,7 @@ bool CMySQLInterface::Execute(CDBResultSet* pResultSet, bool bIsStmt) //执行SQ
 
 bool CMySQLInterface::ExecuteNoParam(const std::string& szSQL, CDBResultSet* pResultSet) //执行SQL，没有绑定参数
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -870,7 +906,7 @@ bool CMySQLInterface::ExecuteNoParam(const std::string& szSQL, CDBResultSet* pRe
 			if (pResultSet)
 			{
 				//获取结果行数
-				unsigned long long llRouCount = mysql_num_rows(m_pResult);
+				uint64_t llRouCount = mysql_num_rows(m_pResult);
 
 				//设置结果行数
 				if (llRouCount > 0)
@@ -893,7 +929,7 @@ bool CMySQLInterface::ExecuteNoParam(const std::string& szSQL, CDBResultSet* pRe
 
 bool CMySQLInterface::ExecuteDirect(const std::string& szSQL) //执行SQL，没有返回结果的
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -948,9 +984,9 @@ bool CMySQLInterface::ExecuteDirect(const std::string& szSQL) //执行SQL，没�
 	return true;
 }
 
-long long CMySQLInterface::AffectedRows(bool bIsStmt) //受影响行数
+int64_t CMySQLInterface::AffectedRows(bool bIsStmt) //受影响行数
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -966,7 +1002,7 @@ long long CMySQLInterface::AffectedRows(bool bIsStmt) //受影响行数
 			return -1;
 		}
 
-		return (long long)mysql_stmt_num_rows(m_pStmtHandle);
+		return (int64_t)mysql_stmt_num_rows(m_pStmtHandle);
 	}
 	else
 	{
@@ -985,7 +1021,7 @@ long long CMySQLInterface::AffectedRows(bool bIsStmt) //受影响行数
 bool CMySQLInterface::ExecuteProcedure(const std::string& szExecuteSQL, const std::list<std::string>* setParamSQLList,
 	const char* szResultSQL, CDBRowValue* pResultRowValue) //执行存储过程，out参数由结果集返回
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -1057,7 +1093,7 @@ bool CMySQLInterface::ExecuteProcedure(const std::string& szExecuteSQL, const st
 			if (pResultRowValue)
 			{
 				//获取结果行数
-				unsigned long long llRouCount = mysql_num_rows(m_pResult);
+				uint64_t llRouCount = mysql_num_rows(m_pResult);
 
 				if (llRouCount > 0)
 				{
@@ -1121,17 +1157,20 @@ bool CMySQLInterface::Rollback() //回滚
 	return true;
 }
 
-unsigned long long CMySQLInterface::AffectedRows() //影响行数
-{
-	if (m_pStmtHandle)
-		return mysql_stmt_affected_rows(m_pStmtHandle);
-	else
-		return mysql_affected_rows(&m_Handle);
-}
-
 bool CMySQLInterface::Ping() //检查连接是否可到达
 {
 	return (0 == mysql_ping(&m_Handle));
+}
+
+bool CMySQLInterface::SelectDB(const std::string& szDBName) //选择库
+{
+	if (0 != mysql_select_db(&m_Handle, szDBName.c_str()))
+	{
+		SetErrorInfo();
+		return false;
+	}
+
+	return true;
 }
 
 std::string CMySQLInterface::GetServerVersion() //获取服务器版本信息字符串
@@ -1167,8 +1206,7 @@ bool CMySQLInterface::BindResultInfo(CDBResultSet* pResultSet, bool bIsStmt) //�
 	{
 		CDBColumAttribute* pColumnAttribute = new CDBColumAttribute();
 
-		pColumnAttribute->SetColumnName(m_pResult->fields[i].name);
-		pColumnAttribute->m_iFieldNameLen = m_pResult->fields[i].name_length;
+		pColumnAttribute->SetColumnName(m_pResult->fields[i].name, m_pResult->fields[i].name_length);
 		pColumnAttribute->m_bNullAble = (0 == IS_NOT_NULL(m_pResult->fields[i].flags));
 		pColumnAttribute->m_iFieldDataLen = m_pResult->fields[i].length; //字段长度，(char,varchar)跟字符集有关，如GBK，则为真实长度的2倍
 		pColumnAttribute->m_iPrecision = m_pResult->fields[i].max_length; //该字段所查询结果中，最长值
@@ -1385,7 +1423,7 @@ bool CMySQLInterface::GetNextResult(CDBResultSet* pResultSet, bool bIsStmt) //�
 			}
 
 			//有结果才处理
-			unsigned long long llRowCount = mysql_stmt_num_rows(m_pStmtHandle);
+			uint64_t llRowCount = mysql_stmt_num_rows(m_pStmtHandle);
 			if (llRowCount > 0)
 			{
 				pResultSet->SetRowCount(llRowCount);
@@ -1443,7 +1481,7 @@ bool CMySQLInterface::GetNextResult(CDBResultSet* pResultSet, bool bIsStmt) //�
 			else
 			{
 				//获取结果行数
-				unsigned long long llRouCount = mysql_num_rows(m_pResult);
+				uint64_t llRouCount = mysql_num_rows(m_pResult);
 
 				//设置结果行数
 				if (llRouCount > 0)
@@ -1552,27 +1590,6 @@ void CMySQLInterface::GetProcdureNextResult() //获取其它的结果集
 			pRes = mysql_store_result(&m_Handle);
 		}
 	}
-}
-
-bool CMySQLInterface::SetSqlState(bool bIsStmt) //设置SQL执行状态
-{
-	memset(m_strSqlState, '\0', MAX_SQL_STATE_LEN);
-
-	if (bIsStmt)
-	{
-		if (m_pStmtHandle)
-			Format(m_strSqlState, MAX_SQL_STATE_LEN, "%s", mysql_stmt_sqlstate(m_pStmtHandle));
-		else
-		{
-			memset(m_strErrorBuf, '\0', MAX_ERROR_INFO_LEN);
-			Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "预处理句柄为空！");
-			return false;
-		}
-	}
-	else
-		Format(m_strSqlState, MAX_SQL_STATE_LEN, "%s", mysql_sqlstate(&m_Handle));
-
-	return true;
 }
 
 bool CMySQLInterface::SetErrorInfo(const char* pAddInfo, bool bIsStmt) //设置错误信息

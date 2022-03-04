@@ -22,11 +22,16 @@ public:
 	{
 	}
 
-	void SetColumnName(const char *pszColumnName)
+	void SetColumnName(const char *pszColumnName, unsigned int uiColumnNameLen)
 	{
-		if (NULL != pszColumnName)
+		if (NULL != pszColumnName && uiColumnNameLen > 0)
 		{
-			strncpy(m_pszColumnName, pszColumnName, D_DB_COLNUM_NAME_LENGTH + 1);
+			m_iFieldNameLen = uiColumnNameLen;
+
+			if (uiColumnNameLen > D_DB_COLNUM_NAME_LENGTH)
+				strncpy(m_pszColumnName, pszColumnName, D_DB_COLNUM_NAME_LENGTH);
+			else
+				strncpy(m_pszColumnName, pszColumnName, uiColumnNameLen);
 		}
 	}
 

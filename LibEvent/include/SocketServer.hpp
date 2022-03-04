@@ -34,9 +34,9 @@ protected:
 	//每个线程处理客户端数量信息
 	struct SClientThreadInfo
 	{
-		unsigned int       uiCurrentCount;  //当前连接数量
-		unsigned long long ullTotalCount;   //历史总连接数量
-		unsigned long long ullWeight;       //权值，iCurrentCount * 7 + iTotalCount * 3
+		unsigned int   uiCurrentCount;  //当前连接数量
+		uint64_t       ullTotalCount;   //历史总连接数量
+		uint64_t       ullWeight;       //权值，iCurrentCount * 7 + iTotalCount * 3
 
 		SClientThreadInfo() : uiCurrentCount(0), ullTotalCount(0), ullWeight(0) {};
 	};

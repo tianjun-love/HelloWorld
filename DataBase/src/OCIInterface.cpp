@@ -8,9 +8,9 @@ COCIInterface::COCIInterface() : m_pEnv(nullptr), m_pErr(nullptr), m_pSer(nullpt
 }
 
 COCIInterface::COCIInterface(const std::string& szServerName, const std::string& szUserName, const std::string& szPassWord, 
-	const std::string& szCharSet, unsigned int iTimeOut) : m_pEnv(nullptr), m_pErr(nullptr), m_pSer(nullptr), 
-m_bSrcAutoCommit(false), m_bTransCommit(false), 
-CDBBaseInterface(szServerName, "", 1521, "orcl", szUserName, szPassWord, szCharSet, iTimeOut)
+	bool bAutoCommit, EDB_CHARACTER_SET eCharSet, unsigned int iConnTimeOut) : 
+CDBBaseInterface(szServerName, "", 1521, "orcl", szUserName, szPassWord, bAutoCommit, eCharSet, iConnTimeOut),
+m_pEnv(nullptr), m_pErr(nullptr), m_pSer(nullptr), m_bSrcAutoCommit(false), m_bTransCommit(false)
 {
 }
 
@@ -193,16 +193,15 @@ void COCIInterface::FreeUserConnect(SOraUserConnect& conn) //清除用户连接�
 	}
 }
 
-bool COCIInterface::Connect(bool bAutoCommit) //连接数据库
+bool COCIInterface::Connect() //连接数据库
 {
-	if (m_bIsConnect)
+	if (m_bConnectState)
 	{
 		//已经连接则不用处理
 		return true;
 	}
 
-	m_bIsAutoCommit = bAutoCommit;
-	m_bSrcAutoCommit = bAutoCommit;
+	m_bSrcAutoCommit = m_bIsAutoCommit;
 
 	if (m_pEnv && m_pErr && m_pSer)
 	{
@@ -220,7 +219,7 @@ bool COCIInterface::Connect(bool bAutoCommit) //连接数据库
 			if (CreateUserConnect(m_DefaultConnect))
 			{
 				//连接成功
-				m_bIsConnect = true;
+				m_bConnectState = true;
 			}
 			else
 				return false;
@@ -245,19 +244,19 @@ bool COCIInterface::ReConnect() //重新连接
 {
 	Clear();
 	
-	if (m_bIsConnect)
+	if (m_bConnectState)
 	{
 		//已经连接则断开
 		Disconnect();
 		FreeUserConnect(m_DefaultConnect);
 	}
 
-	return Connect(m_bIsAutoCommit);
+	return Connect();
 }
 
 void COCIInterface::Disconnect() //断开连接
 {
-	if (m_bIsConnect)
+	if (m_bConnectState)
 	{
 		//单用户方式
 		//OCILogoff(m_pSvc, m_pErr);
@@ -268,13 +267,13 @@ void COCIInterface::Disconnect() //断开连接
 		//断开连接
 		OCIServerDetach(m_pSer, m_pErr, OCI_DEFAULT);
 
-		m_bIsConnect = false;
+		m_bConnectState = false;
 	}
 }
 
 bool COCIInterface::Prepare(const std::string& szSQL, bool bIsStmt) //发送SQL
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -380,7 +379,7 @@ bool COCIInterface::BindParm(unsigned int iIndex, int& value, short& indp, bool 
 	return true;
 }
 
-bool COCIInterface::BindParm(unsigned int iIndex, long long& value, short& indp, bool bUnsigned)
+bool COCIInterface::BindParm(unsigned int iIndex, int64_t& value, short& indp, bool bUnsigned)
 {
 	if (!CheckPrepare())
 	{
@@ -550,7 +549,7 @@ bool COCIInterface::BindNumber(unsigned int iIndex, EDBDataType eNumberType, CDB
 			}
 
 			iRet = OCINumberFromText(m_pErr, (const OraText*)number->m_strBuffer, number->m_lDataLength,
-				(const OraText*)szFormat.c_str(), szFormat.length(), NULL, 0, (OCINumber*)number->m_strBuffer);
+				(const OraText*)szFormat.c_str(), (ub4)szFormat.length(), NULL, 0, (OCINumber*)number->m_strBuffer);
 		}
 		else
 		{
@@ -894,6 +893,31 @@ bool COCIInterface::ExecuteDirect(const std::string& szSQL) //执行SQL，没有
 	return false;
 }
 
+int64_t COCIInterface::AffectedRows(bool bIsStmt) //获取受影响行数
+{
+	ub4 affected_rows = 0;
+
+	if (CheckPrepare())
+	{
+		sword rt = 0;
+
+		if (bIsStmt)
+			rt = OCIAttrGet(m_DefaultConnect.pImplicitStmt, OCI_HTYPE_STMT, &affected_rows, (ub4 *)NULL, OCI_ATTR_ROW_COUNT, m_pErr);
+		else
+			rt = OCIAttrGet(m_DefaultConnect.pStmt, OCI_HTYPE_STMT, &affected_rows, (ub4 *)NULL, OCI_ATTR_ROW_COUNT, m_pErr);
+
+		if (OCI_SUCCESS != rt)
+		{
+			SetErrorInfo();
+			return -1;
+		}
+	}
+	else
+		return -1;
+
+	return affected_rows;
+}
+
 bool COCIInterface::BeginTrans() //开启事务
 {
 	EndTrans();
@@ -1120,8 +1144,7 @@ bool COCIInterface::BindResultInfo(CDBResultSet* pResultSet, bool bIsStmt) //绑
 				OCIAttrGet(pColumnsParam, OCI_DTYPE_PARAM, (void*)&IsNULL, (ub4 *)0, OCI_ATTR_IS_NULL, m_pErr);
 				OCIAttrGet(pColumnsParam, OCI_DTYPE_PARAM, (void*)&DataType, (ub4 *)0, OCI_ATTR_DATA_TYPE, m_pErr);
 
-				pColumnAttribute->SetColumnName((char*)pColumnName);
-				pColumnAttribute->m_iFieldNameLen = ColumnNameLength;
+				pColumnAttribute->SetColumnName((const char*)pColumnName, ColumnNameLength);
 				pColumnAttribute->m_iFieldDataLen = DataSize;
 				pColumnAttribute->m_iPrecision = Precision;
 				pColumnAttribute->m_nScale = Scale;
@@ -1496,7 +1519,7 @@ bool COCIInterface::Fetch(CDBRowValue* &pRowValue, bool bIsStmt) //获取下一�
 
 bool COCIInterface::GetNextResult(CDBResultSet* pResultSet, bool bIsStmt) //获取另一个结果集
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -1601,7 +1624,7 @@ void COCIInterface::Clear() //清除所有中间数据，包括临时打开的�
 
 bool COCIInterface::CheckPrepare() //检查语句是否已经发送
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -1616,11 +1639,6 @@ bool COCIInterface::CheckPrepare() //检查语句是否已经发送
 	}
 
 	return true;
-}
-
-bool COCIInterface::SetSqlState(bool bIsStmt) //设置SQL执行状态
-{
-	return SetErrorInfo();
 }
 
 bool COCIInterface::SetErrorInfo(const char* pAddInfo, bool bIsStmt) //从错误句柄获取错误信息
@@ -1676,7 +1694,7 @@ bool COCIInterface::SetErrorInfo(const char* pAddInfo, bool bIsStmt) //从错误
 
 bool COCIInterface::GetPararmResult(const CDBBindRefCursor& refCursor, CDBResultSet& resultSet) //获取绑定SYS_REFCURSOR参数的结果
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -1710,9 +1728,9 @@ void COCIInterface::GetOCIHandleForBatch(OCISvcCtx* &pSvc, OCIStmt* &pStmt, OCIE
 
 	struct STest
 	{
-		long long llId        = 0;
-		char      strName[64] = { '\0' };
-		long long llAge       = 0;
+		int64_t  llId        = 0;
+		char     strName[64] = { '\0' };
+		uint64_t llAge       = 0;
 	};
 
 	STest dataTest[10]; //一次读取10行
@@ -1906,14 +1924,14 @@ void COCIInterface::Test() //测试使用
 
 	struct STest
 	{
-		long long llId = 0;
-		char strName[64] = { '\0' };
-		long long llAge = 0;
+		uint64_t llId        = 0;
+		char     strName[64] = { '\0' };
+		uint64_t llAge       = 0;
 	};
 
 	STest dataTest[20];
 
-	sword status = OCIStmtPrepare2(m_DefaultConnect.pSvc, &m_DefaultConnect.pStmt, m_pErr, sqlstmt, strlen((char*)sqlstmt), 
+	sword status = OCIStmtPrepare2(m_DefaultConnect.pSvc, &m_DefaultConnect.pStmt, m_pErr, sqlstmt, (ub4)strlen((char*)sqlstmt), 
 		NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT);
 	if (OCI_SUCCESS != status)
 		SetErrorInfo();

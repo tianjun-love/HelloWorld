@@ -31,6 +31,7 @@ public:
 
 	void SetParamIndp(short indp) { m_nParamIndp = indp; };
 	short GetParamIndp() const { return m_nParamIndp; };
+	unsigned long GetDataLength() const { return m_lDataLength; };
 	virtual std::string ToString() const = 0;
 	virtual void Clear(bool bFreeAll = false) = 0;
 

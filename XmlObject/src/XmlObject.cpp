@@ -1,326 +1,195 @@
-/********************************************************************
-created:	2014/10/24
-file base:	XmlObject
-file ext:	cpp
-author:		田俊
-purpose:	使用tinyxml封装的对象。
-*********************************************************************/
 #include "../include/XmlObject.hpp"
-#include <sstream>
 
-using std::stringstream;
-
-XmlObject::XmlObject()
+CXmlObject::CXmlObject()
 {
 }
 
-XmlObject::~XmlObject()
+CXmlObject::~CXmlObject()
 {
 }
 
-bool XmlObject::LoadFile(const std::string &FileName, std::string &strError, TiXmlDocument *XmlDocument)
+bool CXmlObject::LoadFromFile(const std::string &szFileName, std::string &strError)
 {
-	bool bResult = true;
-	bool bNew = false;
+	bool bResult = false;
+	tinyxml2::XMLDocument Doc;
 
-	//如果没有解析器，申请一个临时。
-	if (NULL == XmlDocument)
+	if (szFileName.empty())
 	{
-		bNew = true;
-		XmlDocument = new TiXmlDocument();
+		strError = "File name is empty !";
+		return bResult;
+	}
+
+	if (tinyxml2::XML_SUCCESS == Doc.LoadFile(szFileName.c_str()))
+	{
+		tinyxml2::XMLHandle Han(Doc);
+
+		//加载成功，子类处理
+		if (XmlToObject(Han, strError))
+		{
+			//检查数据正确性
+			bResult = CheckData(strError);
+		}
 	}
 	else
+		strError = std::string("Load file failed:") + Doc.ErrorStr();
+
+	return bResult;
+}
+
+bool CXmlObject::SaveToFile(const std::string &szFileName, std::string &strError, bool bAddDeclaration) const
+{
+	bool bResult = false;
+	tinyxml2::XMLDocument Doc;
+
+	if (szFileName.empty())
 	{
-		//如果不是新的解析器，需要清除旧内容。
-		XmlDocument->Clear();
+		strError = "File name is empty !";
+		return bResult;
 	}
 
-	if (NULL != XmlDocument)
+	if (ObjectToXml(Doc, strError))
 	{
-		bResult = XmlDocument->LoadFile(FileName);
-
-		if (bResult)
+		//加头
+		if (bAddDeclaration)
 		{
-			//解析成功，初始化对象。
-			if (NULL != &strError)
-			{
-				bResult = XmlToObject(*XmlDocument, strError);
-			}
-			else
-			{
-				std::string szTempError;
-				bResult = XmlToObject(*XmlDocument, szTempError);
-			}
+			tinyxml2::XMLDeclaration *pDec = Doc.NewDeclaration(NULL);
+			Doc.InsertFirstChild(pDec);
 		}
+
+		if (tinyxml2::XML_SUCCESS == Doc.SaveFile(szFileName.c_str()))
+			bResult = true;
 		else
-		{
-			if (NULL != &strError)
-			{
-				strError = XmlDocument->ErrorDesc();
-			}
-		}
-	}
-	else
-	{
-		bResult = false;
-		if (NULL != &strError)
-		{
-			strError = "new TiXmlDocument fail!";
-		}
-	}
-
-
-	if (bNew && NULL != XmlDocument)
-	{
-		delete XmlDocument;
-		XmlDocument = NULL;
+			strError = std::string("Save file failed:") + Doc.ErrorStr();
 	}
 
 	return bResult;
 }
 
-bool XmlObject::SaveFile(const std::string &FileName, std::string &strError, TiXmlDocument *XmlDocument) const
+bool CXmlObject::LoadFromString(const std::string &szXml, std::string &strError)
 {
-	bool bResult = true;
-	bool bNew = false;
-	TiXmlDeclaration *XmlDeclaration = new TiXmlDeclaration("1.0", "UTF-8", "");
+	return LoadFromString(szXml.c_str(), szXml.length(), strError);
+}
 
-	//如果没有解析器，申请一个临时。
-	if (NULL == XmlDocument)
+bool CXmlObject::LoadFromString(const char* pszXml, size_t ullLength, std::string &strError)
+{
+	bool bResult = false;
+	tinyxml2::XMLDocument Doc;
+
+	if (NULL == pszXml || 0 == strlen(pszXml) || 0 == ullLength)
 	{
-		bNew = true;
-		XmlDocument = new TiXmlDocument();
-	}
-	else
-	{
-		//如果不是新的解析器，需要清除旧内容。
-		XmlDocument->Clear();
+		strError = "XML data string is empty !";
+		return bResult;
 	}
 
-	if (NULL != XmlDocument)
+	if (tinyxml2::XML_SUCCESS == Doc.Parse(pszXml, ullLength))
 	{
-		if (NULL != XmlDeclaration)
-		{
-			//添加声明
-			XmlDocument->LinkEndChild(XmlDeclaration);
-		}
+		tinyxml2::XMLHandle Han(Doc);
 
-		//解析成功，初始化对象。
-		if (NULL != &strError)
+		//加载成功，子类处理
+		if (XmlToObject(Han, strError))
 		{
-			bResult = ObjectToXml(*XmlDocument, strError);
-		}
-		else
-		{
-			std::string szTempError;
-			bResult = ObjectToXml(*XmlDocument, szTempError);
-		}
-
-		if (bResult)
-		{
-			bResult = XmlDocument->SaveFile(FileName);
-
-			if (!bResult && NULL != &strError)
-			{
-				strError = XmlDocument->ErrorDesc();
-			}
+			//检查数据正确性
+			bResult = CheckData(strError);
 		}
 	}
 	else
-	{
-		bResult = false;
-		if (NULL != &strError)
-		{
-			strError = "new TiXmlDocument fail!";
-		}
-	}
+		strError = std::string("Parse XML string failed:") + Doc.ErrorStr();
 
-	if (bNew && NULL != XmlDocument)
+	return bResult;
+}
+
+bool CXmlObject::SaveToString(std::string &szXml, std::string &strError, bool bAddDeclaration) const
+{
+	bool bResult = false;
+	tinyxml2::XMLDocument Doc;
+
+	if (ObjectToXml(Doc, strError))
 	{
-		delete XmlDocument;
-		XmlDocument = NULL;
+		tinyxml2::XMLPrinter Pri;
+
+		//加头
+		if (bAddDeclaration)
+		{
+			tinyxml2::XMLDeclaration *pDec = Doc.NewDeclaration(NULL);
+			Doc.InsertFirstChild(pDec);
+		}
+
+		//转字符串
+		Doc.Print(&Pri);
+		szXml = Pri.CStr();
+
+		if (szXml.length() >= 2)
+		{
+			//去掉尾部的换行
+			if (szXml[szXml.length() - 2] == '\r')
+				szXml.erase(szXml.length() - 2, 2);
+			else if (szXml[szXml.length() - 1] == '\n')
+				szXml.erase(szXml.length() - 1, 1);
+		}
+
+		bResult = true;
 	}
 
 	return bResult;
 }
 
-bool XmlObject::LoadStr(const std::string &StrXml, std::string &strError, TiXmlDocument *XmlDocument)
+bool CXmlObject::SaveToString(char** pszXml, size_t *ullLength, std::string &strError, bool bAddDeclaration) const
 {
-	return LoadStr(StrXml.c_str(), strError, XmlDocument);
-}
-
-bool XmlObject::LoadStr(const char* StrXml, std::string &strError, TiXmlDocument *XmlDocument)
-{
-	bool bResult = true;
-	bool bNew = false;
-
-	if (NULL == StrXml)
-	{
-		if (NULL != &strError)
-		{
-			strError = "input strXml is null !";
-		}
-
-		return false;
-	}
-
-	//如果没有解析器，申请一个临时。
-	if (NULL == XmlDocument)
-	{
-		bNew = true;
-		XmlDocument = new TiXmlDocument();
-	}
-	else
-	{
-		//如果不是新的解析器，需要清除旧内容。
-		XmlDocument->Clear();
-	}
-
-	if (NULL != XmlDocument)
-	{
-		XmlDocument->Parse(StrXml);
-
-		bResult = !XmlDocument->Error();
-
-		if (bResult)
-		{
-			//解析成功，初始化对象。
-			if (NULL != &strError)
-			{
-				bResult = XmlToObject(*XmlDocument, strError);
-			}
-			else
-			{
-				std::string szTempError;
-				bResult = XmlToObject(*XmlDocument, szTempError);
-			}
-		}
-		else
-		{
-			if (NULL != &strError)
-			{
-				strError = XmlDocument->ErrorDesc();
-			}
-		}
-	}
-	else
-	{
-		bResult = false;
-		if (NULL != &strError)
-		{
-			strError = "new TiXmlDocument fail!";
-		}
-	}
-
-
-	if (bNew && NULL != XmlDocument)
-	{
-		delete XmlDocument;
-		XmlDocument = NULL;
-	}
-
-	return bResult;
-}
-
-bool XmlObject::SaveStr(std::string &StrXml, std::string &strError, TiXmlDocument *XmlDocument) const
-{
-	bool bResult = true;
-	bool bNew = false;
-
-	//如果没有解析器，申请一个临时。
-	if (NULL == XmlDocument)
-	{
-		bNew = true;
-		XmlDocument = new TiXmlDocument();
-	}
-	else
-	{
-		//如果不是新的解析器，需要清除旧内容。
-		XmlDocument->Clear();
-	}
-
-	if (NULL != XmlDocument)
-	{
-		//解析成功，初始化对象。
-		if (NULL != &strError)
-		{
-			bResult = ObjectToXml(*XmlDocument, strError);
-		}
-		else
-		{
-			std::string szTempError;
-			bResult = ObjectToXml(*XmlDocument, szTempError);
-		}
-
-		if (bResult)
-		{
-			TiXmlPrinter printer;
-			bResult = XmlDocument->Accept(&printer);
-
-			if (bResult)
-			{
-				StrXml = printer.Str();
-
-				//去掉尾部的换行
-				if (StrXml[StrXml.length() - 2] == '\r')
-					StrXml.erase(StrXml.length() - 2, 2);
-				else if (StrXml[StrXml.length() - 1] == '\n')
-					StrXml.erase(StrXml.length() - 1, 1);
-			}
-			else
-			{
-				if (NULL != &strError)
-				{
-					strError = XmlDocument->ErrorDesc();
-				}
-			}
-		}
-	}
-	else
-	{
-		bResult = false;
-		if (NULL != &strError)
-		{
-			strError = "new TiXmlDocument fail!";
-		}
-	}
-
-	if (bNew && NULL != XmlDocument)
-	{
-		delete XmlDocument;
-		XmlDocument = NULL;
-	}
-
-	return bResult;
-}
-
-bool XmlObject::SaveStr(char* StrXml, int& DataLength, std::string &strError, TiXmlDocument *XmlDocument) const
-{
-	if (NULL != StrXml)
-	{
-		delete[] StrXml;
-		StrXml = NULL;
-	}
-
-	DataLength = 0;
-
+	bool bResult = false;
 	std::string szResult;
-	if (SaveStr(szResult, strError, XmlDocument))
+
+	if (NULL != *pszXml)
 	{
-		DataLength = (int)szResult.length();
-		StrXml = new char[DataLength + 1]{ '\0' };
-		
-		if (NULL != StrXml)
-			memcpy(StrXml, szResult.c_str(), DataLength);
+		delete[] *pszXml;
+		*pszXml = NULL;
+	}
+
+	*ullLength = 0;
+
+	//处理
+	if (SaveToString(szResult, strError, bAddDeclaration))
+	{
+		*ullLength = szResult.length();
+		*pszXml = new char[*ullLength + 1]{ '\0' };
+
+		if (NULL != *pszXml)
+		{
+			memcpy(*pszXml, szResult.c_str(), *ullLength);
+			bResult = true;
+		}
 		else
 		{
-			if (NULL != &strError)
-			{
-				strError = "new data buffer fail!";
-			}
-
-			return false;
+			*ullLength = 0;
+			strError = "New data cache return null !";
 		}
+	}
+
+	return bResult;
+}
+
+std::string CXmlObject::GetObjectType() const
+{
+	return std::move(std::string(""));
+}
+
+bool CXmlObject::ToString(std::string &szOut, const char *pszStr)
+{
+	if (NULL != pszStr && strlen(pszStr) >= 1)
+		szOut = pszStr;
+	else
+		return false;
+
+	return true;
+}
+
+bool CXmlObject::ToBool(bool& bOut, const char *pszStr)
+{
+	if (NULL != pszStr && strlen(pszStr) >= 1)
+	{
+		if (0 == strcmp("true", pszStr))
+			bOut = true;
+		else
+			bOut = false;
 	}
 	else
 		return false;
@@ -328,171 +197,106 @@ bool XmlObject::SaveStr(char* StrXml, int& DataLength, std::string &strError, Ti
 	return true;
 }
 
-bool XmlObject::ToString(std::string &Out, const char *pszStr)
+bool CXmlObject::ToShort(int16_t &nOut, const char *pszStr)
 {
-	bool bResult;
+	if (NULL != pszStr && strlen(pszStr) >= 1)
+		nOut = (int16_t)atoi(pszStr);
+	else
+		return false;
 
+	return true;
+}
+
+bool CXmlObject::ToUshort(uint16_t &unOut, const char *pszStr)
+{
+	if (NULL != pszStr && strlen(pszStr) >= 1)
+		unOut = (uint16_t)atoi(pszStr);
+	else
+		return false;
+
+	return true;
+}
+
+bool CXmlObject::ToInt(int32_t &iOut, const char *pszStr)
+{
 	if (NULL != pszStr && strlen(pszStr) >= 1)
 	{
-		Out = pszStr;
-
-		bResult = true;
+		iOut = (int32_t)atoi(pszStr);
 	}
 	else
-	{
-		bResult = false;
-	}
+		return false;
 
-	return bResult;
+	return true;
 }
 
-bool XmlObject::ToInt(int &Out, const char *pszStr)
+bool CXmlObject::ToUint(uint32_t &uiOut, const char *pszStr)
 {
-	bool bResult;
-
 	if (NULL != pszStr && strlen(pszStr) >= 1)
-	{
-		Out = atoi(pszStr);
-		bResult = true;
-	}
+		uiOut = (uint32_t)std::strtoul(pszStr, NULL, 10);
 	else
-	{
-		bResult = false;
-	}
-
-	return bResult;
+		return false;
+	
+	return true;
 }
 
-bool XmlObject::ToUint(unsigned int &Out, const char *pszStr)
+bool CXmlObject::ToFloat(float &fOut, const char *pszStr)
 {
-	bool bResult;
-
 	if (NULL != pszStr && strlen(pszStr) >= 1)
-	{
-		Out = (unsigned int)atoi(pszStr);
-		bResult = true;
-	}
+		fOut = std::strtof(pszStr, NULL);
 	else
-	{
-		bResult = false;
-	}
+		return false;
 
-	return bResult;
+	return true;
 }
 
-bool XmlObject::ToShort(short &Out, const char *pszStr)
+bool CXmlObject::ToDouble(double &dOut, const char *pszStr)
 {
-	bool bResult;
-
 	if (NULL != pszStr && strlen(pszStr) >= 1)
-	{
-		Out = (short)atoi(pszStr);
-		bResult = true;
-	}
+		dOut = std::strtod(pszStr, NULL);
 	else
-	{
-		bResult = false;
-	}
+		return false;
 
-	return bResult;
+	return true;
 }
 
-bool XmlObject::ToUshort(unsigned short &Out, const char *pszStr)
+bool CXmlObject::ToInt64(int64_t &llOut, const char*pszStr)
 {
-	bool bResult;
-
 	if (NULL != pszStr && strlen(pszStr) >= 1)
-	{
-		Out = (unsigned short)atoi(pszStr);
-		bResult = true;
-	}
+		llOut = std::strtoll(pszStr, NULL, 10);
 	else
-	{
-		bResult = false;
-	}
+		return false;
 
-	return bResult;
+	return true;
 }
 
-bool XmlObject::ToDouble(double &Out, const char *pszStr)
+bool CXmlObject::ToUint64(uint64_t &ullOut, const char*pszStr)
 {
-	bool bResult;
-
 	if (NULL != pszStr && strlen(pszStr) >= 1)
-	{
-		Out = atof(pszStr);
-		bResult = true;
-	}
+		ullOut = std::strtoull(pszStr, NULL, 10);
 	else
-	{
-		bResult = false;
-	}
+		return false;
 
-	return bResult;
+	return true;
 }
 
-bool XmlObject::ToBool(bool& Out, const char *pszStr)
+#ifndef _WIN32
+bool CXmlObject::ToLongLong(long long &llOut, const char*pszStr)
 {
-	bool bResult;
-
 	if (NULL != pszStr && strlen(pszStr) >= 1)
-	{
-		std::string szTemp = pszStr;
-
-		if ("true" == szTemp)
-		{
-			Out = true;
-		}
-		else
-		{
-			Out = false;
-		}
-
-		bResult = true;
-	}
+		llOut = std::strtoll(pszStr, NULL, 10);
 	else
-	{
-		bResult = false;
-	}
+		return false;
 
-	return bResult;
+	return true;
 }
 
-bool XmlObject::ToLong(long &Out, const char*pszStr)
+bool CXmlObject::ToUlongLong(unsigned long long &ullOut, const char*pszStr)
 {
-	bool bResult;
-
 	if (NULL != pszStr && strlen(pszStr) >= 1)
-	{
-		Out = atol(pszStr);
-		bResult = true;
-	}
+		ullOut = std::strtoull(pszStr, NULL, 10);
 	else
-	{
-		bResult = false;
-	}
+		return false;
 
-	return bResult;
+	return true;
 }
-
-bool XmlObject::ToLongLong(long long &Out, const char*pszStr)
-{
-	bool bResult;
-
-	if (NULL != pszStr && strlen(pszStr) >= 1)
-	{
-		Out = atoll(pszStr);
-		bResult = true;
-	}
-	else
-	{
-		bResult = false;
-	}
-
-	return bResult;
-}
-
-std::string XmlObject::GetObjectType() const
-{
-	return std::move(std::string(""));
-}
+#endif

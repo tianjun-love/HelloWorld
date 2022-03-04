@@ -9,18 +9,18 @@ CDBBaseInterface::Snprintf CDBBaseInterface::Format = snprintf;
 
 std::mutex *CDBBaseInterface::m_pInitLock = new std::mutex();
 
-CDBBaseInterface::CDBBaseInterface() : m_bIsConnect(false), m_bIsAutoCommit(false), m_iErrorCode(0),
-m_iServerPort(0), m_iTimeOut(30)
+CDBBaseInterface::CDBBaseInterface() : m_iServerPort(0), m_bConnectState(false), m_bIsAutoCommit(false), m_iConnTimeOut(5), 
+m_iErrorCode(0)
 {
 	memset(m_strSqlState, '\0', MAX_SQL_STATE_LEN);
 	memset(m_strErrorBuf, '\0', MAX_ERROR_INFO_LEN);
 }
 
 CDBBaseInterface::CDBBaseInterface(const std::string& szServerName, const std::string& szServerIP, unsigned int iServerPort, 
-	const std::string& szDBName, const std::string& szUserName, const std::string& szPassWord, const std::string& szCharSet, 
-	unsigned int iTimeOut) : m_bIsConnect(false), m_bIsAutoCommit(false), m_iErrorCode(0), m_szServerName(szServerName), 
-m_szServerIP(szServerIP), m_iServerPort(iServerPort), m_szDBName(szDBName), m_szUserName(szUserName), m_szPassWord(szPassWord), 
-m_szCharSet(szCharSet), m_iTimeOut(iTimeOut)
+	const std::string& szDBName, const std::string& szUserName, const std::string& szPassWord, bool bAutoCommit, 
+	EDB_CHARACTER_SET eCharSet, unsigned int iConnTimeOut) : m_szServerName(szServerName), m_szServerIP(szServerIP), 
+m_iServerPort(iServerPort), m_szDBName(szDBName), m_szUserName(szUserName), m_szPassWord(szPassWord), 
+m_bIsAutoCommit(bAutoCommit), m_eCharSet(eCharSet), m_iConnTimeOut(iConnTimeOut), m_bConnectState(false), m_iErrorCode(0)
 {
 	memset(m_strSqlState, '\0', MAX_SQL_STATE_LEN);
 	memset(m_strErrorBuf, '\0', MAX_ERROR_INFO_LEN);
@@ -38,7 +38,7 @@ void CDBBaseInterface::SetServerIP(const std::string& szIP)           //设置�
 {
 	m_szServerIP = szIP;
 }
-void CDBBaseInterface::SetServerPort(unsigned int iPort)         //设置数据库端口
+void CDBBaseInterface::SetServerPort(unsigned int iPort)              //设置数据库端口
 {
 	m_iServerPort = iPort;
 }
@@ -54,13 +54,13 @@ void CDBBaseInterface::SetPassWord(const std::string& szPassWord)     //设置�
 {
 	m_szPassWord = szPassWord;
 }
-void CDBBaseInterface::SetCharSet(const std::string& szCharSet)       //设置字符集
+void CDBBaseInterface::SetCharSet(EDB_CHARACTER_SET eCharSet)         //设置字符集
 {
-	m_szCharSet = szCharSet;
+	m_eCharSet = eCharSet;
 }
-void CDBBaseInterface::SetTimeOut(unsigned int iTimeOut)         //设置超时
+void CDBBaseInterface::SetConnTimeOut(unsigned int iConnTimeOut)  //设置超时
 {
-	m_iTimeOut = iTimeOut;
+	m_iConnTimeOut = iConnTimeOut;
 }
 
 const std::string& CDBBaseInterface::GetServerName() const       //获取服务名
@@ -71,7 +71,7 @@ const std::string& CDBBaseInterface::GetServerIP() const         //获取数据�
 {
 	return m_szServerIP;
 }
-const unsigned int& CDBBaseInterface::GetServerPort() const //获取数据库端口
+const unsigned int& CDBBaseInterface::GetServerPort() const      //获取数据库端口
 {
 	return m_iServerPort;
 }
@@ -87,46 +87,94 @@ const std::string& CDBBaseInterface::GetPassWord() const         //获取密码
 {
 	return m_szPassWord;
 }
-const std::string& CDBBaseInterface::GetCharSet() const          //获取字符集
+EDB_CHARACTER_SET CDBBaseInterface::GetCharSet() const           //获取字符集
 {
-	return m_szCharSet;
+	return m_eCharSet;
 }
-const unsigned int& CDBBaseInterface::GetTimeOut() const    //获取超时
+const unsigned int& CDBBaseInterface::GetConnTimeOut() const     //获取超时
 {
-	return m_iTimeOut;
+	return m_iConnTimeOut;
 }
 
-void CDBBaseInterface::SetIsAutoCommit(bool bIsAutoCommit) //设置是否自动提交
+bool CDBBaseInterface::SetIsAutoCommit(bool bIsAutoCommit)      //设置是否自动提交
 {
 	m_bIsAutoCommit = bIsAutoCommit;
+
+	return true;
 }
 
-bool CDBBaseInterface::GetIsAutoCommit()                   //获取是否自动提交
+bool CDBBaseInterface::GetIsAutoCommit()                        //获取是否自动提交
 {
 	return m_bIsAutoCommit;
 }
 
-void CDBBaseInterface::SetIsConnect(bool bIsConnect)       //设置是否已经连接
+bool CDBBaseInterface::GetConnectState()                        //获取是否已经连接
 {
-	m_bIsConnect = bIsConnect;
+	return m_bConnectState;
 }
 
-bool CDBBaseInterface::GetIsConnect()                      //获取是否已经连接
+EDB_CHARACTER_SET CDBBaseInterface::ConvertCharacterStringToEnum(const std::string& szCharacter) //字符集串转枚举
 {
-	return m_bIsConnect;
+	EDB_CHARACTER_SET eCharacter = E_CHARACTER_UTF8;
+
+	if ("gbk" == szCharacter)
+		eCharacter = E_CHARACTER_GBK;
+	else if ("big5" == szCharacter)
+		eCharacter = E_CHARACTER_BIG5;
+	else if ("gk18030" == szCharacter)
+		eCharacter = E_CHARACTER_GK18030;
+	else if ("latin1" == szCharacter)
+		eCharacter = E_CHARACTER_LATIN1;
+	else if ("ascii" == szCharacter)
+		eCharacter = E_CHARACTER_ASCII;
+
+	return eCharacter;
+}
+
+std::string CDBBaseInterface::ConvertCharacterEnumToString(EDB_CHARACTER_SET eCharacter) //字符集枚举转字符串
+{
+	std::string szCharacter;
+
+	switch (eCharacter)
+	{
+	case E_CHARACTER_GBK:
+		szCharacter = "gbk";
+		break;
+	case E_CHARACTER_GK18030:
+		szCharacter = "gk18030";
+		break;
+	case E_CHARACTER_BIG5:
+		szCharacter = "big5";
+		break;
+	case E_CHARACTER_ASCII:
+		szCharacter = "ascii";
+		break;
+	case E_CHARACTER_LATIN1:
+		szCharacter = "latin1";
+		break;
+	default:
+		szCharacter = "utf8";
+		break;
+	}
+
+	return std::move(szCharacter);
 }
 
 void CDBBaseInterface::FormatSQL(std::string& szSQL)            //格式化SQL，tab符及制表符换成空格，oracle否则可能出错
 {
 	for (std::string::size_type Pos = 0; Pos < szSQL.length(); ++Pos)
 	{
-		if ('\r' == szSQL[Pos] || '\n' == szSQL[Pos] || '\t' == szSQL[Pos] || '\v' == szSQL[Pos])
+		if ('\r' == szSQL[Pos] || '\n' == szSQL[Pos] || '\t' == szSQL[Pos] || '\v' == szSQL[Pos] || '\f' == szSQL[Pos])
 		{
 			szSQL[Pos] = ' ';
 		}
 	}
 
 	TrimString(szSQL);
+
+	//结尾不是;则加上
+	if (!szSQL.empty() && ';' != szSQL[szSQL.length() - 1])
+		szSQL += ";";
 }
 
 std::string CDBBaseInterface::Replace(const std::string& szSrc, const std::string& szOldStr, const std::string& szNewStr) //替换字符串中的特定字符串
@@ -196,7 +244,7 @@ bool CDBBaseInterface::TrimString(std::string& szStr, short type)
 	return bResult;
 }
 
-bool CDBBaseInterface::ConvertBinaryToHex(const unsigned char* binary, unsigned long long binary_len, std::string& szOutHex) //二进制数据转十六进制字符串
+bool CDBBaseInterface::ConvertBinaryToHex(const unsigned char* binary, uint64_t binary_len, std::string& szOutHex) //二进制数据转十六进制字符串
 {
 	szOutHex.clear();
 
@@ -205,11 +253,11 @@ bool CDBBaseInterface::ConvertBinaryToHex(const unsigned char* binary, unsigned 
 	else if (nullptr == binary || 0 == binary_len)
 		return false;
 
-	unsigned long long n = 0, iStrLen = binary_len * 2 + 1;
+	uint64_t n = 0, iStrLen = binary_len * 2 + 1;
 	char *pStrTemp = new char[iStrLen];
 	memset(pStrTemp, '\0', iStrLen);
 
-	for (unsigned long long i = 0; i < binary_len; ++i)
+	for (uint64_t i = 0; i < binary_len; ++i)
 	{
 		n += sprintf(pStrTemp + n, "%02X", binary[i]);
 	}
@@ -220,7 +268,7 @@ bool CDBBaseInterface::ConvertBinaryToHex(const unsigned char* binary, unsigned 
 	return true;
 }
 
-bool CDBBaseInterface::ConvertHexToBinary(const std::string& szInHex, unsigned char* binary, unsigned long long& binary_len) //十六进制字符串转二进制数据
+bool CDBBaseInterface::ConvertHexToBinary(const std::string& szInHex, unsigned char* binary, uint64_t& binary_len) //十六进制字符串转二进制数据
 {
 	if (nullptr == binary || 0 == binary_len)
 		return false;

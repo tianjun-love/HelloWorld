@@ -61,7 +61,7 @@ public:
 	unsigned char      *pMsgBuffer;          //消息缓存，子类不用释放
 	unsigned int       uiMsgReadedLength;    //消息己读取长度
 	unsigned char      sessionKeyBuffer[16]; //会话密钥
-	unsigned long long ullMsgID;             //消息ID
+	uint64_t           ullMsgID;             //消息ID
 
 };
 

@@ -7,18 +7,18 @@
 using std::vector;
 using std::string;
 
-class CXmlTest : public XmlObject
+class CXmlTest : public CXmlObject
 {
 public:
 	CXmlTest();
 	virtual ~CXmlTest();
 
-	bool XmlToObject(const TiXmlDocument &XmlDocument, string &strError);
-	bool ObjectToXml(TiXmlDocument &XmlDocument, string &strError) const;
 	string ObjectType() const;
-	bool CheckData(string &strError) const { return true; };
 
-	void DealXml(TiXmlDocument& RecvXml, const TiXmlDocument& SendXml);
+protected:
+	bool XmlToObject(tinyxml2::XMLHandle &XmlHandle, string &strError) override;
+	bool ObjectToXml(tinyxml2::XMLDocument &XmlDocument, string &strError) const override;
+	bool CheckData(string &strError) const override;
 
 public:
 	string                m_szName;      //Ãû³Æ

@@ -5,9 +5,10 @@ CPostgreSQLInterface::CPostgreSQLInterface() : m_pConnect(nullptr), m_pResult(nu
 }
 
 CPostgreSQLInterface::CPostgreSQLInterface(const std::string& szIP, unsigned int iPort, const std::string& szDBName,
-	const std::string& szUserName, const std::string& szPassWord, const std::string& szCharSet, unsigned int iTimeOut) : 
-m_pConnect(nullptr), m_pResult(nullptr), m_iRowCount(0), m_iCurrFetchRow(0),
-CDBBaseInterface("", szIP, iPort, szDBName, szUserName, szPassWord, szCharSet, iTimeOut)
+	const std::string& szUserName, const std::string& szPassWord, bool bAutoCommit, EDB_CHARACTER_SET eCharSet, 
+	unsigned int iConnTimeOut) : CDBBaseInterface("", szIP, iPort, szDBName, szUserName, szPassWord, bAutoCommit, eCharSet, iConnTimeOut),
+m_pConnect(nullptr), m_pResult(nullptr), m_iRowCount(0), m_iCurrFetchRow(0)
+
 {
 }
 
@@ -31,8 +32,8 @@ bool CPostgreSQLInterface::InitEnv() //初始化环境
 		+ " dbname=" + m_szDBName
 		+ " user=" + m_szUserName
 		+ " password=" + m_szPassWord
-		+ " connect_timeout=" + std::to_string(m_iTimeOut)
-		+ " client_encoding=" + m_szCharSet;
+		+ " connect_timeout=" + std::to_string(m_iConnTimeOut)
+		+ " client_encoding=" + ConvertCharacterEnumToString(m_eCharSet);
 
 	return true;
 }
@@ -44,7 +45,7 @@ void CPostgreSQLInterface::FreeEnv() //释放资源
 	Disconnect();
 }
 
-bool CPostgreSQLInterface::Connect(bool bAutoCommit) //连接数据库
+bool CPostgreSQLInterface::Connect() //连接数据库
 {
 	if (m_szConnectInfo.empty())
 	{
@@ -53,7 +54,7 @@ bool CPostgreSQLInterface::Connect(bool bAutoCommit) //连接数据库
 		return false;
 	}
 
-	if (m_bIsConnect)
+	if (m_bConnectState)
 	{
 		//已经连接，不处理
 		return true;
@@ -77,8 +78,7 @@ bool CPostgreSQLInterface::Connect(bool bAutoCommit) //连接数据库
 		return false;
 	}
 
-	m_bIsAutoCommit = bAutoCommit;
-	m_bIsConnect = true;
+	m_bConnectState = true;
 
 	return true;
 }
@@ -86,12 +86,12 @@ bool CPostgreSQLInterface::Connect(bool bAutoCommit) //连接数据库
 bool CPostgreSQLInterface::ReConnect() //重新连接
 {
 	Disconnect();
-	return Connect(m_bIsAutoCommit);
+	return Connect();
 }
 
 void CPostgreSQLInterface::Disconnect() //断开连接
 {
-	if (m_bIsConnect)
+	if (m_bConnectState)
 	{
 		if (m_pConnect)
 		{
@@ -99,7 +99,7 @@ void CPostgreSQLInterface::Disconnect() //断开连接
 			m_pConnect = nullptr;
 		}
 
-		m_bIsConnect = false;
+		m_bConnectState = false;
 	}
 }
 
@@ -112,7 +112,7 @@ bool CPostgreSQLInterface::Prepare(const std::string& szSQL, bool bIsStmt) //发
 
 bool CPostgreSQLInterface::Prepare(const std::string& szStmtName, const std::string& szSQL, int nParams, const Oid *paramTypes) //发送SQL
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -206,7 +206,7 @@ bool CPostgreSQLInterface::Execute(CDBResultSet* pResultSet, bool bIsStmt) //执
 bool CPostgreSQLInterface::Execute(CDBResultSet* pResultSet, const std::string& szStmtName, int nParams, const char* const *paramValues,
 	const int *paramLengths, const int *paramFormats, int resultFormat) //执行SQL
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -260,7 +260,7 @@ bool CPostgreSQLInterface::Execute(CDBResultSet* pResultSet, const std::string& 
 
 bool CPostgreSQLInterface::ExecuteNoParam(const std::string& szSQL, CDBResultSet* pResultSet) //执行SQL，没有绑定参数
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -325,7 +325,7 @@ bool CPostgreSQLInterface::ExecuteNoParam(const std::string& szSQL, CDBResultSet
 
 bool CPostgreSQLInterface::ExecuteDirect(const std::string& szSQL) //执行SQL，没有返回结果的
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -383,7 +383,7 @@ bool CPostgreSQLInterface::ExecuteDirect(const std::string& szSQL) //执行SQL�
 
 long long CPostgreSQLInterface::AffectedRows(bool bIsStmt) //受影响行数
 {
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -409,7 +409,7 @@ bool CPostgreSQLInterface::BeginTrans() //开启事务
 {
 	bool bRet = true;
 
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -450,7 +450,7 @@ bool CPostgreSQLInterface::EndTrans() //关闭事务
 {
 	bool bRet = true;
 
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -491,7 +491,7 @@ bool CPostgreSQLInterface::Commit() //提交
 {
 	bool bRet = true;
 
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -532,7 +532,7 @@ bool CPostgreSQLInterface::Rollback() //回滚
 {
 	bool bRet = true;
 
-	if (!m_bIsConnect)
+	if (!m_bConnectState)
 	{
 		m_iErrorCode = -1;
 		Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "未连接到数据库服务！");
@@ -646,8 +646,9 @@ bool CPostgreSQLInterface::BindResultInfo(CDBResultSet* pResultSet, bool bIsStmt
 	for (int i = 0; i < iFieldCount; ++i)
 	{
 		CDBColumAttribute* pColumnAttribute = new CDBColumAttribute();
+		char *pColumnName = PQfname(m_pResult, i);
 
-		pColumnAttribute->SetColumnName(PQfname(m_pResult, i));
+		pColumnAttribute->SetColumnName(pColumnName, (unsigned int)strlen(pColumnName));
 		int iSize = PQfsize(m_pResult, i); //变长会返回-1
 		//Oid iType = PQftype(m_pResult, i); //类型，在pg_type_d.h中，都以字符串存储
 
@@ -696,14 +697,6 @@ bool CPostgreSQLInterface::Fetch(CDBRowValue* &pRowValue, bool bIsStmt) //获取
 
 bool CPostgreSQLInterface::GetNextResult(CDBResultSet* pResultSet, bool bIsStmt) //获取另一个结果集
 {
-	m_iErrorCode = -1;
-	Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "不支持的操作！");
-	return false;
-}
-
-bool CPostgreSQLInterface::SetSqlState(bool bIsStmt) //设置SQL执行状态
-{
-	//没有该状态
 	m_iErrorCode = -1;
 	Format(m_strErrorBuf, MAX_ERROR_INFO_LEN, "%s", "不支持的操作！");
 	return false;

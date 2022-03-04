@@ -42,8 +42,8 @@ public:
 
 	static clock_t GetRunMs();                                             //get program run time
 	static time_t GetSeconds();                                            //get from 1970-01-01 00:00:00 to now seconds
-	static long long GetMilliSeconds();                                    //get from 1970-01-01 00:00:00 to now milli
-	static long long GetMicroSeconds();                                    //get from 1970-01-01 00:00:00 to now micro
+	static time_t GetMilliSeconds();                                    //get from 1970-01-01 00:00:00 to now milli
+	static time_t GetMicroSeconds();                                    //get from 1970-01-01 00:00:00 to now micro
 	static bool CheckIsLeapYear(unsigned int iYear);                       //check leap year
 	void InitCurrDateTime(time_t lSecond = 0);                             //init by current time
 	time_t GetDateTimeSeconds() const;                                     //return m_lSeconds
@@ -60,8 +60,8 @@ public:
 	void AddMonth(int iMonth);
 	void AddDay(int iDay);
 	void AddHour(int iHour);
-	void AddMinute(long iMin);
-	void AddSecond(long long iSecond);
+	void AddMinute(time_t iMin);
+	void AddSecond(time_t iSecond);
 
 	int GetYear() const;
 	int GetMonth() const;

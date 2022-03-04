@@ -18,7 +18,7 @@ using std::string;
 class CSnmpxClient
 {
 public:
-	CSnmpxClient(const std::string &ip, unsigned short port, long timeout = 1500, unsigned char retry_times = 3,
+	CSnmpxClient(const std::string &ip, unsigned short port, int timeout = 1500, unsigned char retry_times = 3,
 		bool ping_on_timeout = false);
 	virtual ~CSnmpxClient();
 
@@ -46,6 +46,9 @@ public:
 	int Trap2(const list<SSnmpxValue> &vb_list, string& szError);
 	int Inform(const list<SSnmpxValue> &svb_list, list<SSnmpxValue> &rvb_list, string& szError);
 
+	static string GetSnmpxValuePrintString(const SSnmpxValue &vb, size_t max_oid_len = 0);
+	static string GetSnmpxValuesPrintString(const list<SSnmpxValue> &svb_list);
+	static string GetSnmpxValuesPrintString(const std::vector<SSnmpxValue> &svb_vec);
 	static void EraseUsmUser(const string& szAgentIP);
 	static void EraseAllUsmUser();
 
@@ -117,7 +120,7 @@ private:
 protected:
 	std::string       m_szIP;           //agent IP
 	unsigned short    m_nPort;          //agent端口
-	long              m_lTimeout;       //接收超时，毫秒，最小0.5秒，最大30秒
+	int               m_iTimeout;       //接收超时，毫秒，最小0.5秒，最大30秒
 	unsigned char     m_cRetryTimes;    //重试次数
 	bool              m_bPingOnTimeout; //从agent接收失败时，是否使用ping检查
 	struct userinfo_t *m_pUserInfo;     //认证信息对象

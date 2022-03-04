@@ -68,13 +68,13 @@ time_t CDateTime::GetSeconds()
 	return time(0);
 }
 
-long long CDateTime::GetMilliSeconds()
+time_t CDateTime::GetMilliSeconds()
 {
 	auto t = std::chrono::high_resolution_clock::now();
 	return std::chrono::duration_cast<std::chrono::milliseconds>(t.time_since_epoch()).count();
 }
 
-long long CDateTime::GetMicroSeconds()
+time_t CDateTime::GetMicroSeconds()
 {
 	auto t = std::chrono::high_resolution_clock::now();
 	return std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch()).count();
@@ -508,12 +508,12 @@ void CDateTime::AddHour(int iHour)
 	m_lSeconds += iHour * 60 * 60;
 }
 
-void CDateTime::AddMinute(long iMin)
+void CDateTime::AddMinute(time_t iMin)
 {
 	m_lSeconds += iMin * 60;
 }
 
-void CDateTime::AddSecond(long long iSecond)
+void CDateTime::AddSecond(time_t iSecond)
 {
 	m_lSeconds += iSecond;
 }

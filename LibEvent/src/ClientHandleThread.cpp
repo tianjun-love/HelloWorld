@@ -173,7 +173,6 @@ void CClientHandleThread::AddClient(CClientObject *client)
 		client->pOther = (void*)this;
 		client->Session.ullThreadNO = m_ullThreadNO;
 		bufferevent_setcb(bev, read_cb, nullptr, error_cb, (void*)client);
-		bufferevent_enable(bev, EV_READ | EV_PERSIST);
 
 		//增加数量
 		if (!m_bKeepAlive)
@@ -181,6 +180,8 @@ void CClientHandleThread::AddClient(CClientObject *client)
 
 		m_LogFile << E_LOG_LEVEL_PROMPT << "Client handle thread [" << m_ullThreadNO << "] add client ["
 			<< client->Session.szClientInfo << "] success !" << logendl;
+
+		bufferevent_enable(bev, EV_READ | EV_PERSIST);
 	}
 	else
 	{

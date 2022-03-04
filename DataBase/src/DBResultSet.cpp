@@ -11,7 +11,7 @@ CDBResultSet::CDBResultSet()
 	m_pDBInterface = NULL;
 }
 
-CDBResultSet::CDBResultSet(unsigned long long iRowCount, unsigned int iColumnCount)
+CDBResultSet::CDBResultSet(uint64_t iRowCount, unsigned int iColumnCount)
 {
 	m_lpRowValue = NULL;
 	m_pColumnAttribute = NULL;
@@ -40,13 +40,13 @@ unsigned int CDBResultSet::GetColumnCount() const
 }
 
 //获取行数
-unsigned long long CDBResultSet::GetRowCount() const
+uint64_t CDBResultSet::GetRowCount() const
 {
 	return m_llRowCount;
 }
 
 //设置行数
-void CDBResultSet::SetRowCount(unsigned long long llRowCount)
+void CDBResultSet::SetRowCount(uint64_t llRowCount)
 {
 	m_llRowCount = llRowCount;
 }

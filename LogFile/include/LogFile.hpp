@@ -41,12 +41,14 @@ public:
 	CLogOutObject operator << (const unsigned short& unNumber);
 	CLogOutObject operator << (const int& iNumber);
 	CLogOutObject operator << (const unsigned int& uiNumber);
+#ifdef _WIN32
 	CLogOutObject operator << (const long& lNumber);
 	CLogOutObject operator << (const unsigned long& ulNumber);
+#endif
 	CLogOutObject operator << (const float& fNumber);
 	CLogOutObject operator << (const double& dNumber);
-	CLogOutObject operator << (const long long& NNumber);
-	CLogOutObject operator << (const unsigned long long& uNNumber);
+	CLogOutObject operator << (const int64_t& NNumber);
+	CLogOutObject operator << (const uint64_t& uNNumber);
 	CLogOutObject operator << (std::ostream& (*_F)(std::ostream&));
 	CLogOutObject operator << (const CLogEnd& LogEnd);
 	CLogOutObject operator << (const eLOG_FILE_LEVEL& eLogLevel);

@@ -29,7 +29,7 @@ bool CSharedMemory::open(TShMemId ShMemId, TSize Size)
         PAGE_READWRITE,          // read/write access
         0,                       // maximum object size (high-order DWORD)
         Size,                    // maximum object size (low-order DWORD)
-		(LPCWSTR)(Convert.str().c_str()));
+		(LPCSTR)(Convert.str().c_str()));
 
 	if (NULL != m_hMemory)
 	{

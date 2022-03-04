@@ -28,6 +28,9 @@
     <Filter Include="PostgreSQL">
       <UniqueIdentifier>{dcb2f8e4-394a-497d-9092-aa1a108390f8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="DM_DPI">
+      <UniqueIdentifier>{d45e151a-5598-46e0-a065-b8a28233ae8a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\DBBaseInterface.hpp">
@@ -243,6 +246,18 @@
     <ClInclude Include="PostgreSQL\postgres_ext.h">
       <Filter>PostgreSQL</Filter>
     </ClInclude>
+    <ClInclude Include="DM_DPI\DPI.h">
+      <Filter>DM_DPI</Filter>
+    </ClInclude>
+    <ClInclude Include="DM_DPI\DPIext.h">
+      <Filter>DM_DPI</Filter>
+    </ClInclude>
+    <ClInclude Include="DM_DPI\DPItypes.h">
+      <Filter>DM_DPI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\DMDPIInterface.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\DBBaseInterface.cpp">
@@ -273,6 +288,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="src\PostgreSQLInterface.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DMDPIInterface.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

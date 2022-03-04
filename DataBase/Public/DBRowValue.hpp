@@ -104,9 +104,12 @@ public:
 			for (unsigned int i = 0; i < m_iColumnCount; i++)
 			{
 				CDBColumValue* lpColumnValue = *(m_pDBColumnValues + i);
-				lpColumnValue->Clear();
-				delete lpColumnValue;
-				lpColumnValue = NULL;
+				if (NULL != lpColumnValue)
+				{
+					lpColumnValue->Clear();
+					delete lpColumnValue;
+					lpColumnValue = NULL;
+				}
 			}
 			
 			m_iColumnCount = 0;

@@ -135,19 +135,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\tinyxml.h" />
-    <ClInclude Include="include\XmlObject.hpp" />
-    <ClInclude Include="include\XmlOperator.hpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\tinyxml.cpp" />
-    <ClCompile Include="src\tinyxmlerror.cpp" />
-    <ClCompile Include="src\tinyxmlparser.cpp" />
-    <ClCompile Include="src\XmlObject.cpp" />
-    <ClCompile Include="src\XmlOperator.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <Text Include="CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\tinyXML2\tinyxml2.h" />
+    <ClInclude Include="include\XmlObject.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\tinyxml2.cpp" />
+    <ClCompile Include="src\XmlObject.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

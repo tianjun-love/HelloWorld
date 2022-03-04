@@ -2038,13 +2038,15 @@ bool CMyCompress::MkDir(const std::string &szDir, unsigned int iMode, bool bPare
 			return mk_dir(szDir, iMode, szError);
 		else
 		{
+			std::string szDirTemp(szDir + "/");
+
 			do
 			{
-				if (mk_dir(szDir.substr(0, iPos), iMode, szError))
+				if (mk_dir(szDirTemp.substr(0, iPos), iMode, szError))
 				{
-					iPos = szDir.find("/", iPos + 1);
+					iPos = szDirTemp.find("/", iPos + 1);
 					if (std::string::npos == iPos)
-						iPos = szDir.find("\\", iPos + 1);
+						iPos = szDirTemp.find("\\", iPos + 1);
 				}
 				else
 					return false;
@@ -2724,7 +2726,7 @@ bool CMyCompress::do_uncompressGZIP(gzFile gz, const tar_record &file_head, cons
 	unsigned long size_buf, unsigned int &iReadDataLength, std::list<SLinkInfo> &LinkList, std::string &szError)
 {
 	bool bResult = true;
-	std::string szTarFileName = szDstDirName + "/" + file_head.head.name;
+	std::string szTarFileName = szDstDirName + "/" + file_head.head.name, szPrefixDirName;
 	bool bIsDir = false, bNormalWrite = true;
 	unsigned int file_mode = OctalToDecimal(file_head.head.mode);
 	unsigned int data_size = OctalToDecimal(file_head.head.size);
@@ -2760,81 +2762,105 @@ bool CMyCompress::do_uncompressGZIP(gzFile gz, const tar_record &file_head, cons
 		}
 		else //其它文件
 		{
-			//打开文件准备写
-			FILE *fo = FOPEN_FUNC(szTarFileName.c_str(), "wb+");
-			if (NULL == fo)
+			//有的开发会用：tar -zcvpf 1.tar.gz dir/1.txt，导致压缩包里面只有一个文件：dir/1.txt，没有dir目录
+			std::string::size_type iPos = szTarFileName.find_last_of('/');
+			if (iPos != szDstDirName.length())
 			{
-				bResult = false;
-				szError = "Open file:" + szTarFileName + " for write failed:" + GetErrorMsg(errno);
-			}
-			else
-			{
-				//软连接长度为0，连接原地址为linkname，windows直接写入
-				if ('2' == file_head.head.typeflag)
+				szPrefixDirName = szTarFileName.substr(0, iPos);
+
+				//创建前置目录
+				if (!MkDir(szPrefixDirName, 0755, true, szError))
 				{
-					iReadDataLength = 0;
-					fwrite(file_head.head.linkname, 1, strlen(file_head.head.linkname), fo);
+					bResult = false;
+				}
+			}
+
+			if (bResult)
+			{
+				//打开文件准备写
+				FILE *fo = FOPEN_FUNC(szTarFileName.c_str(), "wb+");
+				if (NULL == fo)
+				{
+					bResult = false;
+					szError = "Open file:" + szTarFileName + " for write failed:" + GetErrorMsg(errno);
 				}
 				else
 				{
-					//windows上压缩的没有属性
-#ifndef _WIN32
-					if (0 == file_mode)
-						file_mode = 0644;
-#endif
-
-					if (0 != data_size)
+					//软连接长度为0，连接原地址为linkname，windows直接写入
+					if ('2' == file_head.head.typeflag)
 					{
-						if (0 != (data_size % T_BLOCKSIZE))
-							iReadDataLength = (data_size / T_BLOCKSIZE + 1) * T_BLOCKSIZE;
-						else
-							iReadDataLength = data_size;
+						iReadDataLength = 0;
+						fwrite(file_head.head.linkname, 1, strlen(file_head.head.linkname), fo);
 					}
 					else
-						iReadDataLength = 0;
-
-					if (iReadDataLength > 0)
 					{
-						int iRet = 0;
-						unsigned int iTemp = 0, iReadTemp = iReadDataLength, iWriteTemp = data_size;
+						//windows上压缩的没有属性
+#ifndef _WIN32
+						if (0 == file_mode)
+							file_mode = 0644;
+#endif
 
-						do
+						if (0 != data_size)
 						{
-							//该方法会自动解压成tar数据，读取数据
-							iRet = gzread(gz, buf, (iReadTemp > size_buf ? size_buf : iReadTemp));
-
-							if (iRet >= 0)
-							{
-								//写入数据到文件
-								iTemp = (unsigned int)fwrite(buf, 1, ((unsigned int)iRet < iWriteTemp ? (unsigned int)iRet : iWriteTemp), fo);
-
-								iReadTemp -= (unsigned int)iRet;
-								iWriteTemp -= iTemp;
-							}
+							if (0 != (data_size % T_BLOCKSIZE))
+								iReadDataLength = (data_size / T_BLOCKSIZE + 1) * T_BLOCKSIZE;
 							else
-							{
-								bResult = false;
-								szError = std::string("Read file data from gzip failed:") + gzerror(gz, &iRet);
-								break;
-							}
-						} while (iReadTemp > 0 && iWriteTemp > 0);
-					}
-				}
+								iReadDataLength = data_size;
+						}
+						else
+							iReadDataLength = 0;
 
-				fclose(fo);
+						if (iReadDataLength > 0)
+						{
+							int iRet = 0;
+							unsigned int iTemp = 0, iReadTemp = iReadDataLength, iWriteTemp = data_size;
+
+							do
+							{
+								//该方法会自动解压成tar数据，读取数据
+								iRet = gzread(gz, buf, (iReadTemp > size_buf ? size_buf : iReadTemp));
+
+								if (iRet >= 0)
+								{
+									//写入数据到文件
+									iTemp = (unsigned int)fwrite(buf, 1, ((unsigned int)iRet < iWriteTemp ? (unsigned int)iRet : iWriteTemp), fo);
+
+									iReadTemp -= (unsigned int)iRet;
+									iWriteTemp -= iTemp;
+								}
+								else
+								{
+									bResult = false;
+									szError = std::string("Read file data from gzip failed:") + gzerror(gz, &iRet);
+									break;
+								}
+							} while (iReadTemp > 0 && iWriteTemp > 0);
+						}
+					}
+
+					fclose(fo);
+				}
 			}
 		}
 
 		//修改时间及权限
 		if (bResult)
 		{
+			if (!szPrefixDirName.empty())
+				ChangeFileTime(szPrefixDirName, true, 0, NULL, &file_mtime);
+
 			ChangeFileTime(szTarFileName, bIsDir, 0, NULL, &file_mtime);
 #ifndef _WIN32
 			if (!bIsDir)
 				bResult = Chmod(szTarFileName, file_mode, szError);
 
 			if (!m_szUserName.empty())
+			{
+				if (!szPrefixDirName.empty())
+					Chown(szPrefixDirName, m_szUserName, szError);
+
 				Chown(szTarFileName, m_szUserName, szError);
+			}
 #endif
 		}
 	}

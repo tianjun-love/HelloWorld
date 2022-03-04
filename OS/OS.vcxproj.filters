@@ -27,6 +27,9 @@
     <ClInclude Include="include\SynQueue.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="include\OS.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Ping.cpp">
@@ -36,6 +39,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="src\SharedMemory.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OS.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

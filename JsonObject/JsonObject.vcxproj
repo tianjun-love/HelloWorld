@@ -135,18 +135,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\assertions.h" />
-    <ClInclude Include="include\autolink.h" />
-    <ClInclude Include="include\config.h" />
-    <ClInclude Include="include\features.h" />
-    <ClInclude Include="include\forwards.h" />
-    <ClInclude Include="include\json.h" />
-    <ClInclude Include="include\JsonObject.hpp" />
-    <ClInclude Include="include\reader.h" />
-    <ClInclude Include="include\value.h" />
-    <ClInclude Include="include\version.h" />
-    <ClInclude Include="include\writer.h" />
-    <ClInclude Include="src\json_tool.h" />
+    <Text Include="CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\JsonObject.cpp" />
@@ -158,7 +147,18 @@
     <None Include="src\json_valueiterator.inl" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="CMakeLists.txt" />
+    <ClInclude Include="include\jsoncpp\allocator.h" />
+    <ClInclude Include="include\jsoncpp\assertions.h" />
+    <ClInclude Include="include\jsoncpp\config.h" />
+    <ClInclude Include="include\jsoncpp\forwards.h" />
+    <ClInclude Include="include\jsoncpp\json.h" />
+    <ClInclude Include="include\jsoncpp\json_features.h" />
+    <ClInclude Include="include\jsoncpp\json_tool.h" />
+    <ClInclude Include="include\jsoncpp\reader.h" />
+    <ClInclude Include="include\jsoncpp\value.h" />
+    <ClInclude Include="include\jsoncpp\version.h" />
+    <ClInclude Include="include\jsoncpp\writer.h" />
+    <ClInclude Include="include\JsonObject.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -42,7 +42,7 @@ std::mutex* CSnmpxClient::m_msgIDLock = new std::mutex();
 *		szError 错误信息
 返回：	成功返回true
 *********************************************************************/
-static bool InitSocketFd(const std::string &ip, unsigned short port, long timeout, int& fd, sockaddr_in& client_addr, string& szError)
+static bool InitSocketFd(const std::string &ip, unsigned short port, int timeout, int& fd, sockaddr_in& client_addr, string& szError)
 {
 	//申请socket句柄，udp
 	fd = (int)socket(AF_INET, SOCK_DGRAM, 0);
@@ -180,8 +180,8 @@ bool CSnmpxClient::SUserUsmInfo::operator == (const userinfo_t& us) const
 	return true;
 }
 
-CSnmpxClient::CSnmpxClient(const std::string &ip, unsigned short port, long timeout, unsigned char retry_times, bool ping_on_timeout) : 
-	m_szIP(ip), m_nPort(port), m_lTimeout(timeout), m_cRetryTimes(retry_times), m_bPingOnTimeout(ping_on_timeout), m_pUserInfo(NULL)
+CSnmpxClient::CSnmpxClient(const std::string &ip, unsigned short port, int timeout, unsigned char retry_times, bool ping_on_timeout) : 
+	m_szIP(ip), m_nPort(port), m_iTimeout(timeout), m_cRetryTimes(retry_times), m_bPingOnTimeout(ping_on_timeout), m_pUserInfo(NULL)
 {
 	if (ip.empty()){
 		m_szIP = "0.0.0.0";
@@ -189,9 +189,9 @@ CSnmpxClient::CSnmpxClient(const std::string &ip, unsigned short port, long time
 
 	//超时最小500毫秒，不能是负值
 	if (timeout < 500)
-		m_lTimeout = 500;
+		m_iTimeout = 500;
 	else if (timeout > 30000)
-		m_lTimeout = 30000;
+		m_iTimeout = 30000;
 }
 
 CSnmpxClient::~CSnmpxClient()
@@ -1274,6 +1274,141 @@ int CSnmpxClient::Inform(const list<SSnmpxValue> &svb_list, list<SSnmpxValue> &r
 }
 
 /********************************************************************
+功能：	获取snmp value打印字符串
+参数：	vb snmpvalue
+返回：	字符串
+*********************************************************************/
+string CSnmpxClient::GetSnmpxValuePrintString(const SSnmpxValue &vb, size_t max_oid_len)
+{
+	string szRet;
+
+	if (!vb.szOid.empty())
+	{
+		if (0 == max_oid_len)
+			max_oid_len = vb.szOid.length();
+
+		//格式化
+		const std::string oid_format = "%-" + std::to_string(max_oid_len) + "s";
+		const int buff_len = 2048;
+		char buff[buff_len] = { '\0' };
+
+		switch (vb.cValType)
+		{
+		case SNMPX_ASN_INTEGER:
+			snprintf(buff, buff_len, (oid_format + " => %10s : %d\n").c_str(), vb.szOid.c_str(), "ingeter", vb.Val.num.i);
+			break;
+		case SNMPX_ASN_NULL:
+			snprintf(buff, buff_len, (oid_format + " => %10s : \n").c_str(), vb.szOid.c_str(), "null");
+			break;
+		case SNMPX_ASN_UNSIGNED:
+			snprintf(buff, buff_len, (oid_format + " => %10s : %u\n").c_str(), vb.szOid.c_str(), "unsigned", vb.Val.num.u);
+			break;
+		case SNMPX_ASN_INTEGER64:
+#ifdef _WIN32
+			snprintf(buff, buff_len, (oid_format + " => %10s : %lld\n").c_str(), vb.szOid.c_str(), "ingeter64", vb.Val.num.ll);
+#else
+			snprintf(buff, buff_len, (oid_format + " => %10s : %ld\n").c_str(), vb.szOid.c_str(), "ingeter64", vb.Val.num.ll);
+#endif
+			break;
+		case SNMPX_ASN_UNSIGNED64:
+#ifdef _WIN32
+			snprintf(buff, buff_len, (oid_format + " => %10s : %llu\n").c_str(), vb.szOid.c_str(), "unsigned64", vb.Val.num.ull);
+#else
+			snprintf(buff, buff_len, (oid_format + " => %10s : %lu\n").c_str(), vb.szOid.c_str(), "unsigned64", vb.Val.num.ull);
+#endif
+			break;
+		case SNMPX_ASN_FLOAT:
+			snprintf(buff, buff_len, (oid_format + " => %10s : %0.3f\n").c_str(), vb.szOid.c_str(), "float", vb.Val.num.f);
+			break;
+		case SNMPX_ASN_DOUBLE:
+			snprintf(buff, buff_len, (oid_format + " => %10s : %0.3lf\n").c_str(), vb.szOid.c_str(), "double", vb.Val.num.d);
+			break;
+		case SNMPX_ASN_OCTET_STR:
+			if (vb.Val.hex_str)
+				snprintf(buff, buff_len, (oid_format + " => %10s : %s\n").c_str(), vb.szOid.c_str(), "hex-string", vb.Val.str.c_str());
+			else
+				snprintf(buff, buff_len, (oid_format + " => %10s : %s\n").c_str(), vb.szOid.c_str(), "string", vb.Val.str.c_str());
+			break;
+		case SNMPX_ASN_IPADDRESS:
+			snprintf(buff, buff_len, (oid_format + " => %10s : %s\n").c_str(), vb.szOid.c_str(), "ipaddress", 
+				get_ipaddress_string(vb.Val.num.i).c_str());
+			break;
+		case SNMPX_ASN_UNSUPPORT:
+			snprintf(buff, buff_len, (oid_format + " => %10s : %s\n").c_str(), vb.szOid.c_str(), "unsupport", vb.Val.str.c_str());
+			break;
+		case SNMPX_ASN_NO_SUCHOBJECT:
+			snprintf(buff, buff_len, (oid_format + " => %10s : no such object.\n").c_str(), vb.szOid.c_str(), "invalid");
+			break;
+		default:
+			snprintf(buff, buff_len, (oid_format + " => %10s : val tag: 0x%02X.\n").c_str(), vb.szOid.c_str(), "unknow", vb.cValType);
+			break;
+		}
+
+		szRet = buff;
+	}
+
+	return std::move(szRet);
+}
+
+/********************************************************************
+功能：	获取snmp values打印字符串
+参数：	svb_list snmpvalues
+返回：	字符串
+*********************************************************************/
+string CSnmpxClient::GetSnmpxValuesPrintString(const list<SSnmpxValue> &svb_list)
+{
+	string szRet;
+
+	if (!svb_list.empty())
+	{
+		size_t maxOidStringLength = 1;
+
+		//获取oid最大长度
+		for (const auto &vb : svb_list)
+		{
+			if (vb.szOid.length() > maxOidStringLength)
+				maxOidStringLength = vb.szOid.length();
+		}
+
+		for (const auto &vb : svb_list)
+		{
+			szRet += GetSnmpxValuePrintString(vb, maxOidStringLength);
+		}
+	}
+
+	return std::move(szRet);
+}
+
+/********************************************************************
+功能：	获取snmp values打印字符串
+参数：	svb_vec snmpvalues
+返回：	字符串
+*********************************************************************/
+string CSnmpxClient::GetSnmpxValuesPrintString(const std::vector<SSnmpxValue> &svb_vec)
+{
+	string szRet;
+
+	if (!svb_vec.empty())
+	{
+		size_t maxOidStringLength = 1;
+
+		//获取oid最大长度
+		for (const auto &vb : svb_vec)
+		{
+			if (vb.szOid.length() > maxOidStringLength)
+				maxOidStringLength = vb.szOid.length();
+		}
+
+		for (const auto &vb : svb_vec)
+		{
+			szRet += GetSnmpxValuePrintString(vb, maxOidStringLength);
+		}
+	}
+
+	return std::move(szRet);
+}
+
+/********************************************************************
 功能：	清除指定usm用户信息
 参数：	szAgentIP IP
 返回：	无
@@ -1993,7 +2128,7 @@ int CSnmpxClient::RequestSnmpx(snmpx_t& snmpx_sd, snmpx_t& snmpx_rc, bool bIsGet
 			socklen_t cli_len = sizeof(client_addr);
 
 			//初始化socket，每次都是新的，保证成功率
-			if (!InitSocketFd(m_szIP, m_nPort, m_lTimeout, fd, client_addr, szError))
+			if (!InitSocketFd(m_szIP, m_nPort, m_iTimeout, fd, client_addr, szError))
 			{
 				szError = "初始化socket句柄失败：" + szError;
 				return SNMPX_failure;

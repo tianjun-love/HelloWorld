@@ -247,9 +247,9 @@ union u_digital_32
 
 union u_digital_64
 {
-	long long          ll;
-	unsigned long long ull;
-	double             d;
+	int64_t       ll;
+	uint64_t      ull;
+	double        d;
 	unsigned char buff[8];
 };
 
@@ -271,12 +271,12 @@ struct SOidVal
 {
 	union
 	{
-		int                i;
-		unsigned int       u;
-		float              f;
-		double             d;
-		long long          ll;
-		unsigned long long ull;
+		int          i;
+		unsigned int u;
+		float        f;
+		double       d;
+		int64_t      ll;
+		uint64_t     ull;
 	} num; //数字值
 
 	bool hex_str; //不可打印字符串转HEX串
@@ -352,7 +352,7 @@ std::string get_vb_items_print_string(const std::list<SSnmpxValue> &vb_list, siz
 
 unsigned short convert_to_ns(unsigned short s);
 unsigned int convert_to_nl(unsigned int l);
-unsigned long long convert_to_nll(unsigned long long ll);
+uint64_t convert_to_nll(uint64_t ll);
 
 bool init_snmpx_global_env(std::string &szError);
 void free_snmpx_global_env();
