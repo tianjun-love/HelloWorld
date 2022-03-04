@@ -27,21 +27,21 @@ int CUserProccess::snmpx_user_init(struct userinfo_t *user_info)
 		return SNMPX_failure;
 	}
 
-	if (user_info->version <= 2) {
+	if (user_info->version <= SNMPX_VERSION_v2c) {
 		//v1,v2c只需要团体名
 	}
-	else if (user_info->version == 3) 
+	else if (user_info->version == SNMPX_VERSION_v3) 
 	{
-		if (user_info->safeMode == 0) {
+		if (user_info->safeMode == SNMPX_SEC_LEVEL_noAuth) {
 			//不认证，不加密
 		}
-		else if (user_info->safeMode == 1) {
+		else if (user_info->safeMode == SNMPX_SEC_LEVEL_authNoPriv) {
 			if (calc_hash_user_auth(user_info) < 0) {
 				m_szErrorMsg = "snmpx_user_init failed: " + m_szErrorMsg;
 				return SNMPX_failure;
 			}
 		}
-		else if (user_info->safeMode == 2) {
+		else if (user_info->safeMode == SNMPX_SEC_LEVEL_authPriv) {
 			if (calc_hash_user_auth(user_info) < 0) {
 				m_szErrorMsg = "snmpx_user_init failed: " + m_szErrorMsg;
 				return SNMPX_failure;
@@ -82,7 +82,7 @@ int CUserProccess::calc_hash_user_auth(struct userinfo_t *user_info)
 	unsigned int privKeyLen = 64;
 	CCryptographyProccess crypto;
 
-	if (user_info->AuthMode <= 5)
+	if (user_info->AuthMode <= SNMPX_AUTH_SHA512)
 	{
 		if (strlen(user_info->AuthPassword) == 0) {
 			m_szErrorMsg = "calc_hash_user_auth failed: user_info->AuthPassword is NULL.";
@@ -142,7 +142,7 @@ int CUserProccess::calc_hash_user_auth_priv(struct userinfo_t *user_info)
 	unsigned int privKeyLen = 64;
 	CCryptographyProccess crypto;
 
-	if (user_info->AuthMode <= 5)
+	if (user_info->AuthMode <= SNMPX_AUTH_SHA512)
 	{
 		if (strlen(user_info->AuthPassword) == 0 || strlen(user_info->PrivPassword) == 0) {
 			m_szErrorMsg = "calc_hash_user_auth_priv failed: user_info->AuthPassword or user_info->PrivPassword is NULL.";
@@ -184,6 +184,8 @@ int CUserProccess::calc_hash_user_auth_priv(struct userinfo_t *user_info)
 			unsigned int hash_len = 64;
 
 			//计算
+			//注意：如果要支持5.9里面Cisio的AES192C和AES256C,则此处要对privKey调用ku和kul方法
+			//源码在：net-snmp-5.9/snmplib/keytools.c中的_kul_extend_reeder方法，常规是调用_kul_extend_blumenthal方法
 			if (crypto.gen_data_HASH(privKey, privKeyLen, user_info->AuthMode, hash, &hash_len) != 0) {
 				m_szErrorMsg = "calc_hash_user_auth_priv failed: " + crypto.GetErrorMsg();
 				return SNMPX_failure;

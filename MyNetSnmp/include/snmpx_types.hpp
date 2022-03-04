@@ -7,6 +7,9 @@
 #include <map>
 #include <vector>
 
+//重写依赖：net-snmp-5.9.tar.gz
+//5.8版本及以后才支持SHA224/SHA256/SHA384/SHA512,AES192/AES256
+
 //TLV编码说明：
 /*
 TLV(Type,Length,Value)三元组。编码可以是基本型或结构型，如果它表示一个简单类型的、完整的显式值，那么编码就是基本型 (primitive)；
@@ -86,6 +89,37 @@ V3报文：
  *4-0位：标签码比特位，表示不同的数据类型，取值0-30
  */
 
+//版本、算法及类型定义
+#define SNMPX_VERSION_v1           ((unsigned char)0)
+#define SNMPX_VERSION_v2c          ((unsigned char)1)
+#define SNMPX_VERSION_v3           ((unsigned char)3)
+
+#define SNMPX_SEC_MODEL_ANY        ((unsigned char)0)
+#define SNMPX_SEC_MODEL_SNMPv1     ((unsigned char)1)
+#define SNMPX_SEC_MODEL_SNMPv2c    ((unsigned char)2)
+#define SNMPX_SEC_MODEL_USM        ((unsigned char)3)
+#define SNMPX_SEC_MODEL_TSM        ((unsigned char)4)
+
+#define SNMPX_SEC_LEVEL_noAuth     ((unsigned char)1)
+#define SNMPX_SEC_LEVEL_authNoPriv ((unsigned char)2)
+#define SNMPX_SEC_LEVEL_authPriv   ((unsigned char)3)
+
+#define SNMPX_MSG_FLAG_AUTH_BIT    ((unsigned char)0x01) //认证标识
+#define SNMPX_MSG_FLAG_PRIV_BIT    ((unsigned char)0x02) //加密标识
+#define SNMPX_MSG_FLAG_RPRT_BIT    ((unsigned char)0x04) //report标识
+
+#define SNMPX_AUTH_MD5      ((unsigned char)0)
+#define SNMPX_AUTH_SHA      ((unsigned char)1)
+#define SNMPX_AUTH_SHA224   ((unsigned char)2)
+#define SNMPX_AUTH_SHA256   ((unsigned char)3)
+#define SNMPX_AUTH_SHA384   ((unsigned char)4)
+#define SNMPX_AUTH_SHA512   ((unsigned char)5)
+						    
+#define SNMPX_PRIV_DES      ((unsigned char)0)
+#define SNMPX_PRIV_AES      ((unsigned char)1)
+#define SNMPX_PRIV_AES192   ((unsigned char)2)
+#define SNMPX_PRIV_AES256   ((unsigned char)3)
+
 #define ASN_BOOLEAN	        ((unsigned char)0x01)
 #define	ASN_INTEGER	        ((unsigned char)0x02)
 #define	ASN_BIT_STR	        ((unsigned char)0x03)
@@ -98,17 +132,17 @@ V3报文：
 #define	ASN_SEQ		        ((unsigned char)0x30) //用于列表，SEQ可以包含子SEQ，与C中的structure类似
 #define	ASN_SETOF		    ((unsigned char)0x31) //用于表格，元素具有相同类型，与C中的array类似
 
-#define ASN_IPADDRESS       ((unsigned char)0x40) //0或4字节        
-#define ASN_COUNTER         ((unsigned char)0x41)	        
-#define ASN_GAUGE           ((unsigned char)0x42)         
-#define ASN_TIMETICKS       ((unsigned char)0x43) //以0.01秒为单位	        
-#define ASN_OPAQUE          ((unsigned char)0x44)	        
-#define ASN_NSAP            ((unsigned char)0x45) /* historic - don't use */     
-#define ASN_COUNTER64       ((unsigned char)0x46)     
-#define ASN_UINTEGER        ((unsigned char)0x47) /* historic - don't use */	        
-#define ASN_FLOAT           ((unsigned char)0x48) 	        
-#define ASN_DOUBLE          ((unsigned char)0x49)     
-#define ASN_INTEGER64       ((unsigned char)0x4a)    
+#define ASN_IPADDRESS       ((unsigned char)0x40) //0或4字节
+#define ASN_COUNTER         ((unsigned char)0x41)
+#define ASN_GAUGE           ((unsigned char)0x42)
+#define ASN_TIMETICKS       ((unsigned char)0x43) //以0.01秒(10毫秒)为单位
+#define ASN_OPAQUE          ((unsigned char)0x44)
+#define ASN_NSAP            ((unsigned char)0x45) /* historic - don't use */
+#define ASN_COUNTER64       ((unsigned char)0x46) 
+#define ASN_UINTEGER        ((unsigned char)0x47) /* historic - don't use */
+#define ASN_FLOAT           ((unsigned char)0x48) 
+#define ASN_DOUBLE          ((unsigned char)0x49) 
+#define ASN_INTEGER64       ((unsigned char)0x4a) 
 #define ASN_UNSIGNED64      ((unsigned char)0x4b)
 
 #define ASN_NO_SUCHOBJECT   ((unsigned char)0x80) //oid不存在，抓包发现
@@ -125,16 +159,31 @@ V3报文：
 #define	SNMPX_MSG_TRAP2           ((unsigned char)0xA7) /* a7=167 v2,v3*/
 #define SNMPX_MSG_REPORT          ((unsigned char)0xA8) /* a8=168 v3增加，获取agent引擎ID或消息的PDU部分不能解密时，发起报告*/
 
+//长度定义
 #define SNMPX_MIN_OID_LEN	       (3)
 #define SNMPX_MAX_OID_LEN	       (128)
+#define SNMPX_PRIVACY_PARAM_LEN    (8)     /*加解密的随机数参数，固定8字节*/
 #define SNMPX_MAX_MSG_LEN	       (65507) /* snmp抓包数据最大长度*/
 #define SNMPX_MAX_USER_NAME_LEN    (64)    /* 团体名称或用户名称最大长度*/
 #define SNMPX_MAX_USM_AUTH_KU_LEN  (64)    /* 认证信息最大长度*/
 #define SNMPX_MAX_USM_PRIV_KU_LEN  (64)    /* 加密信息最大长度*/
 #define SNMPX_MAX_BULK_REPETITIONS (50)    /* table时最大回复行数，注意：ITEMS条数为该行数乘以实际列数*/
 
+//用户使用数据类型定义，因为有多个ASN类型对应一个C的数据类型，所以在这里简化
+#define SNMPX_ASN_UNSUPPORT		     ((unsigned char)0x00) //还未支持的类型
+#define	SNMPX_ASN_INTEGER		     ASN_INTEGER
+#define	SNMPX_ASN_UNSIGNED		     ASN_GAUGE
+#define SNMPX_ASN_NULL               ASN_NULL
+#define	SNMPX_ASN_OCTET_STR		     ASN_OCTET_STR
+#define SNMPX_ASN_IPADDRESS          ASN_IPADDRESS //注意，转换
+#define	SNMPX_ASN_INTEGER64		     ASN_INTEGER64
+#define SNMPX_ASN_UNSIGNED64         ASN_COUNTER64
+#define SNMPX_ASN_FLOAT              ASN_FLOAT
+#define SNMPX_ASN_DOUBLE             ASN_DOUBLE
+#define SNMPX_ASN_NO_SUCHOBJECT      ASN_NO_SUCHOBJECT //该OID项不存在
+
 //限定使用4个字节
-typedef int32_t oid;
+typedef uint32_t oid;
 
 struct tlv_data
 {
@@ -148,10 +197,10 @@ struct userinfo_t
 	int msgID;                                        //消息ID
 	unsigned char version;                            //版本号 //0:v1，1:v2c，2:v2u/v2，3:v3
 	char userName[SNMPX_MAX_USER_NAME_LEN + 1];       //用户名，在v1和v2c时表示团体名
-	unsigned char safeMode;                           //认证级别 0:noAuthNoPriv|1:authNoPriv|2:authPriv
+	unsigned char safeMode;                           //认证级别 1:noAuthNoPriv|2:authNoPriv|3:authPriv
 	unsigned char AuthMode;                           //认证方式 0:MD5|1:SHA|2:SHA224|3:SHA256|4:SHA384|5:SHA512
 	char AuthPassword[SNMPX_MAX_USM_AUTH_KU_LEN + 1]; //认证密码
-	unsigned char PrivMode;                           //加密方式 0:AES|1:DES|2:AES192|3:AES256
+	unsigned char PrivMode;                           //加密方式 0:DES|1:AES|2:AES192|3:AES256
 	char PrivPassword[SNMPX_MAX_USM_PRIV_KU_LEN + 1]; //加密密码
 
 	int agentMaxMsg_len; //agent支持的最大消息长度
@@ -202,7 +251,7 @@ struct snmpx_t
 	unsigned char* msgAuthenticationParameters; //鉴别码(HMAC)
 	unsigned int   msgAuthenticationParameters_len; //MD5|SHA:12字节,SHA224:16字节,SHA256:24字节,SHA384:32字节,SHA512:48字节
 	unsigned char* msgPrivacyParameters; //加/解密参数，随机数，用于生成初始向量IV
-	unsigned int   msgPrivacyParameters_len; //固定8字节
+	unsigned int   msgPrivacyParameters_len; //见SNMPX_PRIVACY_PARAM_LEN
 
 	//msgData->plaintext v3
 	unsigned char* contextEngineID;
@@ -252,19 +301,6 @@ union u_digital_64
 	double        d;
 	unsigned char buff[8];
 };
-
-//用户使用数据类型定义，因为有多个ASN类型对应一个C的数据类型，所以在这里简化
-#define SNMPX_ASN_UNSUPPORT		     ((unsigned char)0x00) //还未支持的类型
-#define	SNMPX_ASN_INTEGER		     ASN_INTEGER
-#define	SNMPX_ASN_UNSIGNED		     ASN_GAUGE
-#define SNMPX_ASN_NULL               ASN_NULL
-#define	SNMPX_ASN_OCTET_STR		     ASN_OCTET_STR
-#define SNMPX_ASN_IPADDRESS          ASN_IPADDRESS //注意，转换
-#define	SNMPX_ASN_INTEGER64		     ASN_INTEGER64
-#define SNMPX_ASN_UNSIGNED64         ASN_COUNTER64
-#define SNMPX_ASN_FLOAT              ASN_FLOAT
-#define SNMPX_ASN_DOUBLE             ASN_DOUBLE
-#define SNMPX_ASN_NO_SUCHOBJECT      ASN_NO_SUCHOBJECT //该OID项不存在
 
 //用户使用oid值信息，只能使用其中一个
 struct SOidVal
@@ -340,7 +376,7 @@ int parse_ipaddress_string(const std::string &IP); //注意检测IP格式，里�
 std::string get_ipaddress_string(int ipaddress);
 bool parse_oid_string(const std::string &oidStr, oid *oid_buf, std::string &error);
 bool get_byteorder_is_LE(); //获取本机CPU字节序是否是小端
-unsigned int get_auth_para_length(unsigned char authMode); //获取认证hash串长度
+unsigned int get_auth_hmac_length(unsigned char authMode); //获取认证hash串长度
 unsigned int get_priv_key_length(unsigned char privMode); //获取加密key长度
 std::string get_oid_string(oid* buf, int len);
 std::string get_timeticks_string(unsigned int ticks);

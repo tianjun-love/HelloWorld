@@ -23,8 +23,9 @@ public:
 	virtual ~CSnmpxClient();
 
 	//设置认证信息，创建对象后必须先调用
-	bool SetAuthorizationInfo(unsigned char version, const std::string &szUserName, std::string &szError, unsigned char safeMode = 2,
-		unsigned char authMode = 0, const std::string &szAuthPasswd = "", unsigned char privMode = 0,
+	bool SetAuthorizationInfo(unsigned char version, const std::string &szUserName, std::string &szError, 
+		unsigned char safeMode = SNMPX_SEC_LEVEL_authPriv, unsigned char authMode = SNMPX_AUTH_MD5, 
+		const std::string &szAuthPasswd = "", unsigned char privMode = SNMPX_PRIV_AES,
 		const std::string &szPrivPasswd = "");
 
 	//具体方法

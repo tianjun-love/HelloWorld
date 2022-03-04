@@ -377,26 +377,26 @@ bool get_byteorder_is_LE()
 	return g_bByteOrder_LE;
 }
 
-unsigned int get_auth_para_length(unsigned char authMode)
+unsigned int get_auth_hmac_length(unsigned char authMode)
 {
 	unsigned int ret = 0;
 
 	switch (authMode)
 	{
-	case 0: //MD5
-	case 1: //SHA
+	case SNMPX_AUTH_MD5: //MD5
+	case SNMPX_AUTH_SHA: //SHA
 		ret = 12;
 		break;
-	case 2: //SHA224
+	case SNMPX_AUTH_SHA224: //SHA224
 		ret = 16;
 		break;
-	case 3: //SHA256
+	case SNMPX_AUTH_SHA256: //SHA256
 		ret = 24;
 		break;
-	case 4: //SHA384
+	case SNMPX_AUTH_SHA384: //SHA384
 		ret = 32;
 		break;
-	case 5: //SHA512
+	case SNMPX_AUTH_SHA512: //SHA512
 		ret = 48;
 		break;
 	default:
@@ -413,14 +413,14 @@ unsigned int get_priv_key_length(unsigned char privMode)
 
 	switch (privMode)
 	{
-	case 0: //AES
-	case 1: //DES 密钥长度是8，但IV值要使用8-15字节
+	case SNMPX_PRIV_DES: //DES密钥长度是8，但IV值要使用8-15字节
+	case SNMPX_PRIV_AES: //AES
 		ret = 16;
 		break;
-	case 2: //AES192
+	case SNMPX_PRIV_AES192: //AES192
 		ret = 24;
 		break;
-	case 3: //AES256
+	case SNMPX_PRIV_AES256: //AES256
 		ret = 32;
 		break;
 	default:
@@ -459,7 +459,7 @@ std::string get_timeticks_string(unsigned int ticks)
 	{
 		char buf[128] = { '\0' };
 
-		//timeticks，单位百分之一秒
+		//timeticks，单位0.01秒
 		const unsigned int uiDays = ticks / 8640000,
 			uiHours = (ticks % 8640000) / 360000,
 			uiMinutes = (ticks % 360000) / 6000,

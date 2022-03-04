@@ -220,7 +220,7 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 {
 	bool bResult = true;
 
-	if (0 == version || 1 == version) //v1，v2c
+	if (SNMPX_VERSION_v1 == version || SNMPX_VERSION_v2c == version) //v1，v2c
 	{
 		if (szUserName.empty())
 		{
@@ -259,7 +259,7 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 			}
 		}
 	}
-	else if (3 == version) //v3
+	else if (SNMPX_VERSION_v3 == version) //v3
 	{
 		if (szUserName.empty())
 		{
@@ -300,14 +300,14 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 
 		if (bResult)
 		{
-			if (0 == safeMode)
+			if (SNMPX_SEC_LEVEL_noAuth == safeMode)
 				m_pUserInfo->safeMode = safeMode;
-			else if (1 == safeMode || 2 == safeMode)
+			else if (SNMPX_SEC_LEVEL_authNoPriv == safeMode || SNMPX_SEC_LEVEL_authPriv == safeMode)
 			{
 				m_pUserInfo->safeMode = safeMode;
 
 				//认证信息
-				if (authMode > 5)
+				if (authMode > SNMPX_AUTH_SHA512)
 				{
 					bResult = false;
 					szError = "不支持的认证hash算法：" + std::to_string(authMode) + ".";
@@ -335,9 +335,9 @@ bool CSnmpxClient::SetAuthorizationInfo(unsigned char version, const std::string
 				}
 
 				//加密信息
-				if (bResult && 2 == safeMode)
+				if (bResult && SNMPX_SEC_LEVEL_authPriv == safeMode)
 				{
-					if (privMode > 3)
+					if (privMode > SNMPX_PRIV_AES256)
 					{
 						bResult = false;
 						szError = "不支持的加密算法：" + std::to_string(privMode) + ".";
@@ -499,7 +499,7 @@ int CSnmpxClient::SnmpxGetHandle(EOidType oidType, const void* pOid, std::vector
 	InitPublicAttr(snmpx_sd1);
 	snmpx_sd1.tag = SNMPX_MSG_GET;
 
-	if (3 != m_pUserInfo->version) //V2版本
+	if (SNMPX_VERSION_v3 != m_pUserInfo->version) //V2版本
 	{
 		//请求
 		irval = RequestSnmpx(snmpx_sd1, snmpx_rc1, true, oidType, pOid, &valueVec, szError);
@@ -640,7 +640,7 @@ int CSnmpxClient::SnmpxGetnextHandle(EOidType oidType, const void* pOid, std::ve
 
 	InitPublicAttr(snmpx_sd1);
 
-	if (3 != m_pUserInfo->version) //V2版本
+	if (SNMPX_VERSION_v3 != m_pUserInfo->version) //V2版本
 	{
 		snmpx_sd1.tag = SNMPX_MSG_GETNEXT;
 
@@ -772,7 +772,7 @@ int CSnmpxClient::SnmpxSetHandle(EOidType oidType, const void* pValue, string& s
 	InitPublicAttr(snmpx_sd1);
 	snmpx_sd1.tag = SNMPX_MSG_SET;
 
-	if (3 != m_pUserInfo->version) //V2版本
+	if (SNMPX_VERSION_v3 != m_pUserInfo->version) //V2版本
 	{
 		//请求
 		irval = RequestSnmpx(snmpx_sd1, snmpx_rc1, false, oidType, pValue, NULL, szError);
@@ -872,7 +872,7 @@ int CSnmpxClient::SnmpxTableHandle(EOidType oidType, const void* pTableOid, TTab
 		return SNMPX_failure;
 	}
 
-	if (0 == m_pUserInfo->version)
+	if (SNMPX_VERSION_v1 == m_pUserInfo->version)
 	{
 		szError = "snmp V1版本不支持get-bulk操作！";
 		return SNMPX_failure;
@@ -930,7 +930,7 @@ int CSnmpxClient::SnmpxTableHandle(EOidType oidType, const void* pTableOid, TTab
 	//初始化公用属性
 	InitPublicAttr(snmpx_sd1);
 
-	if (3 != m_pUserInfo->version) //V2版本
+	if (SNMPX_VERSION_v3 != m_pUserInfo->version) //V2版本
 	{
 		snmpx_sd1.tag = SNMPX_MSG_GETBULK;
 		snmpx_sd1.error_index = iReplications; //赋值请求返回最大的行数，复用
@@ -1108,7 +1108,7 @@ int CSnmpxClient::SnmpxWalkHandle(EOidType oidType, const void* pWalkOid, list<S
 	//初始化公用属性
 	InitPublicAttr(snmpx_sd1);
 
-	if (3 != m_pUserInfo->version) //V2版本
+	if (SNMPX_VERSION_v3 != m_pUserInfo->version) //V2版本
 	{
 		//walk处理
 		do
@@ -1463,10 +1463,10 @@ void CSnmpxClient::InitPublicAttr(snmpx_t& snmpx, bool is_second_frame)
 	snmpx.msgMaxSize = SNMPX_MAX_MSG_LEN; //固定值便可
 
 	/*版本号  0x00:v1 , 0x01:v2c , 0x03:v3 */
-	if (3 == snmpx.msgVersion)
+	if (SNMPX_VERSION_v3 == snmpx.msgVersion)
 	{
 		snmpx.msgID = m_pUserInfo->msgID;
-		snmpx.msgSecurityModel = 0x03; /* 固定 usm模式 */
+		snmpx.msgSecurityModel = SNMPX_SEC_MODEL_USM; /* 固定 usm模式 */
 		snmpx.msgUserName_len = (unsigned int)strlen(m_pUserInfo->userName);
 		snmpx.msgUserName = (unsigned char*)malloc(snmpx.msgUserName_len + 1); //需要多加一个字节'\0'
 		memset(snmpx.msgUserName, 0x00, snmpx.msgUserName_len + 1); //一定要初始化
@@ -1478,19 +1478,19 @@ void CSnmpxClient::InitPublicAttr(snmpx_t& snmpx, bool is_second_frame)
 			snmpx.msgID = m_pUserInfo->msgID;
 			snmpx.request_id = 2;
 
-			if (0 == m_pUserInfo->safeMode)
-				snmpx.msgFlags = 0x04;
-			else if (1 == m_pUserInfo->safeMode)
-				snmpx.msgFlags = 0x05;
+			if (SNMPX_SEC_LEVEL_noAuth == m_pUserInfo->safeMode)
+				snmpx.msgFlags = SNMPX_MSG_FLAG_RPRT_BIT;
+			else if (SNMPX_SEC_LEVEL_authNoPriv == m_pUserInfo->safeMode)
+				snmpx.msgFlags = SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_RPRT_BIT;
 			else
-				snmpx.msgFlags = 0x07;
+				snmpx.msgFlags = SNMPX_MSG_FLAG_AUTH_BIT | SNMPX_MSG_FLAG_PRIV_BIT | SNMPX_MSG_FLAG_RPRT_BIT;
 		}
 		else
 		{
 			m_pUserInfo->msgID = GetSnmpxMsgID();
 			snmpx.msgID = m_pUserInfo->msgID;
 			snmpx.request_id = 1;
-			snmpx.msgFlags = 0x04;
+			snmpx.msgFlags = SNMPX_MSG_FLAG_RPRT_BIT;
 		}
 	}
 	else
@@ -1511,13 +1511,8 @@ void CSnmpxClient::InitPublicAttr(snmpx_t& snmpx, bool is_second_frame)
 void CSnmpxClient::InitUserPriv(const snmpx_t& snmpx)
 {
 	//V3才处理，snmpx内部也是这么处理的
-	if (3 != m_pUserInfo->version)
+	if (SNMPX_VERSION_v3 != m_pUserInfo->version || SNMPX_SEC_LEVEL_noAuth == m_pUserInfo->safeMode)
 		return;
-
-	if (0 == m_pUserInfo->safeMode)
-	{
-		return;
-	}
 
 	//agent能支持的最大消息长度
 	m_pUserInfo->agentMaxMsg_len = snmpx.msgMaxSize;
@@ -1557,7 +1552,7 @@ void CSnmpxClient::InitUserPriv(const snmpx_t& snmpx)
 			}
 
 			//加密密码
-			if (2 == m_pUserInfo->safeMode)
+			if (SNMPX_SEC_LEVEL_authPriv == m_pUserInfo->safeMode)
 			{
 				if (NULL == m_pUserInfo->privPasswdPrivKey)
 				{
@@ -1629,11 +1624,11 @@ bool CSnmpxClient::FillSnmpxEngineAndPrivacy(const snmpx_t& snmpxSrc, snmpx_t& s
 		snmpxDst.msgPrivacyParameters_len = 0;
 	}
 
-	if ((snmpxDst.msgFlags & 0x02) == 0x02)
+	if ((snmpxDst.msgFlags & SNMPX_MSG_FLAG_PRIV_BIT) == SNMPX_MSG_FLAG_PRIV_BIT)
 	{
 		CCryptographyProccess crypto;
 
-		snmpxDst.msgPrivacyParameters_len = 8; //固定值
+		snmpxDst.msgPrivacyParameters_len = SNMPX_PRIVACY_PARAM_LEN; //固定值
 		snmpxDst.msgPrivacyParameters = (unsigned char*)malloc(snmpxDst.msgPrivacyParameters_len);
 		if (crypto.gen_msgPrivacyParameters(snmpxDst.msgPrivacyParameters, snmpxDst.msgPrivacyParameters_len) < 0)
 		{
@@ -1743,7 +1738,7 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 				else
 				{
 					bResult = false;
-					szError = "获取下发的oid绑定数据字节失败：" + szError;
+					szError = "获取下发的OID绑定数据字节失败：" + szError;
 				}
 
 				if (data != NULL)
@@ -1761,53 +1756,14 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 		{
 			const list<string>* pOid = (const list<string>*)pOidList;
 
-			for (const auto& szOid : *pOid)
+			if (!pOid->empty())
 			{
-				//防止OID格式错误
-				if (parse_oid_string(szOid, oidTemp, szError))
-				{
-					if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, oidTemp + 1, sizeof(oid) * oidTemp[0], ASN_NULL, NULL, 0) < 0)
-					{
-						bResult = false;
-						szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
-					}
-				}
-				else
-				{
-					bResult = false;
-					szError = "解析OID失败：" + szError;
-				}
-
-				if (!bResult)
-					break;
-			}
-		}
-		else
-		{
-			const list<SSnmpxValue>* valueSet = (const list<SSnmpxValue>*)pOidList;
-
-			for (const auto& value : *valueSet)
-			{
-				if (0 == value.OidBuf[0]) //第一个位置存放OID长度
+				for (const auto& szOid : *pOid)
 				{
 					//防止OID格式错误
-					if (!parse_oid_string(value.szOid, oidTemp, szError))
+					if (parse_oid_string(szOid, oidTemp, szError))
 					{
-						bResult = false;
-						szError = "解析OID失败：" + szError;
-						break;
-					}
-				}
-				else
-					memcpy(oidTemp, value.OidBuf, (value.OidBuf[0] + 1) * sizeof(oid));
-
-				if (bResult)
-				{
-					rval = GetSetOidValueBytes(value, &tag, &data, szError);
-
-					if (rval >= 0)
-					{
-						if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, oidTemp + 1, sizeof(oid) * oidTemp[0], tag, data, rval) < 0)
+						if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, oidTemp + 1, sizeof(oid) * oidTemp[0], ASN_NULL, NULL, 0) < 0)
 						{
 							bResult = false;
 							szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
@@ -1816,18 +1772,73 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 					else
 					{
 						bResult = false;
-						szError = "获取下发的oid绑定数据字节失败：" + szError;
-					}
-
-					if (data != NULL)
-					{
-						free(data);
-						data = NULL;
+						szError = "解析OID失败：" + szError;
 					}
 
 					if (!bResult)
 						break;
 				}
+			}
+			else
+			{
+				bResult = false;
+				szError = "绑定的OID列表不能为空！";
+			}
+		}
+		else
+		{
+			const list<SSnmpxValue>* valueSet = (const list<SSnmpxValue>*)pOidList;
+
+			if (!valueSet->empty())
+			{
+				for (const auto& value : *valueSet)
+				{
+					if (0 == value.OidBuf[0]) //第一个位置存放OID长度
+					{
+						//防止OID格式错误
+						if (!parse_oid_string(value.szOid, oidTemp, szError))
+						{
+							bResult = false;
+							szError = "解析OID失败：" + szError;
+							break;
+						}
+					}
+					else
+						memcpy(oidTemp, value.OidBuf, (value.OidBuf[0] + 1) * sizeof(oid));
+
+					if (bResult)
+					{
+						rval = GetSetOidValueBytes(value, &tag, &data, szError);
+
+						if (rval >= 0)
+						{
+							if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, oidTemp + 1, sizeof(oid) * oidTemp[0], tag, data, rval) < 0)
+							{
+								bResult = false;
+								szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
+							}
+						}
+						else
+						{
+							bResult = false;
+							szError = "获取下发的OID绑定数据字节失败：" + szError;
+						}
+
+						if (data != NULL)
+						{
+							free(data);
+							data = NULL;
+						}
+
+						if (!bResult)
+							break;
+					}
+				}
+			}
+			else
+			{
+				bResult = false;
+				szError = "绑定的OID及值列表不能为空！";
 			}
 		}
 	}
@@ -1838,21 +1849,9 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 		{
 			const oid* pOid = (const oid*)pOidList;
 
-			if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, pOid + 1, sizeof(oid) * pOid[0], ASN_NULL, NULL, 0) < 0)
+			if (pOid != NULL)
 			{
-				bResult = false;
-				szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
-			}
-		}
-		else
-		{
-			const std::pair<const oid*, SSnmpxValue>* value = (const std::pair<const oid*, SSnmpxValue>*)pOidList;
-
-			rval = GetSetOidValueBytes(value->second, &tag, &data, szError);
-
-			if (rval >= 0)
-			{
-				if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, value->first + 1, sizeof(oid) * value->first[0], tag, data, rval) < 0)
+				if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, pOid + 1, sizeof(oid) * pOid[0], ASN_NULL, NULL, 0) < 0)
 				{
 					bResult = false;
 					szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
@@ -1861,13 +1860,41 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 			else
 			{
 				bResult = false;
-				szError = "获取下发的oid绑定数据字节失败：" + szError;
+				szError = "绑定的OID不能为NULL！";
 			}
+		}
+		else
+		{
+			const std::pair<const oid*, SSnmpxValue>* value = (const std::pair<const oid*, SSnmpxValue>*)pOidList;
 
-			if (data != NULL)
+			if (value->first != NULL)
 			{
-				free(data);
-				data = NULL;
+				rval = GetSetOidValueBytes(value->second, &tag, &data, szError);
+
+				if (rval >= 0)
+				{
+					if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, value->first + 1, sizeof(oid) * value->first[0], tag, data, rval) < 0)
+					{
+						bResult = false;
+						szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
+					}
+				}
+				else
+				{
+					bResult = false;
+					szError = "获取下发的OID绑定数据字节失败：" + szError;
+				}
+
+				if (data != NULL)
+				{
+					free(data);
+					data = NULL;
+				}
+			}
+			else
+			{
+				bResult = false;
+				szError = "绑定的OID及值不能为NULL！";
 			}
 		}
 	}
@@ -1878,46 +1905,80 @@ bool CSnmpxClient::FillSnmpxOidInfo(bool bIsGet, EOidType oidType, const void* p
 		{
 			const list<const oid*>* pOidSet = (const list<const oid*>*)pOidList;
 
-			for (const auto& pOid : *pOidSet)
+			if (!pOidSet->empty())
 			{
-				if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, pOid + 1, sizeof(oid) * pOid[0], ASN_NULL, NULL, 0) < 0)
+				for (const auto& pOid : *pOidSet)
 				{
-					bResult = false;
-					szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
-					break;
+					if (pOid != NULL)
+					{
+						if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, pOid + 1, sizeof(oid) * pOid[0], ASN_NULL, NULL, 0) < 0)
+						{
+							bResult = false;
+							szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
+							break;
+						}
+					}
+					else
+					{
+						bResult = false;
+						szError = "绑定的OID不能为NULL！";
+						break;
+					}
 				}
+			}
+			else
+			{
+				bResult = false;
+				szError = "绑定的OID列表不能为空！";
 			}
 		}
 		else
 		{
 			const list<std::pair<const oid*, SSnmpxValue>>* valueSet = (const list<std::pair<const oid*, SSnmpxValue>>*)pOidList;
 
-			for (const auto& value : *valueSet)
+			if (!valueSet->empty())
 			{
-				rval = GetSetOidValueBytes(value.second, &tag, &data, szError);
-
-				if (rval >= 0)
+				for (const auto& value : *valueSet)
 				{
-					if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, value.first + 1, sizeof(oid) * value.first[0], tag, data, rval) < 0)
+					if (value.first != NULL)
+					{
+						rval = GetSetOidValueBytes(value.second, &tag, &data, szError);
+
+						if (rval >= 0)
+						{
+							if (pack.snmpx_set_vb_list(snmpx.variable_bindings_list, value.first + 1, sizeof(oid) * value.first[0], tag, data, rval) < 0)
+							{
+								bResult = false;
+								szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
+							}
+						}
+						else
+						{
+							bResult = false;
+							szError = "获取下发的OID绑定数据字节失败：" + szError;
+						}
+
+						if (data != NULL)
+						{
+							free(data);
+							data = NULL;
+						}
+
+						if (!bResult)
+							break;
+					}
+					else
 					{
 						bResult = false;
-						szError = "设置绑定OID及值失败：" + pack.GetErrorMsg();
+						szError = "绑定的OID不能为NULL！";
+						break;
 					}
 				}
-				else
-				{
-					bResult = false;
-					szError = "获取下发的oid绑定数据字节失败：" + szError;
-				}
-
-				if (data != NULL)
-				{
-					free(data);
-					data = NULL;
-				}
-
-				if (!bResult)
-					break;
+			}
+			else
+			{
+				bResult = false;
+				szError = "绑定的OID及值列表不能为空！";
 			}
 		}
 	}
@@ -2391,7 +2452,7 @@ int CSnmpxClient::GetSetOidValueBytes(const SSnmpxValue& value, unsigned char* t
 *********************************************************************/
 int CSnmpxClient::CompareOidBuf(const oid* pSrcBuf, const oid* pCompareBuf, unsigned int iCompareBufLen, bool bIsWalkEnd)
 {
-	if (pSrcBuf[0] <= (iCompareBufLen / sizeof(oid)))
+	if (pSrcBuf[0] <= (oid)(iCompareBufLen / (unsigned int)sizeof(oid)))
 	{
 		oid iLen = (bIsWalkEnd ? pSrcBuf[0] : (pSrcBuf[0] - 1));
 
