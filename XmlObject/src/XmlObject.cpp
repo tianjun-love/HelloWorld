@@ -197,49 +197,47 @@ bool CXmlObject::ToBool(bool& bOut, const char *pszStr)
 	return true;
 }
 
-bool CXmlObject::ToShort(int16_t &nOut, const char *pszStr)
+bool CXmlObject::ToNumeral(short &nOut, const char *pszStr)
 {
 	if (NULL != pszStr && strlen(pszStr) >= 1)
-		nOut = (int16_t)atoi(pszStr);
+		nOut = (short)atoi(pszStr);
 	else
 		return false;
 
 	return true;
 }
 
-bool CXmlObject::ToUshort(uint16_t &unOut, const char *pszStr)
+bool CXmlObject::ToNumeral(unsigned short &unOut, const char *pszStr)
 {
 	if (NULL != pszStr && strlen(pszStr) >= 1)
-		unOut = (uint16_t)atoi(pszStr);
+		unOut = (unsigned short)atoi(pszStr);
 	else
 		return false;
 
 	return true;
 }
 
-bool CXmlObject::ToInt(int32_t &iOut, const char *pszStr)
+bool CXmlObject::ToNumeral(int &iOut, const char *pszStr)
 {
 	if (NULL != pszStr && strlen(pszStr) >= 1)
-	{
-		iOut = (int32_t)atoi(pszStr);
-	}
+		iOut = atoi(pszStr);
 	else
 		return false;
 
 	return true;
 }
 
-bool CXmlObject::ToUint(uint32_t &uiOut, const char *pszStr)
+bool CXmlObject::ToNumeral(unsigned int &uiOut, const char *pszStr)
 {
 	if (NULL != pszStr && strlen(pszStr) >= 1)
-		uiOut = (uint32_t)std::strtoul(pszStr, NULL, 10);
+		uiOut = (unsigned int)std::strtoul(pszStr, NULL, 10);
 	else
 		return false;
 	
 	return true;
 }
 
-bool CXmlObject::ToFloat(float &fOut, const char *pszStr)
+bool CXmlObject::ToNumeral(float &fOut, const char *pszStr)
 {
 	if (NULL != pszStr && strlen(pszStr) >= 1)
 		fOut = std::strtof(pszStr, NULL);
@@ -249,7 +247,7 @@ bool CXmlObject::ToFloat(float &fOut, const char *pszStr)
 	return true;
 }
 
-bool CXmlObject::ToDouble(double &dOut, const char *pszStr)
+bool CXmlObject::ToNumeral(double &dOut, const char *pszStr)
 {
 	if (NULL != pszStr && strlen(pszStr) >= 1)
 		dOut = std::strtod(pszStr, NULL);
@@ -259,7 +257,27 @@ bool CXmlObject::ToDouble(double &dOut, const char *pszStr)
 	return true;
 }
 
-bool CXmlObject::ToInt64(int64_t &llOut, const char*pszStr)
+bool CXmlObject::ToNumeral(long &lOut, const char*pszStr)
+{
+	if (NULL != pszStr && strlen(pszStr) >= 1)
+		lOut = std::strtol(pszStr, NULL, 10);
+	else
+		return false;
+
+	return true;
+}
+
+bool CXmlObject::ToNumeral(unsigned long &ulOut, const char*pszStr)
+{
+	if (NULL != pszStr && strlen(pszStr) >= 1)
+		ulOut = std::strtoul(pszStr, NULL, 10);
+	else
+		return false;
+
+	return true;
+}
+
+bool CXmlObject::ToNumeral(long long &llOut, const char*pszStr)
 {
 	if (NULL != pszStr && strlen(pszStr) >= 1)
 		llOut = std::strtoll(pszStr, NULL, 10);
@@ -269,7 +287,7 @@ bool CXmlObject::ToInt64(int64_t &llOut, const char*pszStr)
 	return true;
 }
 
-bool CXmlObject::ToUint64(uint64_t &ullOut, const char*pszStr)
+bool CXmlObject::ToNumeral(unsigned long long &ullOut, const char*pszStr)
 {
 	if (NULL != pszStr && strlen(pszStr) >= 1)
 		ullOut = std::strtoull(pszStr, NULL, 10);
@@ -278,25 +296,3 @@ bool CXmlObject::ToUint64(uint64_t &ullOut, const char*pszStr)
 
 	return true;
 }
-
-#ifndef _WIN32
-bool CXmlObject::ToLongLong(long long &llOut, const char*pszStr)
-{
-	if (NULL != pszStr && strlen(pszStr) >= 1)
-		llOut = std::strtoll(pszStr, NULL, 10);
-	else
-		return false;
-
-	return true;
-}
-
-bool CXmlObject::ToUlongLong(unsigned long long &ullOut, const char*pszStr)
-{
-	if (NULL != pszStr && strlen(pszStr) >= 1)
-		ullOut = std::strtoull(pszStr, NULL, 10);
-	else
-		return false;
-
-	return true;
-}
-#endif

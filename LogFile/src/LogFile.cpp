@@ -1,6 +1,7 @@
 ﻿#include "../include/LogFile.hpp"
 #include "../include/LogFileBackup.hpp"
 #include <stdarg.h>
+#include <iomanip>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -33,6 +34,7 @@ bool CLogFile::Open(string &szError)
 	if (!m_bLogInit)
 	{
 		m_bLogInit = true;
+		std::cout.setf(std::ios::fixed);
 		m_LogMember.m_szDate = GetDateTimeStr(false);
 
 		return CreateLogFile(szError);
@@ -186,6 +188,7 @@ bool CLogFile::CreateLogFile(string &szError)
 	if (m_LogMember.m_Ofstream.is_open() && m_LogMember.m_Ofstream.good())
 	{
 		m_LogMember.m_bOpen = true;
+		m_LogMember.m_Ofstream.setf(std::ios::fixed);
 	}
 	else
 	{
@@ -384,7 +387,46 @@ CLogOutObject CLogFile::operator << (const unsigned int& uiNumber)
 	return CLogOutObject((void*)&m_LogMember);
 }
 
-#ifdef _WIN32
+CLogOutObject CLogFile::operator << (const float& fNumber)
+{
+	CheckLogFile();
+
+#ifdef _DEBUG
+	std::cout << GetDateTimeStr() << std::setprecision(3) << fNumber;
+#endif
+
+	if (m_LogMember.m_bOpen)
+	{
+		m_LogMember.m_LogLock.lock();
+		m_LogMember.m_Ofstream << GetDateTimeStr() << std::setprecision(3) << fNumber;
+
+		if (m_LogMember.m_bLogendl)
+			m_LogMember.m_bLogendl = false;
+	}
+
+	return CLogOutObject((void*)&m_LogMember);
+}
+
+CLogOutObject CLogFile::operator << (const double& dNumber)
+{
+	CheckLogFile();
+
+#ifdef _DEBUG
+	std::cout << GetDateTimeStr() << std::setprecision(4) << dNumber;
+#endif
+
+	if (m_LogMember.m_bOpen)
+	{
+		m_LogMember.m_LogLock.lock();
+		m_LogMember.m_Ofstream << GetDateTimeStr() << std::setprecision(4) << dNumber;
+
+		if (m_LogMember.m_bLogendl)
+			m_LogMember.m_bLogendl = false;
+	}
+
+	return CLogOutObject((void*)&m_LogMember);
+}
+
 CLogOutObject CLogFile::operator << (const long& lNumber)
 {
 	CheckLogFile();
@@ -424,20 +466,19 @@ CLogOutObject CLogFile::operator << (const unsigned long& ulNumber)
 
 	return CLogOutObject((void*)&m_LogMember);
 }
-#endif
 
-CLogOutObject CLogFile::operator << (const float& fNumber)
+CLogOutObject CLogFile::operator << (const long long& llNumber)
 {
 	CheckLogFile();
 
 #ifdef _DEBUG
-	std::cout << GetDateTimeStr() << fNumber;
+	std::cout << GetDateTimeStr() << llNumber;
 #endif
 
 	if (m_LogMember.m_bOpen)
 	{
 		m_LogMember.m_LogLock.lock();
-		m_LogMember.m_Ofstream << GetDateTimeStr() << fNumber;
+		m_LogMember.m_Ofstream << GetDateTimeStr() << llNumber;
 
 		if (m_LogMember.m_bLogendl)
 			m_LogMember.m_bLogendl = false;
@@ -446,58 +487,18 @@ CLogOutObject CLogFile::operator << (const float& fNumber)
 	return CLogOutObject((void*)&m_LogMember);
 }
 
-CLogOutObject CLogFile::operator << (const double& dNumber)
+CLogOutObject CLogFile::operator << (const unsigned long long& ullNumber)
 {
 	CheckLogFile();
 
 #ifdef _DEBUG
-	std::cout << GetDateTimeStr() << dNumber;
+	std::cout << GetDateTimeStr() << ullNumber;
 #endif
 
 	if (m_LogMember.m_bOpen)
 	{
 		m_LogMember.m_LogLock.lock();
-		m_LogMember.m_Ofstream << GetDateTimeStr() << dNumber;
-
-		if (m_LogMember.m_bLogendl)
-			m_LogMember.m_bLogendl = false;
-	}
-
-	return CLogOutObject((void*)&m_LogMember);
-}
-
-CLogOutObject CLogFile::operator << (const int64_t& NNumber)
-{
-	CheckLogFile();
-
-#ifdef _DEBUG
-	std::cout << GetDateTimeStr() << NNumber;
-#endif
-
-	if (m_LogMember.m_bOpen)
-	{
-		m_LogMember.m_LogLock.lock();
-		m_LogMember.m_Ofstream << GetDateTimeStr() << NNumber;
-
-		if (m_LogMember.m_bLogendl)
-			m_LogMember.m_bLogendl = false;
-	}
-
-	return CLogOutObject((void*)&m_LogMember);
-}
-
-CLogOutObject CLogFile::operator << (const uint64_t& uNNumber)
-{
-	CheckLogFile();
-
-#ifdef _DEBUG
-	std::cout << GetDateTimeStr() << uNNumber;
-#endif
-
-	if (m_LogMember.m_bOpen)
-	{
-		m_LogMember.m_LogLock.lock();
-		m_LogMember.m_Ofstream << GetDateTimeStr() << uNNumber;
+		m_LogMember.m_Ofstream << GetDateTimeStr() << ullNumber;
 
 		if (m_LogMember.m_bLogendl)
 			m_LogMember.m_bLogendl = false;

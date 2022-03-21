@@ -45,7 +45,7 @@ protected:
 	void DealThreadClientCount(ev_uint64_t ullThreadNO, bool bIsAdd);
 
 	//获取处理线程编号，负载算法
-	unsigned int GetDealThreadNO();
+	ev_uint64_t GetDealThreadNO();
 
 	//客户端数据处理，子类实现，返回：<0：失败，0：成功但没读取到数据，1：成功处理
 	virtual short ClientDataHandle(bufferevent *bev, CClientSession &session, CClientData &data);

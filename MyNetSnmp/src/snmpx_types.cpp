@@ -664,16 +664,16 @@ std::string get_vb_item_print_string(const SSnmpxValue &vb, size_t max_oid_strin
 		break;
 	case SNMPX_ASN_INTEGER64:
 #ifdef _WIN32
-		snprintf(buff, buff_len, (oid_format + " => %10s : %lld").c_str(), vb.szOid.c_str(), "ingeter64", vb.Val.num.ll);
+		snprintf(buff, buff_len, (oid_format + " => %10s : %lld").c_str(), vb.szOid.c_str(), "ingeter64", vb.Val.num.i64);
 #else
-		snprintf(buff, buff_len, (oid_format + " => %10s : %ld").c_str(), vb.szOid.c_str(), "ingeter64", vb.Val.num.ll);
+		snprintf(buff, buff_len, (oid_format + " => %10s : %ld").c_str(), vb.szOid.c_str(), "ingeter64", vb.Val.num.i64);
 #endif
 		break;
 	case SNMPX_ASN_UNSIGNED64:
 #ifdef _WIN32
-		snprintf(buff, buff_len, (oid_format + " => %10s : %llu").c_str(), vb.szOid.c_str(), "unsigned64", vb.Val.num.ull);
+		snprintf(buff, buff_len, (oid_format + " => %10s : %llu").c_str(), vb.szOid.c_str(), "unsigned64", vb.Val.num.u64);
 #else
-		snprintf(buff, buff_len, (oid_format + " => %10s : %lu").c_str(), vb.szOid.c_str(), "unsigned64", vb.Val.num.ull);
+		snprintf(buff, buff_len, (oid_format + " => %10s : %lu").c_str(), vb.szOid.c_str(), "unsigned64", vb.Val.num.u64);
 #endif
 		break;
 	case SNMPX_ASN_FLOAT:
@@ -774,7 +774,7 @@ uint64_t convert_to_nll(uint64_t ll)
 		u_digital_64 d;
 		unsigned char ch;
 
-		d.ull = ll;
+		d.u64 = ll;
 
 		ch = d.buff[0];
 		d.buff[0] = d.buff[7];
@@ -792,7 +792,7 @@ uint64_t convert_to_nll(uint64_t ll)
 		d.buff[3] = d.buff[4];
 		d.buff[4] = ch;
 
-		return d.ull;
+		return d.u64;
 	}
 
 	return ll;

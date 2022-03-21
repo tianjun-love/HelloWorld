@@ -10,15 +10,16 @@
 #endif
 
 #ifdef _WIN32
-	CDateTime::Snprintf CDateTime::m_snprintf = _snprintf;
+	#define my_snprintf _snprintf
 #else
-	CDateTime::Snprintf CDateTime::m_snprintf = snprintf;
+	#define my_snprintf snprintf
 #endif
 
 CDateTime::CDateTime() : m_lSeconds(1329265800) //fisrt day to work, 2012-02-15 08:30:00
 {}
 
-CDateTime::CDateTime(unsigned int iYear, unsigned int iMon, unsigned int iDay, unsigned int iHour, unsigned int iMin, unsigned int iSec)
+CDateTime::CDateTime(unsigned int iYear, unsigned int iMon, unsigned int iDay, unsigned int iHour, unsigned int iMin, 
+	unsigned int iSec)
 {
 	tm DateTime;
 
@@ -202,7 +203,7 @@ std::string CDateTime::GetDateTimeStr(bool bNeedMilliseconds) const
 
 	//添加毫秒数
 	if (bNeedMilliseconds)
-		m_snprintf(strDateTime + strLen, 5, ".%3d", GetCurrentMillisecond());
+		my_snprintf(strDateTime + strLen, 5, ".%3d", GetCurrentMillisecond());
 
 	return std::move(std::string(strDateTime));
 }
@@ -213,7 +214,7 @@ std::string CDateTime::GetDateStr(const std::string& szDecollator)  const
 	struct tm tmTimeTemp;
 
 	LocalTime(m_lSeconds, tmTimeTemp);
-	m_snprintf(strDate, 16, "%d%s%02d%s%02d", tmTimeTemp.tm_year + 1900, szDecollator.c_str(), tmTimeTemp.tm_mon + 1,
+	my_snprintf(strDate, 16, "%d%s%02d%s%02d", tmTimeTemp.tm_year + 1900, szDecollator.c_str(), tmTimeTemp.tm_mon + 1,
 		szDecollator.c_str(), tmTimeTemp.tm_mday);
 
 	return std::move(std::string(strDate));
@@ -225,7 +226,7 @@ std::string CDateTime::GetDateMonStr(const std::string& szDecollator)  const
 	struct tm tmTimeTemp;
 
 	LocalTime(m_lSeconds, tmTimeTemp);
-	m_snprintf(strDate, 16, "%d%s%02d", tmTimeTemp.tm_year + 1900, szDecollator.c_str(), tmTimeTemp.tm_mon + 1);
+	my_snprintf(strDate, 16, "%d%s%02d", tmTimeTemp.tm_year + 1900, szDecollator.c_str(), tmTimeTemp.tm_mon + 1);
 
 	return std::move(std::string(strDate));
 }
@@ -236,7 +237,7 @@ std::string CDateTime::GetDateHourStr(const std::string& szDecollator)  const
 	struct tm tmTimeTemp;
 
 	LocalTime(m_lSeconds, tmTimeTemp);
-	m_snprintf(strDate, 32, "%d%s%02d%s%02d%s%02d", tmTimeTemp.tm_year + 1900, szDecollator.c_str(), tmTimeTemp.tm_mon + 1,
+	my_snprintf(strDate, 32, "%d%s%02d%s%02d%s%02d", tmTimeTemp.tm_year + 1900, szDecollator.c_str(), tmTimeTemp.tm_mon + 1,
 		szDecollator.c_str(), tmTimeTemp.tm_mday, szDecollator.c_str(), tmTimeTemp.tm_hour);
 
 	return std::move(std::string(strDate));
@@ -248,7 +249,7 @@ std::string CDateTime::GetDateMinStr(const std::string& szDecollator)  const
 	struct tm tmTimeTemp;
 
 	LocalTime(m_lSeconds, tmTimeTemp);
-	m_snprintf(strDate, 32, "%d%s%02d%s%02d%s%02d%s%02d", tmTimeTemp.tm_year + 1900, szDecollator.c_str(),
+	my_snprintf(strDate, 32, "%d%s%02d%s%02d%s%02d%s%02d", tmTimeTemp.tm_year + 1900, szDecollator.c_str(),
 		tmTimeTemp.tm_mon + 1, szDecollator.c_str(), tmTimeTemp.tm_mday, szDecollator.c_str(),
 		tmTimeTemp.tm_hour, szDecollator.c_str(), tmTimeTemp.tm_min);
 
@@ -263,11 +264,11 @@ std::string CDateTime::GetTimeStr(const std::string& szDecollator, bool bNeedMil
 	LocalTime(m_lSeconds, tmTimeTemp);
 
 	if (bNeedMilliseconds)
-		m_snprintf(strTime, 24, "%02d%s%02d%s%02d.%3d", tmTimeTemp.tm_hour, szDecollator.c_str(), tmTimeTemp.tm_min, szDecollator.c_str(),
-			tmTimeTemp.tm_sec, GetCurrentMillisecond());
+		my_snprintf(strTime, 24, "%02d%s%02d%s%02d.%3d", tmTimeTemp.tm_hour, szDecollator.c_str(), tmTimeTemp.tm_min, 
+			szDecollator.c_str(), tmTimeTemp.tm_sec, GetCurrentMillisecond());
 	else
-		m_snprintf(strTime, 24, "%02d%s%02d%s%02d", tmTimeTemp.tm_hour, szDecollator.c_str(), tmTimeTemp.tm_min, szDecollator.c_str(),
-			tmTimeTemp.tm_sec);
+		my_snprintf(strTime, 24, "%02d%s%02d%s%02d", tmTimeTemp.tm_hour, szDecollator.c_str(), tmTimeTemp.tm_min, 
+			szDecollator.c_str(), tmTimeTemp.tm_sec);
 
 	return std::move(std::string(strTime));
 }

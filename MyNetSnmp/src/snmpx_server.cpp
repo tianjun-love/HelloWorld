@@ -643,16 +643,16 @@ string CSnmpxServer::GetItemsPrintString(unsigned int *sysuptime, const string *
 			break;
 		case SNMPX_ASN_INTEGER64:
 #ifdef _WIN32
-			snprintf(buff, buff_len, (oid_format + " => %10s : %lld\n").c_str(), p->szOid.c_str(), "ingeter64", p->Val.num.ll);
+			snprintf(buff, buff_len, (oid_format + " => %10s : %lld\n").c_str(), p->szOid.c_str(), "ingeter64", p->Val.num.i64);
 #else
-			snprintf(buff, buff_len, (oid_format + " => %10s : %ld\n").c_str(), p->szOid.c_str(), "ingeter64", p->Val.num.ll);
+			snprintf(buff, buff_len, (oid_format + " => %10s : %ld\n").c_str(), p->szOid.c_str(), "ingeter64", p->Val.num.i64);
 #endif
 			break;
 		case SNMPX_ASN_UNSIGNED64:
 #ifdef _WIN32
-			snprintf(buff, buff_len, (oid_format + " => %10s : %llu\n").c_str(), p->szOid.c_str(), "unsigned64", p->Val.num.ull);
+			snprintf(buff, buff_len, (oid_format + " => %10s : %llu\n").c_str(), p->szOid.c_str(), "unsigned64", p->Val.num.u64);
 #else
-			snprintf(buff, buff_len, (oid_format + " => %10s : %lu\n").c_str(), p->szOid.c_str(), "unsigned64", p->Val.num.ull);
+			snprintf(buff, buff_len, (oid_format + " => %10s : %lu\n").c_str(), p->szOid.c_str(), "unsigned64", p->Val.num.u64);
 #endif
 			break;
 		case SNMPX_ASN_FLOAT:

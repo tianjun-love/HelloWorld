@@ -24,7 +24,8 @@ set(CMAKE_VERBOSE_MAKEFILE ON) #显示详细编译信息
 add_subdirectory(DateTime) #编译库
 add_subdirectory(LogFile) #编译库
 add_subdirectory(XmlObject) #编译库
-add_subdirectory(JsonObject) #编译库
+add_subdirectory(JsoncppObject) #编译库
+add_subdirectory(NlohmannjsonObject) #编译库
 add_subdirectory(OS) #编译库
 add_subdirectory(SecurityModule) #编译库
 add_subdirectory(LibEvent) #编译库

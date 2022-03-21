@@ -15,6 +15,12 @@
 #include <fcntl.h>
 #endif
 
+#ifdef _WIN32
+#define MY_SOCKET_ERRNO WSAGetLastError()
+#else
+#define MY_SOCKET_ERRNO errno
+#endif
+
 CSocketClient::CSocketClient(const std::string& szServerIP, int iServerPort, int iTimeOut) :
 CSocketBase(szServerIP, iServerPort, iTimeOut), m_bLogined(false), m_lConnectId(0)
 {
@@ -71,11 +77,19 @@ bool CSocketClient::Connect(std::string& szError)
 	bool bResult = true;
 
 	m_lConnectId = socket(AF_INET, SOCK_STREAM, 0);
+#ifdef _WIN32
+	if (INVALID_SOCKET == m_lConnectId)
+	{
+		bResult = false;
+		szError = "Create socket fd failed:" + GetErrorMsg(MY_SOCKET_ERRNO);
+	}
+#else
 	if (m_lConnectId <= 0)
 	{
 		bResult = false;
-		szError = "Create socket fd failed !";
+		szError = "Create socket fd failed:" + GetErrorMsg(MY_SOCKET_ERRNO);
 	}
+#endif
 	else
 	{
 		sockaddr_in sin;
@@ -109,11 +123,15 @@ bool CSocketClient::Connect(std::string& szError)
 			FD_SET(m_lConnectId, &rfd);
 
 			//检查连接状态
+#ifdef _WIN32
+			int iRet = select(0, NULL, &rfd, NULL, &tv);
+#else
 			int iRet = select(m_lConnectId + 1, NULL, &rfd, NULL, &tv);
+#endif
 			if (iRet <= 0)
 			{
 				bResult = false;
-				iError = errno;
+				iError = MY_SOCKET_ERRNO;
 				DisConnect();
 
 				if (0 == iRet)
@@ -257,7 +275,7 @@ int CSocketClient::SendMsg(const char* data, int data_len, std::string& szError)
 			}
 			else
 			{
-				int iTemp = errno;
+				int iTemp = MY_SOCKET_ERRNO;
 
 				switch (iTemp)
 				{
@@ -341,7 +359,7 @@ int CSocketClient::RecvMsg(char* data, int buf_len, std::string& szError)
 			else
 			{
 				//查看错误码
-				int iTemp = errno;
+				int iTemp = MY_SOCKET_ERRNO;
 
 				switch (iTemp)
 				{
@@ -408,7 +426,7 @@ bool CSocketClient::SendMsgWithEOF_Zero(const std::string &szData, std::string& 
 	//多发送两个换行
 	bool bExit = true;
 	std::string szTempData = szData + "\n\n"; //给web判断结束使用
-	const int iTotalLength = szTempData.length();
+	const int iTotalLength = (int)szTempData.length();
 	const char *pBuf = szTempData.c_str();
 	int iRet = 0, iSendLength = 0;
 	time_t tBegin = time(NULL);

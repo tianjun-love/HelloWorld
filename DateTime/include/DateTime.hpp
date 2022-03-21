@@ -30,7 +30,8 @@ private:
 	};
 public:
 	CDateTime();
-	CDateTime(unsigned int iYear, unsigned int iMon, unsigned int iDay, unsigned int iHour, unsigned int iMin, unsigned int iSec);
+	CDateTime(unsigned int iYear, unsigned int iMon, unsigned int iDay, unsigned int iHour, unsigned int iMin, 
+		unsigned int iSec);
 	CDateTime(time_t lSeconds);
 	CDateTime(const std::string& szDateTime);
 	CDateTime(const CDateTime& Other);
@@ -87,10 +88,6 @@ public:
 	time_t operator -(const CDateTime& Other) const;
 	operator std::string() const;
 
-public:
-	//格式化数据函数指针
-	typedef int(*Snprintf)(char* buf, size_t count, const char* format, ...);
-
 protected:
 	static ETIMEPART GetEnum(const std::string& szPart);
 	static void LocalTime(const time_t& tSeconds, tm& tmTemp);  //init tm struct
@@ -99,7 +96,6 @@ protected:
 
 private:
 	time_t            m_lSeconds;
-	static Snprintf   m_snprintf;
 
 };
 

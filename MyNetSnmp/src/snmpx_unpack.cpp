@@ -1660,13 +1660,13 @@ void CSnmpxUnpack::snmpx_get_vb_value(const variable_bindings* variable_binding,
 			break;
 		case ASN_INTEGER64:
 			value->cValType = SNMPX_ASN_INTEGER64;
-			value->Val.num.ll = CBerCode::asn_integer64_decode(variable_binding->val_buf, variable_binding->val_len);
+			value->Val.num.i64 = CBerCode::asn_integer64_decode(variable_binding->val_buf, variable_binding->val_len);
 
 			break;
 		case ASN_COUNTER64:
 		case ASN_UNSIGNED64:
 			value->cValType = SNMPX_ASN_UNSIGNED64;
-			value->Val.num.ull = CBerCode::asn_unsigned64_decode(variable_binding->val_buf, variable_binding->val_len);
+			value->Val.num.u64 = CBerCode::asn_unsigned64_decode(variable_binding->val_buf, variable_binding->val_len);
 
 			break;
 		case ASN_IPADDRESS: //ip类型

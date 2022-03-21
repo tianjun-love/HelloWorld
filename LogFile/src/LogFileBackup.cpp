@@ -1,6 +1,6 @@
 ﻿#include "../include/LogFileBackup.hpp"
 #include "../include/LogFile.hpp"
-#include "QtumCompress/include/QtumCompress.hpp"
+#include "MyCompress/include/MyCompress.hpp"
 #include <time.h>
 
 CLogFileBackup::CLogFileBackup(void *pLogFile) : m_pLogFile(pLogFile)
@@ -25,8 +25,8 @@ void CLogFileBackup::BackupHandle(const string &szLogFileNamePrefix, eLOGFILE_DE
 
 	CLogFile *pLogFile = (CLogFile*)m_pLogFile;
 	string szLogPath, szLogBackupPath, szFileNamePrefix, szLogfileSrcName, szLogfileTargzName, szError;
-	std::list<CQtumCompress::SFileInfo> filesList;
-	CQtumCompress comp;
+	std::list<CMyCompress::SFileInfo> filesList;
+	CMyCompress comp;
 	std::list<std::string> compressFileList;
 
 	//分析文件路径
@@ -85,12 +85,12 @@ void CLogFileBackup::BackupHandle(const string &szLogFileNamePrefix, eLOGFILE_DE
 	}
 
 	//获取日志目录的文件信息
-	if (comp.GetDirInfo(szLogPath, filesList, szError, false))
+	if (comp.GetDirFiles(szLogPath, filesList, szError, false))
 	{
 		for (const auto &file : filesList)
 		{
 			//只处理文件
-			if (CQtumCompress::e_File == file.eType)
+			if (CMyCompress::e_File == file.eType)
 			{
 				//对比时间，文件名如：QuantumNMSServer_20210513.log
 				if (CompareLogfileDate(file.szName.substr(szFileNamePrefix.length() + 1), eDeco, iCurrentLogRetainDays))
@@ -100,7 +100,7 @@ void CLogFileBackup::BackupHandle(const string &szLogFileNamePrefix, eLOGFILE_DE
 					compressFileList.push_back(szLogfileSrcName);
 
 					//压缩到备份目录
-					if (comp.CompressGZIP(compressFileList, szLogfileTargzName, CQtumCompress::e_Level_Default, szError))
+					if (comp.CompressGZIP(compressFileList, szLogfileTargzName, CMyCompress::e_Level_Default, szError))
 					{
 						//成功后删除源文件
 						if (!comp.RmFile(szLogfileSrcName, false, szError))

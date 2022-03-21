@@ -1,4 +1,5 @@
 ﻿#include "../include/LogOutObject.hpp"
+#include <iomanip>
 
 //方便使用
 #define m_Log (*((CLogFileMember*)m_pLogMember))
@@ -173,7 +174,40 @@ CLogOutObject& CLogOutObject::operator << (const unsigned int& uiNumber)
 	return *this;
 }
 
-#ifdef _WIN32
+CLogOutObject& CLogOutObject::operator << (const float& fNumber)
+{
+	if (!m_bLost)
+	{
+#ifdef _DEBUG
+		std::cout << std::setprecision(3) << fNumber;
+#endif
+		if (m_bIsLastOutputEnd)
+			m_bIsLastOutputEnd = false;
+
+		if (m_Log.m_bOpen)
+			m_Log.m_Ofstream << std::setprecision(3) << fNumber;
+	}
+
+	return *this;
+}
+
+CLogOutObject& CLogOutObject::operator << (const double& dNumber)
+{
+	if (!m_bLost)
+	{
+#ifdef _DEBUG
+		std::cout << std::setprecision(4) << dNumber;
+#endif
+		if (m_bIsLastOutputEnd)
+			m_bIsLastOutputEnd = false;
+
+		if (m_Log.m_bOpen)
+			m_Log.m_Ofstream << std::setprecision(4) << dNumber;
+	}
+
+	return *this;
+}
+
 CLogOutObject& CLogOutObject::operator << (const long& lNumber)
 {
 	if (!m_bLost)
@@ -207,71 +241,36 @@ CLogOutObject& CLogOutObject::operator << (const unsigned long& ulNumber)
 
 	return *this;
 }
-#endif
 
-CLogOutObject& CLogOutObject::operator << (const float& fNumber)
+CLogOutObject& CLogOutObject::operator << (const long long & llNumber)
 {
 	if (!m_bLost)
 	{
 #ifdef _DEBUG
-		std::cout << fNumber;
+		std::cout << llNumber;
 #endif
 		if (m_bIsLastOutputEnd)
 			m_bIsLastOutputEnd = false;
 
 		if (m_Log.m_bOpen)
-			m_Log.m_Ofstream << fNumber;
+			m_Log.m_Ofstream << llNumber;
 	}
 
 	return *this;
 }
 
-CLogOutObject& CLogOutObject::operator << (const double& dNumber)
+CLogOutObject& CLogOutObject::operator << (const unsigned long long& ullNumber)
 {
 	if (!m_bLost)
 	{
 #ifdef _DEBUG
-		std::cout << dNumber;
+		std::cout << ullNumber;
 #endif
 		if (m_bIsLastOutputEnd)
 			m_bIsLastOutputEnd = false;
 
 		if (m_Log.m_bOpen)
-			m_Log.m_Ofstream << dNumber;
-	}
-
-	return *this;
-}
-
-CLogOutObject& CLogOutObject::operator << (const int64_t& NNumber)
-{
-	if (!m_bLost)
-	{
-#ifdef _DEBUG
-		std::cout << NNumber;
-#endif
-		if (m_bIsLastOutputEnd)
-			m_bIsLastOutputEnd = false;
-
-		if (m_Log.m_bOpen)
-			m_Log.m_Ofstream << NNumber;
-	}
-
-	return *this;
-}
-
-CLogOutObject& CLogOutObject::operator << (const uint64_t& uNNumber)
-{
-	if (!m_bLost)
-	{
-#ifdef _DEBUG
-		std::cout << uNNumber;
-#endif
-		if (m_bIsLastOutputEnd)
-			m_bIsLastOutputEnd = false;
-
-		if (m_Log.m_bOpen)
-			m_Log.m_Ofstream << uNNumber;
+			m_Log.m_Ofstream << ullNumber;
 	}
 
 	return *this;

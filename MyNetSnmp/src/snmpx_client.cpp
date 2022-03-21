@@ -1305,16 +1305,16 @@ string CSnmpxClient::GetSnmpxValuePrintString(const SSnmpxValue &vb, size_t max_
 			break;
 		case SNMPX_ASN_INTEGER64:
 #ifdef _WIN32
-			snprintf(buff, buff_len, (oid_format + " => %10s : %lld\n").c_str(), vb.szOid.c_str(), "ingeter64", vb.Val.num.ll);
+			snprintf(buff, buff_len, (oid_format + " => %10s : %lld\n").c_str(), vb.szOid.c_str(), "ingeter64", vb.Val.num.i64);
 #else
-			snprintf(buff, buff_len, (oid_format + " => %10s : %ld\n").c_str(), vb.szOid.c_str(), "ingeter64", vb.Val.num.ll);
+			snprintf(buff, buff_len, (oid_format + " => %10s : %ld\n").c_str(), vb.szOid.c_str(), "ingeter64", vb.Val.num.i64);
 #endif
 			break;
 		case SNMPX_ASN_UNSIGNED64:
 #ifdef _WIN32
-			snprintf(buff, buff_len, (oid_format + " => %10s : %llu\n").c_str(), vb.szOid.c_str(), "unsigned64", vb.Val.num.ull);
+			snprintf(buff, buff_len, (oid_format + " => %10s : %llu\n").c_str(), vb.szOid.c_str(), "unsigned64", vb.Val.num.u64);
 #else
-			snprintf(buff, buff_len, (oid_format + " => %10s : %lu\n").c_str(), vb.szOid.c_str(), "unsigned64", vb.Val.num.ull);
+			snprintf(buff, buff_len, (oid_format + " => %10s : %lu\n").c_str(), vb.szOid.c_str(), "unsigned64", vb.Val.num.u64);
 #endif
 			break;
 		case SNMPX_ASN_FLOAT:
@@ -2233,14 +2233,20 @@ int CSnmpxClient::RequestSnmpx(snmpx_t& snmpx_sd, snmpx_t& snmpx_rc, bool bIsGet
 							szError = "接收返回超时，agent未启动或通信密码错误！";
 						else
 							szError = "接收返回超时，agent未启动或团体名错误！";
+
+						return SNMPX_timeout;
 					}
 					else
-						szError = "ping失败！";
+					{
+						szError = "接收返回超时，ping测试失败！";
+						return SNMPX_pingFailure;
+					}
 				}
 				else
+				{
 					szError = "接收返回超时！";
-
-				return SNMPX_timeout;
+					return SNMPX_timeout;
+				}
 			}
 			else
 			{
@@ -2370,24 +2376,24 @@ int CSnmpxClient::GetSetOidValueBytes(const SSnmpxValue& value, unsigned char* t
 		break;
 	case SNMPX_ASN_INTEGER64:
 	{
-		rval = (int)sizeof(value.Val.num.ll);
+		rval = (int)sizeof(value.Val.num.i64);
 		*data = (unsigned char*)malloc(rval * sizeof(unsigned char));
 		*tag = ASN_INTEGER64;
 
 		if (NULL != *data)
-			memcpy(*data, &value.Val.num.ll, rval);
+			memcpy(*data, &value.Val.num.i64, rval);
 		else
 			szError = "malloc数据缓存失败：" + CErrorStatus::get_err_msg(errno, true, true);
 	}
 		break;
 	case SNMPX_ASN_UNSIGNED64:
 	{
-		rval = (int)sizeof(value.Val.num.ull);
+		rval = (int)sizeof(value.Val.num.u64);
 		*data = (unsigned char*)malloc(rval * sizeof(unsigned char));
 		*tag = ASN_UNSIGNED64;
 
 		if (NULL != *data)
-			memcpy(*data, &value.Val.num.ull, rval);
+			memcpy(*data, &value.Val.num.u64, rval);
 		else
 			szError = "malloc数据缓存失败：" + CErrorStatus::get_err_msg(errno, true, true);
 	}

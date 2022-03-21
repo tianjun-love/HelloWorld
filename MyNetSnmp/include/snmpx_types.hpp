@@ -296,8 +296,8 @@ union u_digital_32
 
 union u_digital_64
 {
-	int64_t       ll;
-	uint64_t      ull;
+	int64_t       i64;
+	uint64_t      u64;
 	double        d;
 	unsigned char buff[8];
 };
@@ -311,8 +311,8 @@ struct SOidVal
 		unsigned int u;
 		float        f;
 		double       d;
-		int64_t      ll;
-		uint64_t     ull;
+		int64_t      i64;
+		uint64_t     u64;
 	} num; //数字值
 
 	bool hex_str; //不可打印字符串转HEX串

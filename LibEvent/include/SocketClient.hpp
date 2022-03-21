@@ -32,10 +32,10 @@ public:
 	bool RecvMsgWithEOF_Zero(std::string &szData, std::string& szError); //接收带'\0'为结束符的消息
 
 protected:
-	bool       m_bLogined;     //是否已经登陆
+	bool            m_bLogined;     //是否已经登陆
 
 private:
-	long       m_lConnectId;   //socket句柄
+	MY_SOCKET_TYPE  m_lConnectId;   //socket句柄
 
 };
 

@@ -12,6 +12,13 @@
 #include <ctime>
 #include <cstdlib>
 
+//socket句柄类型
+#ifdef _WIN32
+#define MY_SOCKET_TYPE unsigned long long
+#else
+#define MY_SOCKET_TYPE int
+#endif
+
 class CSocketBase
 {
 public:

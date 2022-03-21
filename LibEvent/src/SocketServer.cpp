@@ -147,7 +147,7 @@ bool CSocketServer::Start(std::string& szError)
 		}
 
 		CClientObject *client = nullptr;
-		unsigned int uiIndex = 0;
+		ev_uint64_t ullIndex = 0;
 		ev_uint64_t ullNO = 0;
 
 		//主线程循环
@@ -197,10 +197,10 @@ bool CSocketServer::Start(std::string& szError)
 				else //短连接处理
 				{
 					//获取处理线程
-					uiIndex = GetDealThreadNO();
+					ullIndex = GetDealThreadNO();
 
 					//处理
-					m_ClientHandleThreads[uiIndex]->AddClient(client);
+					m_ClientHandleThreads[ullIndex]->AddClient(client);
 				}
 			}
 		}
@@ -348,9 +348,9 @@ void CSocketServer::DealThreadClientCount(ev_uint64_t ullThreadNO, bool bIsAdd)
 返回：	处理线程编号
 修改：
 *********************************************************************/
-unsigned int CSocketServer::GetDealThreadNO()
+ev_uint64_t CSocketServer::GetDealThreadNO()
 {
-	unsigned int uiIndex = 0;
+	ev_uint64_t uiIndex = 0;
 	uint64_t ullWeight = 0;
 	std::map<ev_uint64_t, SClientThreadInfo*>::const_iterator iter;
 
@@ -404,7 +404,7 @@ unsigned int CSocketServer::GetDealThreadNO()
 *********************************************************************/
 short CSocketServer::ClientDataHandle(bufferevent *bev, CClientSession &session, CClientData &data)
 {
-	int iMaxReadLength = bufferevent_get_max_single_read(bev);
+	size_t iMaxReadLength = bufferevent_get_max_single_read(bev);
 
 	if (nullptr == data.pMsgBuffer)
 	{
@@ -412,7 +412,7 @@ short CSocketServer::ClientDataHandle(bufferevent *bev, CClientSession &session,
 	}
 
 	//读取数据
-	data.uiMsgTotalLength = bufferevent_read(bev, data.pMsgBuffer, iMaxReadLength);
+	data.uiMsgTotalLength = (unsigned int)bufferevent_read(bev, data.pMsgBuffer, iMaxReadLength);
 
 	//输出
 	if (0 == data.uiMsgTotalLength)
@@ -515,7 +515,12 @@ ev_uint64_t CSocketServer::ConvertIPAndPortToNum(const std::string &szIP, unsign
 	char buf[32]{ '\0' };
 	unsigned int a, b, c, d;
 
+#ifdef _WIN32
+	sscanf_s(szIP.c_str(), "%u.%u.%u.%u", &a, &b, &c, &d);
+#else
 	sscanf(szIP.c_str(), "%u.%u.%u.%u", &a, &b, &c, &d);
+#endif
+
 	snprintf(buf, sizeof(buf), "%u%u%u%u%u", a, b, c, d, iPort);
 
 	return std::strtoull(buf, nullptr, 10);

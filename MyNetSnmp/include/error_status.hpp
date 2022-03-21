@@ -3,6 +3,7 @@
 
 #include "snmpx_types.hpp"
 
+#define SNMPX_pingFailure             (-3)  //响应超时且ping失败
 #define SNMPX_timeout                 (-2)  //自定义内部错误，超时
 #define SNMPX_failure                 (-1)  //自定义内部错误，通用
 

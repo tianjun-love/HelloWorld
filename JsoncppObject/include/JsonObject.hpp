@@ -4,16 +4,16 @@
 *时间：	2022-03-04
 *修改：	
 ***********************************************************/
-#ifndef __JSON_OBJECT_HPP__
-#define __JSON_OBJECT_HPP__
+#ifndef __JSONCPP_OBJECT_HPP__
+#define __JSONCPP_OBJECT_HPP__
 
 #include "jsoncpp/json.h"
 
-class CJsonObject
+class CJsoncppObject
 {
 public:
-	CJsonObject();
-	virtual ~CJsonObject();
+	CJsoncppObject();
+	virtual ~CJsoncppObject();
 
 	bool LoadFromFile(const std::string &szFileName, std::string &strError);
 	bool SaveToFile(const std::string &szFileName, std::string &strError);

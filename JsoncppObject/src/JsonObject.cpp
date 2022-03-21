@@ -1,15 +1,15 @@
 ﻿#include "../include/JsonObject.hpp"
 #include <fstream>
 
-CJsonObject::CJsonObject()
+CJsoncppObject::CJsoncppObject()
 {
 }
 
-CJsonObject::~CJsonObject()
+CJsoncppObject::~CJsoncppObject()
 {
 }
 
-bool CJsonObject::LoadFromFile(const std::string &szFileName, std::string &strError)
+bool CJsoncppObject::LoadFromFile(const std::string &szFileName, std::string &strError)
 {
 	bool bResult = false;
 	std::ifstream iFile;
@@ -50,7 +50,7 @@ bool CJsonObject::LoadFromFile(const std::string &szFileName, std::string &strEr
 	return bResult;
 }
 
-bool CJsonObject::SaveToFile(const std::string &szFileName, std::string &strError)
+bool CJsoncppObject::SaveToFile(const std::string &szFileName, std::string &strError)
 {
 	bool bResult = false;
 	Json::Value Root;
@@ -81,7 +81,7 @@ bool CJsonObject::SaveToFile(const std::string &szFileName, std::string &strErro
 	return bResult;
 }
 
-bool CJsonObject::LoadFromString(const std::string &szJson, std::string &strError)
+bool CJsoncppObject::LoadFromString(const std::string &szJson, std::string &strError)
 {
 	bool bResult = false;
 	Json::Value Root;
@@ -112,7 +112,7 @@ bool CJsonObject::LoadFromString(const std::string &szJson, std::string &strErro
 	return bResult;
 }
 
-bool CJsonObject::SaveToString(std::string &szJson, std::string &strError)
+bool CJsoncppObject::SaveToString(std::string &szJson, std::string &strError)
 {
 	bool bResult = false;
 	Json::Value Root;
@@ -135,7 +135,7 @@ bool CJsonObject::SaveToString(std::string &szJson, std::string &strError)
 	return bResult;
 }
 
-std::string CJsonObject::ToString() const
+std::string CJsoncppObject::ToString() const
 {
 	return "";
 }

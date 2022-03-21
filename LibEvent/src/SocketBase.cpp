@@ -232,7 +232,12 @@ bool CSocketBase::CheckIPFormat(const std::string &szIP, bool bIsIPv4)
 			{
 				//判断数字是否是合法
 				int a = 0, b = 0, c = 0, d = 0;
+
+#ifdef _WIN32
+				sscanf_s(szIP.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
+#else
 				sscanf(szIP.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
+#endif
 
 				if (a > 255 || b > 255 || c > 255 || d > 254)
 					return false;
